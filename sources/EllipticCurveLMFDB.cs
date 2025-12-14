@@ -209,10 +209,13 @@ namespace EllipticCurves
                 {
                     var conductor = ReadBigInteger(row.GetProperty("conductor"));
                     var rank = row.GetProperty("rank").GetInt32();
-                    // analytic_rank may be absent or null for some entries
-                    int? analyticRank = row.TryGetProperty("analytic_rank", out var arEl) ? arEl.GetInt32() : null;
                     var lmfdb_label = row.GetProperty("lmfdb_label").GetString();
                     var torsionStruct = FormatTorsionStructure(row.GetProperty("torsion_structure"));
+
+                    // analytic_rank may be absent or null for some entries
+                    int? analyticRank = null;
+                    if (row.TryGetProperty("analytic_rank", out var arEl) && arEl.ValueKind == JsonValueKind.Number)
+                        analyticRank = arEl.GetInt32();
 
                     _lmfdbCache = (ainvs, conductor, rank, analyticRank, lmfdb_label, torsionStruct);
                     return;
