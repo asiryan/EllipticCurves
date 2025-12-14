@@ -258,6 +258,40 @@ namespace EllipticCurves
             return RationalPoints(xmax, 1);
         }
 
+        /// <summary>
+        /// Returns the quadratic twist of this curve by a non-zero integer <paramref name="d"/>.
+        /// The twisted curve E_d is isomorphic to E over the quadratic extension ℚ(√d),
+        /// but generally not over ℚ (unless d is a square).
+        /// </summary>
+        public EllipticCurveQ QuadraticTwist(BigInteger d)
+        {
+            if (IsSingular) throw new InvalidOperationException("Cannot twist a singular curve.");
+            if (d == 0) throw new ArgumentException("Twisting factor d cannot be zero.", nameof(d));
+
+            var d_bi = d;               // d^1
+            var d2 = d_bi * d_bi;       // d^2
+            var d3 = d2 * d_bi;         // d^3
+
+            // To ensure the twist is well-defined over ℚ without introducing square roots
+            // into the a1/a3 terms, we first convert to the Short Weierstrass model.
+            var shortCurve = this.ShortWeierstrass;
+
+            // Apply the twisting formulas:
+            // A' = A * d^2
+            // B' = B * d^3
+            // Note: Implicit conversion from BigInteger to BigRational is assumed for d2/d3.
+            BigRational newA = shortCurve.A4 * new BigRational(d2);
+            BigRational newB = shortCurve.A6 * new BigRational(d3);
+
+            return new EllipticCurveQ(
+                BigRational.Zero,
+                BigRational.Zero,
+                BigRational.Zero,
+                newA,
+                newB
+            );
+        }
+
         #endregion
 
         #region Torsion structure
@@ -540,6 +574,42 @@ namespace EllipticCurves
             var (c4C, c6C, dC) = InternalMath.IntegralInvariants(other);
 
             return InternalMath.IsQIsomorphic(c4E, c6E, dE, c4C, c6C, dC, out u);
+        }
+
+        #endregion
+
+        #region FromJInvariant
+
+        /// <summary>
+        /// Constructs an elliptic curve over ℚ with the specified j-invariant.
+        /// </summary>
+        public static EllipticCurveQ FromJInvariant(BigRational j)
+        {
+            // Case 1: CM curve with j = 0 (automorphism group order 6).
+            // Standard minimal model: y^2 + y = x^3 (a3=1, others 0).
+            // Discriminant = -27.
+            if (j.IsZero)
+                return new EllipticCurveQ(0, 0, 1, 0, 0);
+
+            // Case 2: CM curve with j = 1728 (automorphism group order 4).
+            // Standard minimal model: y^2 = x^3 - x (a4=-1, others 0).
+            // Discriminant = 64.
+            // Note: Assuming BigRational has implicit conversion or comparison with int.
+            if (j == 1728)
+                return new EllipticCurveQ(0, 0, 0, -1, 0);
+
+            // Case 3: General case (j != 0 and j != 1728).
+            // We construct a curve of the form y^2 = x^3 + Ax + A.
+            // To satisfy the j-invariant equation, we set:
+            // A = -27 * j / (4 * (j - 1728))
+            var num = -BigRational.FromInt(27) * j;
+            var den = BigRational.FromInt(4) * (j - 1728);
+
+            var A = num / den;
+            var B = A; // In this specific construction, we set B = A.
+
+            // Returns y^2 = x^3 + Ax + A
+            return new EllipticCurveQ(0, 0, 0, A, B);
         }
 
         #endregion

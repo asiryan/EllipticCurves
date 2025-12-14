@@ -444,6 +444,13 @@
             Returns O first, then affine integral points.
             </summary>
         </member>
+        <member name="M:EllipticCurves.EllipticCurveQ.QuadraticTwist(System.Numerics.BigInteger)">
+            <summary>
+            Returns the quadratic twist of this curve by a non-zero integer <paramref name="d"/>.
+            The twisted curve E_d is isomorphic to E over the quadratic extension ℚ(√d),
+            but generally not over ℚ (unless d is a square).
+            </summary>
+        </member>
         <member name="P:EllipticCurves.EllipticCurveQ.TorsionPoints">
             <summary>
             Compute (and cache) the full set of rational torsion points of E(ℚ).
@@ -482,6 +489,11 @@
             <summary>
             Return true iff this curve is Q–isomorphic to <paramref name="other"/>; also returns u s.t.
             c4_this = u^4 c4_other, c6_this = u^6 c6_other, Δ_this = u^12 Δ_other.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveQ.FromJInvariant(EllipticCurves.BigRational)">
+            <summary>
+            Constructs an elliptic curve over ℚ with the specified j-invariant.
             </summary>
         </member>
         <member name="M:EllipticCurves.EllipticCurveQ.ToString">
