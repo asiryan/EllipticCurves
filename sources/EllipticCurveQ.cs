@@ -90,6 +90,27 @@ namespace EllipticCurves
 
         #region Curve membership and group law (general Weierstrass formulas)
 
+        /// <summary>Returns the number of connected components of the curve over the reals ℝ.</summary>
+        public int NumberOfRealComponents
+        {
+            get
+            {
+                if (IsSingular)
+                    throw new InvalidOperationException("Singular curve over ℝ: discriminant = 0.");
+
+                return Discriminant.Sign > 0 ? 2 : 1;
+            }
+        }
+
+        /// <summary>True if all coefficients (a1..a6) are integers (denominators equal 1).</summary>
+        public bool HasIntegerCoefficients
+        {
+            get
+            {
+                return A1.Den.IsOne && A2.Den.IsOne && A3.Den.IsOne && A4.Den.IsOne && A6.Den.IsOne;
+            }
+        }
+
         /// <summary>Exact membership test for a point in affine coordinates.</summary>
         public bool IsOnCurve(EllipticCurvePoint P)
         {

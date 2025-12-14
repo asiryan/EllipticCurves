@@ -392,6 +392,12 @@
         <member name="P:EllipticCurves.EllipticCurveQ.IsSingular">
             <summary>True iff the curve is singular (Δ = 0).</summary>
         </member>
+        <member name="P:EllipticCurves.EllipticCurveQ.NumberOfRealComponents">
+            <summary>Returns the number of connected components of the curve over the reals ℝ.</summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveQ.HasIntegerCoefficients">
+            <summary>True if all coefficients (a1..a6) are integers (denominators equal 1).</summary>
+        </member>
         <member name="M:EllipticCurves.EllipticCurveQ.IsOnCurve(EllipticCurves.EllipticCurvePoint)">
             <summary>Exact membership test for a point in affine coordinates.</summary>
         </member>
