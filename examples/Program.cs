@@ -4,7 +4,7 @@ public static class Program
 {
     public static void Main()
     {
-        // Y^2 = X^3- 17 X^2 + 72 X
+        // Y^2 = X^3 - 17 X^2 + 72 X
         var E = new EllipticCurveQ(0, -17, 0, 72, 0);
 
         Console.WriteLine("E: " + E);
