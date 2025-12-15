@@ -5,7 +5,7 @@ public static class Program
     public static void Main()
     {
         // Y^2 = X^3 - 17 X^2 + 72 X
-        var E = new EllipticCurveQ(0, -17, 0, 72, 0);
+        var E = new EllipticCurveQ(4, 1237, 0, 72, 5);
 
         Console.WriteLine("E: " + E);
         Console.WriteLine($"Short Weierstrass: {E.ShortWeierstrass}");
@@ -23,14 +23,20 @@ public static class Program
         Console.WriteLine("Torsion points:");
         foreach (var P in E.TorsionPoints) Console.WriteLine(P);
 
-        var E_LMFDB = new EllipticCurveLMFDB(E);
-        Console.WriteLine($"LMFDB: {E_LMFDB.Label}");
-        Console.WriteLine($"Url: {E_LMFDB.Url}");
-        Console.WriteLine($"Minimal Weirstrass model: {E_LMFDB.GlobalMinimalModel}");
-        Console.WriteLine($"Torsion: {E_LMFDB.TorsionStructure}");
-        Console.WriteLine($"Rank(E) = {E_LMFDB.Rank}");
-        Console.WriteLine($"Analytic rank(E) = {E_LMFDB.AnalyticRank}");
-        Console.WriteLine($"Cond(E) = {E_LMFDB.Conductor}");
-        Console.WriteLine($"Isomorphic to E: {E.IsIsomorphic(E_LMFDB.GlobalMinimalModel)}");
+        var cond = E.Conductor;
+        Console.WriteLine(cond);
+        var bounds = E.RankBounds();
+        Console.WriteLine(bounds.Lower);
+        Console.WriteLine(bounds.Upper);
+
+        //var E_LMFDB = new EllipticCurveLMFDB(E);
+        //Console.WriteLine($"LMFDB: {E_LMFDB.Label}");
+        //Console.WriteLine($"Url: {E_LMFDB.Url}");
+        //Console.WriteLine($"Minimal Weirstrass model: {E_LMFDB.GlobalMinimalModel}");
+        //Console.WriteLine($"Torsion: {E_LMFDB.TorsionStructure}");
+        //Console.WriteLine($"Rank(E) = {E_LMFDB.Rank}");
+        //Console.WriteLine($"Analytic rank(E) = {E_LMFDB.AnalyticRank}");
+        //Console.WriteLine($"Cond(E) = {E_LMFDB.Conductor}");
+        //Console.WriteLine($"Isomorphic to E: {E.IsIsomorphic(E_LMFDB.GlobalMinimalModel)}");
     }
 }

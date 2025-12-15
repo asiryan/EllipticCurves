@@ -333,6 +333,36 @@
             </summary>
             <remarks>Create an elliptic curve y^2 + a1*x*y + a3*y = x^3 + a2*x^2 + a4*x + a6.</remarks>
         </member>
+        <member name="P:EllipticCurves.EllipticCurveQ.ReducedMinimalModel">
+            <summary>
+            The unique reduced global minimal model (integral a-invariants) isomorphic to this curve over Q.
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveQ.MinimalDiscriminant">
+            <summary>
+            Minimal discriminant Δ_min of the reduced minimal model (an integer).
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveQ.Conductor">
+            <summary>
+            Conductor N of the curve (computed via Tate's algorithm on the reduced global minimal model).
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveQ.RankBounds(System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Compute (lower, upper) bounds for the Mordell–Weil rank of E(Q).
+            
+            Lower bound is obtained by a rational point search with a numerical independence test
+            using an approximate Néron–Tate height pairing.
+            
+            Upper bound is a coarse fallback bound based on the size of S = primes dividing 2Δ_min
+            (intended as a lightweight bound when full 2-descent is not implemented).
+            </summary>
+            <param name="searchNumMax">Maximum absolute numerator for x in the rational search.</param>
+            <param name="searchDenMax">Maximum denominator for x in the rational search.</param>
+            <param name="maxPoints">Maximum number of rational points to consider from the search output.</param>
+            <param name="heightDoublings">Number of doublings used in the height approximation (>= 4 recommended).</param>
+        </member>
         <member name="M:EllipticCurves.EllipticCurveQ.#ctor(EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational)">
             <summary>
             Elliptic curve over ℚ in the general Weierstrass form
@@ -674,6 +704,16 @@
             <summary>
             Enumerate all positive divisors of |n| from its factorization (includes 1 and |n|).
             Returns 0 only if input n was 0 (by convention).
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.InternalMath.IsSquare(System.Numerics.BigInteger)">
+            <summary>
+            Returns true iff n is a perfect square in ℤ.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.InternalMath.BitLength(System.Numerics.BigInteger)">
+            <summary>
+            Integer square root: ⌊sqrt(n)⌋ for n ≥ 0.
             </summary>
         </member>
     </members>
