@@ -23,7 +23,7 @@ C# interface
 using EllipticCurves;
 ```
 To get started with **EllipticCurves** it is recommended to take a look at the [example project](examples).  
-Here are some results for the [elliptic curve](https://github.com/asiryan/Cuboid_Conjecture_1): **Y^2 = X^3 - 17X^2 + 72X**.
+Here are some results for the [elliptic curve](https://arxiv.org/abs/2510.11768): **Y^2 = X^3 - 17X^2 + 72X**.
 ```
 E: y^2 = x^3 - 17*x^2 + 72*x
 Short Weierstrass: y^2 = x^3 - 73/3*x + 1190/27
