@@ -556,12 +556,8 @@ namespace EllipticCurves
             // the numerical linear algebra bounded.
             //
             // Torsion filter:
-            // Over Q, the torsion subgroup is classified (Mazur). In particular, every torsion point
-            // has order dividing lcm(1,2,3,4,5,6,7,8,9,10,12,16) = 5040, hence 5040*P = O  iff  P is torsion.
-            //
-            // This avoids computing the full torsion subgroup (your TorsionPoints cache), which can
-            // dominate runtime when rank bounds are requested repeatedly.
-            const int torsionKiller = 5040;
+            // Over Q, possible torsion orders are at most 16 (Mazur). Checking up to 16 avoids
+            // huge scalar multiplications while still discarding torsion points efficiently.
 
             var basis = new List<EllipticCurvePoint>();
             var heights = new List<double>();
@@ -572,7 +568,7 @@ namespace EllipticCurves
             {
                 if (processed++ >= maxPoints) break;
                 if (p.IsInfinity) continue;
-                if (Multiply(p, torsionKiller).IsInfinity) continue;
+                if (IsTorsionByMazurBound(p)) continue;
 
                 // Approximate canonical height.
                 double hp = CanonicalHeightApprox(p, heightDoublings);
@@ -609,6 +605,19 @@ namespace EllipticCurves
             }
 
             return basis.Count;
+        }
+
+        private bool IsTorsionByMazurBound(EllipticCurvePoint p)
+        {
+            // Any torsion point over Q has order <= 16, so test multiples up to 16.
+            if (p.IsInfinity) return true;
+            var q = EllipticCurvePoint.Infinity;
+            for (int k = 1; k <= 16; k++)
+            {
+                q = Add(q, p);
+                if (q.IsInfinity) return true;
+            }
+            return false;
         }
 
         private static bool NumericallyIndependent(double hp, double[] v, List<double[]> gram)
