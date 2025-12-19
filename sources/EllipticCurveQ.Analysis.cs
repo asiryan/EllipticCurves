@@ -308,6 +308,10 @@ namespace EllipticCurves
 
             int total = 1 << n;
 
+            // Guard against exponential blow-ups in the Selmer enumeration.
+            const int maxSelmerMasks = 1 << 18; // 262,144
+            if (total > maxSelmerMasks) return null;
+
             // Gaussian elimination basis (bit i corresponds to generator i).
             ulong[] basis = new ulong[n];
             int rank = 0;
