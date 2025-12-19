@@ -106,7 +106,18 @@ namespace EllipticCurves
 
             // Coarse bound (very safe but often loose): 2*ω(2*Δ_min) + 2.
             BigInteger absMinDisc = BigInteger.Abs(MinimalDiscriminant);
-            int omega = InternalMath.FactorAbs(absMinDisc == 0 ? 0 : 2 * absMinDisc).Count;
+            BigInteger twoDelta = absMinDisc == 0 ? 0 : 2 * absMinDisc;
+            int omega;
+
+            // Avoid expensive full factorization for large discriminants: use ω(n) ≤ log2(n).
+            if (BitLength(twoDelta) > 256)
+            {
+                omega = BitLength(twoDelta);
+            }
+            else
+            {
+                omega = InternalMath.FactorAbs(twoDelta).Count;
+            }
             int upper = 2 * omega + 2;
 
             // Tighter bound when E has a rational 2-torsion point: 2-isogeny descent.
@@ -287,6 +298,8 @@ namespace EllipticCurves
         {
             if (b.IsZero) return null;
 
+            if (BitLength(b) > 256) return null;
+
             var primes = InternalMath.FactorAbs(b).Keys.ToList();
             primes.Sort((x, y) => x.CompareTo(y));
 
@@ -297,6 +310,7 @@ namespace EllipticCurves
             if (n > 30) return null;
 
             BigInteger discPart = 2 * b * (a * a - 4 * b);
+            if (BitLength(discPart) > 256) return null;
             var checkPrimes = new List<int>();
             foreach (var p in InternalMath.FactorAbs(discPart).Keys)
             {
@@ -307,6 +321,10 @@ namespace EllipticCurves
             checkPrimes.Sort();
 
             int total = 1 << n;
+
+            // Guard against exponential blow-ups in the Selmer enumeration.
+            const int maxSelmerMasks = 1 << 18; // 262,144
+            if (total > maxSelmerMasks) return null;
 
             // Gaussian elimination basis (bit i corresponds to generator i).
             ulong[] basis = new ulong[n];
@@ -350,6 +368,13 @@ namespace EllipticCurves
             }
 
             return rank;
+        }
+
+        private static int BitLength(BigInteger n)
+        {
+            if (n.Sign < 0) n = BigInteger.Abs(n);
+            if (n.IsZero) return 0;
+            return n.ToByteArray().Length * 8;
         }
 
         private static bool RealSolvableIsogenyQuartic(BigInteger a, BigInteger b, BigInteger d)
@@ -556,12 +581,8 @@ namespace EllipticCurves
             // the numerical linear algebra bounded.
             //
             // Torsion filter:
-            // Over Q, the torsion subgroup is classified (Mazur). In particular, every torsion point
-            // has order dividing lcm(1,2,3,4,5,6,7,8,9,10,12,16) = 5040, hence 5040*P = O  iff  P is torsion.
-            //
-            // This avoids computing the full torsion subgroup (your TorsionPoints cache), which can
-            // dominate runtime when rank bounds are requested repeatedly.
-            const int torsionKiller = 5040;
+            // Over Q, possible torsion orders are at most 16 (Mazur). Checking up to 16 avoids
+            // huge scalar multiplications while still discarding torsion points efficiently.
 
             var basis = new List<EllipticCurvePoint>();
             var heights = new List<double>();
@@ -572,7 +593,7 @@ namespace EllipticCurves
             {
                 if (processed++ >= maxPoints) break;
                 if (p.IsInfinity) continue;
-                if (Multiply(p, torsionKiller).IsInfinity) continue;
+                if (IsTorsionByMazurBound(p)) continue;
 
                 // Approximate canonical height.
                 double hp = CanonicalHeightApprox(p, heightDoublings);
@@ -609,6 +630,19 @@ namespace EllipticCurves
             }
 
             return basis.Count;
+        }
+
+        private bool IsTorsionByMazurBound(EllipticCurvePoint p)
+        {
+            // Any torsion point over Q has order <= 16, so test multiples up to 16.
+            if (p.IsInfinity) return true;
+            var q = EllipticCurvePoint.Infinity;
+            for (int k = 1; k <= 16; k++)
+            {
+                q = Add(q, p);
+                if (q.IsInfinity) return true;
+            }
+            return false;
         }
 
         private static bool NumericallyIndependent(double hp, double[] v, List<double[]> gram)
