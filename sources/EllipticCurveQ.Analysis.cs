@@ -297,10 +297,13 @@ namespace EllipticCurves
             if (n > 30) return null;
 
             BigInteger discPart = 2 * b * (a * a - 4 * b);
-            var checkPrimes = InternalMath.FactorAbs(discPart).Keys
-                .Where(p => p >= 2 && p <= int.MaxValue)
-                .Select(p => (int)p)
-                .ToList();
+            var checkPrimes = new List<int>();
+            foreach (var p in InternalMath.FactorAbs(discPart).Keys)
+            {
+                if (p < 2) continue;
+                if (p > int.MaxValue) return null;
+                checkPrimes.Add((int)p);
+            }
             checkPrimes.Sort();
 
             int total = 1 << n;
@@ -372,26 +375,107 @@ namespace EllipticCurves
             if (p == 2)
             {
                 // 2-adic obstructions are the most common; use a stronger modulus.
-                const int k = 6; // 2^6 = 64
+                const int k = 8; // 2^8 = 256
                 return HasSolutionModulo(a, b, d, 1 << k, reciprocal: false) || HasSolutionModulo(a, b, d, 1 << k, reciprocal: true);
             }
 
-            // For very large primes, a full search mod p is expensive; skipping is safe (may only loosen the bound).
-            if (p > 50000) return true;
+            return HasSolutionModuloPrime(a, b, d, p, reciprocal: false) || HasSolutionModuloPrime(a, b, d, p, reciprocal: true);
+        }
 
-            int kOdd = (p <= 19) ? 2 : 1;
+        private static bool HasSolutionModuloPrime(BigInteger a, BigInteger b, BigInteger d, int p, bool reciprocal)
+        {
+            if (p <= 2) return true;
 
-            long mLong = 1;
-            for (int i = 0; i < kOdd; i++)
-                mLong *= p;
+            BigInteger pBI = p;
 
-            // Guardrail against big allocations/time.
-            if (mLong > 2_000_000)
-                mLong = p;
+            if (InternalMath.Divides(pBI, d))
+            {
+                if (!InternalMath.Divides(pBI, b)) return false;
 
-            int m = (int)mLong;
+                BigInteger d1 = d / pBI;
+                BigInteger bDiv = b / pBI;
+                int d1Mod = ModToInt(d1, p);
+                int aMod = ModToInt(a, p);
+                int bDivMod = ModToInt(bDiv, p);
 
-            return HasSolutionModulo(a, b, d, m, reciprocal: false) || HasSolutionModulo(a, b, d, m, reciprocal: true);
+                int invD1 = (int)InternalMath.ModInverse(d1Mod, p);
+
+                for (int z = 0; z < p; z++)
+                {
+                    int z2 = (int)((long)z * z % p);
+                    int rhs = reciprocal
+                        ? (int)((((long)bDivMod * z2 % p) * z2 + (long)aMod * d1Mod % p * z2) % p)
+                        : (int)((((long)aMod * d1Mod % p) * z2 + bDivMod) % p);
+                    if (rhs < 0) rhs += p;
+
+                    int val = (int)((long)rhs * invD1 % p);
+                    if (val == 0 || InternalMath.Legendre(val, p) >= 0) return true;
+                }
+
+                return false;
+            }
+
+            if (IsSquareInQp(b, d, p)) return true;
+
+            int dMod = ModToInt(d, p);
+            int aMod = ModToInt(a, p);
+            int bMod = ModToInt(b, p);
+
+            int d2Mod = (int)((long)dMod * dMod % p);
+            int adMod = (int)((long)aMod * dMod % p);
+            int invD = (int)InternalMath.ModInverse(dMod, p);
+
+            bool hasSingularRoot = false;
+            int singularZ = 0;
+
+            for (int z = 0; z < p; z++)
+            {
+                int z2 = (int)((long)z * z % p);
+                int z4 = (int)((long)z2 * z2 % p);
+
+                long rhs = reciprocal
+                    ? ((long)bMod * z4 + (long)adMod * z2 + d2Mod)
+                    : ((long)d2Mod * z4 + (long)adMod * z2 + bMod);
+
+                int f = (int)(rhs % p);
+                if (f < 0) f += p;
+
+                if (f == 0)
+                {
+                    int z3 = (int)((long)z2 * z % p);
+                    int deriv = reciprocal
+                        ? (int)((4L * bMod % p * z3 + 2L * adMod % p * z) % p)
+                        : (int)((4L * d2Mod % p * z3 + 2L * adMod % p * z) % p);
+
+                    if (deriv != 0) return true;
+                    hasSingularRoot = true;
+                    singularZ = z;
+                    continue;
+                }
+
+                int val = (int)((long)f * invD % p);
+                if (val == 0 || InternalMath.Legendre(val, p) >= 0) return true;
+            }
+
+            if (!hasSingularRoot) return false;
+
+            long p2 = (long)p * p;
+            long dModP2 = ModToLong(d, p2);
+            long aModP2 = ModToLong(a, p2);
+            long bModP2 = ModToLong(b, p2);
+
+            long d2ModP2 = dModP2 * dModP2 % p2;
+            long adModP2 = aModP2 * dModP2 % p2;
+
+            long z2P2 = (long)singularZ * singularZ % p2;
+            long z4P2 = z2P2 * z2P2 % p2;
+
+            long fP2 = reciprocal
+                ? (bModP2 * z4P2 + adModP2 * z2P2 + d2ModP2) % p2
+                : (d2ModP2 * z4P2 + adModP2 * z2P2 + bModP2) % p2;
+
+            if (fP2 < 0) fP2 += p2;
+            return fP2 == 0;
         }
 
         private static bool HasSolutionModulo(BigInteger a, BigInteger b, BigInteger d, int m, bool reciprocal)
@@ -437,6 +521,32 @@ namespace EllipticCurves
             BigInteger r = x % m;
             if (r.Sign < 0) r += m;
             return (int)r;
+        }
+
+        private static long ModToLong(BigInteger x, long m)
+        {
+            BigInteger r = x % m;
+            if (r.Sign < 0) r += m;
+            return (long)r;
+        }
+
+        private static bool IsSquareInQp(BigInteger numerator, BigInteger denominator, int p)
+        {
+            if (numerator.IsZero) return true;
+            BigInteger pBI = p;
+            int vNum = InternalMath.Valuation(numerator, pBI);
+            int vDen = InternalMath.Valuation(denominator, pBI);
+            int v = vNum - vDen;
+            if ((v & 1) != 0) return false;
+
+            BigInteger numRed = numerator;
+            BigInteger denRed = denominator;
+            if (vNum > 0) numRed = InternalMath.ExactDiv(numRed, BigInteger.Pow(pBI, vNum), "num/p^v");
+            if (vDen > 0) denRed = InternalMath.ExactDiv(denRed, BigInteger.Pow(pBI, vDen), "den/p^v");
+
+            BigInteger residue = InternalMath.Mod(numRed * InternalMath.ModInverse(denRed, pBI), pBI);
+            int leg = InternalMath.LegendreSymbol(residue, pBI);
+            return leg >= 0;
         }
 
         private int RankLowerBoundFromSearch(int searchNumMax, int searchDenMax, int maxPoints, int heightDoublings)
