@@ -414,68 +414,69 @@ namespace EllipticCurves
 
                 return false;
             }
-
-            if (IsSquareInQp(b, d, p)) return true;
-
-            int dMod = ModToInt(d, p);
-            int aMod = ModToInt(a, p);
-            int bMod = ModToInt(b, p);
-
-            int d2Mod = (int)((long)dMod * dMod % p);
-            int adMod = (int)((long)aMod * dMod % p);
-            int invD = (int)InternalMath.ModInverse(dMod, p);
-
-            bool hasSingularRoot = false;
-            int singularZ = 0;
-
-            for (int z = 0; z < p; z++)
             {
-                int z2 = (int)((long)z * z % p);
-                int z4 = (int)((long)z2 * z2 % p);
+                if (IsSquareInQp(b, d, p)) return true;
 
-                long rhs = reciprocal
-                    ? ((long)bMod * z4 + (long)adMod * z2 + d2Mod)
-                    : ((long)d2Mod * z4 + (long)adMod * z2 + bMod);
+                int dMod = ModToInt(d, p);
+                int aMod = ModToInt(a, p);
+                int bMod = ModToInt(b, p);
 
-                int f = (int)(rhs % p);
-                if (f < 0) f += p;
+                int d2Mod = (int)((long)dMod * dMod % p);
+                int adMod = (int)((long)aMod * dMod % p);
+                int invD = (int)InternalMath.ModInverse(dMod, p);
 
-                if (f == 0)
+                bool hasSingularRoot = false;
+                int singularZ = 0;
+
+                for (int z = 0; z < p; z++)
                 {
-                    int z3 = (int)((long)z2 * z % p);
-                    int deriv = reciprocal
-                        ? (int)((4L * bMod % p * z3 + 2L * adMod % p * z) % p)
-                        : (int)((4L * d2Mod % p * z3 + 2L * adMod % p * z) % p);
+                    int z2 = (int)((long)z * z % p);
+                    int z4 = (int)((long)z2 * z2 % p);
 
-                    if (deriv != 0) return true;
-                    hasSingularRoot = true;
-                    singularZ = z;
-                    continue;
+                    long rhs = reciprocal
+                        ? ((long)bMod * z4 + (long)adMod * z2 + d2Mod)
+                        : ((long)d2Mod * z4 + (long)adMod * z2 + bMod);
+
+                    int f = (int)(rhs % p);
+                    if (f < 0) f += p;
+
+                    if (f == 0)
+                    {
+                        int z3 = (int)((long)z2 * z % p);
+                        int deriv = reciprocal
+                            ? (int)((4L * bMod % p * z3 + 2L * adMod % p * z) % p)
+                            : (int)((4L * d2Mod % p * z3 + 2L * adMod % p * z) % p);
+
+                        if (deriv != 0) return true;
+                        hasSingularRoot = true;
+                        singularZ = z;
+                        continue;
+                    }
+
+                    int val = (int)((long)f * invD % p);
+                    if (val == 0 || InternalMath.Legendre(val, p) >= 0) return true;
                 }
 
-                int val = (int)((long)f * invD % p);
-                if (val == 0 || InternalMath.Legendre(val, p) >= 0) return true;
+                if (!hasSingularRoot) return false;
+
+                long p2 = (long)p * p;
+                long dModP2 = ModToLong(d, p2);
+                long aModP2 = ModToLong(a, p2);
+                long bModP2 = ModToLong(b, p2);
+
+                long d2ModP2 = dModP2 * dModP2 % p2;
+                long adModP2 = aModP2 * dModP2 % p2;
+
+                long z2P2 = (long)singularZ * singularZ % p2;
+                long z4P2 = z2P2 * z2P2 % p2;
+
+                long fP2 = reciprocal
+                    ? (bModP2 * z4P2 + adModP2 * z2P2 + d2ModP2) % p2
+                    : (d2ModP2 * z4P2 + adModP2 * z2P2 + bModP2) % p2;
+
+                if (fP2 < 0) fP2 += p2;
+                return fP2 == 0;
             }
-
-            if (!hasSingularRoot) return false;
-
-            long p2 = (long)p * p;
-            long dModP2 = ModToLong(d, p2);
-            long aModP2 = ModToLong(a, p2);
-            long bModP2 = ModToLong(b, p2);
-
-            long d2ModP2 = dModP2 * dModP2 % p2;
-            long adModP2 = aModP2 * dModP2 % p2;
-
-            long z2P2 = (long)singularZ * singularZ % p2;
-            long z4P2 = z2P2 * z2P2 % p2;
-
-            long fP2 = reciprocal
-                ? (bModP2 * z4P2 + adModP2 * z2P2 + d2ModP2) % p2
-                : (d2ModP2 * z4P2 + adModP2 * z2P2 + bModP2) % p2;
-
-            if (fP2 < 0) fP2 += p2;
-            return fP2 == 0;
         }
 
         private static bool HasSolutionModulo(BigInteger a, BigInteger b, BigInteger d, int m, bool reciprocal)
