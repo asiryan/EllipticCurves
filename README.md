@@ -64,7 +64,7 @@ Native conductor matches LMFDB: True
 LMFDB rank is within native bounds: True
 ```
 
-# Rank bounds and conductor
+## Rank bounds and conductor
 
 `EllipticCurveQ` computes minimal models, conductors and rank bounds in C# using
 exact integer/rational arithmetic. No database, native binary, Sage or PARI installation
