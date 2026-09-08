@@ -175,7 +175,7 @@ namespace EllipticCurves
         public EllipticCurvePoint Subtract(EllipticCurvePoint P, EllipticCurvePoint Q) => Add(P, Negate(Q));
 
         /// <summary>
-        /// Scalar multiplication nP using left-to-right double-and-add.
+        /// Scalar multiplication nP using right-to-left double-and-add.
         /// Supports n &lt; 0 (via negation) and n = 0 (returns O).
         /// </summary>
         public EllipticCurvePoint Multiply(EllipticCurvePoint P, BigInteger n)
@@ -233,9 +233,12 @@ namespace EllipticCurves
         /// Enumerate rational points with bounded x = m/n (|m| ≤ numMax, 1 ≤ n ≤ denMax, gcd(m,n)=1).
         /// Uses the substitution y' = y + (a1 x + a3)/2 to test y'^2 being a rational square.
         /// Returns O first, then affine points found in the box.
+        /// Requires numMax >= 0 and denMax >= 1; bounds are checked when enumeration begins.
         /// </summary>
         public IEnumerable<EllipticCurvePoint> RationalPoints(int numMax, int denMax)
         {
+            if (numMax < 0) throw new ArgumentOutOfRangeException(nameof(numMax));
+            if (denMax < 1) throw new ArgumentOutOfRangeException(nameof(denMax));
             yield return EllipticCurvePoint.Infinity;
 
             var two = BigRational.FromInt(2);
@@ -271,12 +274,12 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Enumerate integral points with |x| ≤ xmax (a thin wrapper over RationalPoints with denMax=1).
+        /// Enumerate points with integer x and y and |x| ≤ xmax, in the original model's coordinates.
         /// Returns O first, then affine integral points.
         /// </summary>
         public IEnumerable<EllipticCurvePoint> IntegralPoints(int xmax)
         {
-            return RationalPoints(xmax, 1);
+            return RationalPoints(xmax, 1).Where(p => p.IsInfinity || p.Y.Den.IsOne);
         }
 
         /// <summary>
@@ -300,7 +303,6 @@ namespace EllipticCurves
             // Apply the twisting formulas:
             // A' = A * d^2
             // B' = B * d^3
-            // Note: Implicit conversion from BigInteger to BigRational is assumed for d2/d3.
             BigRational newA = shortCurve.A4 * new BigRational(d2);
             BigRational newB = shortCurve.A6 * new BigRational(d3);
 
@@ -318,7 +320,7 @@ namespace EllipticCurves
         #region Torsion structure
 
         // Cached torsion set in ORIGINAL coordinates (including Infinity).
-        private HashSet<EllipticCurvePoint> torsionPoints;
+        private IReadOnlyCollection<EllipticCurvePoint> torsionPoints;
 
         /// <summary>
         /// Compute (and cache) the full set of rational torsion points of E(ℚ).
@@ -403,7 +405,7 @@ namespace EllipticCurves
                         }
                     }
 
-                    // 2b) odd torsion: y ≠ 0 and y^2 | |Δ'|
+                    // 2b) torsion with y != 0 (orders other than 2): y^2 | |Δ'|
                     var factDelta = InternalMath.FactorAbs(Delta);
                     foreach (var y2 in InternalMath.EnumerateSquareDivisors(factDelta)) // y2 ≥ 1
                     {
@@ -493,7 +495,7 @@ namespace EllipticCurves
                         if (IsOnCurve(Porig)) mapped.Add(Porig);
                     }
 
-                    torsionPoints = mapped;
+                    torsionPoints = Array.AsReadOnly(mapped.ToArray());
                 }
 
                 return torsionPoints;
@@ -502,6 +504,7 @@ namespace EllipticCurves
 
         /// <summary>
         /// True iff the given point lies on the curve and is torsion (order &lt; ∞).
+        /// Throws ArgumentException if the point does not lie on the curve.
         /// </summary>
         public bool IsTorsionPoint(EllipticCurvePoint P)
         {
@@ -591,10 +594,8 @@ namespace EllipticCurves
             var c6E = this.C6;
             var dE = this.Discriminant;
 
-            // “Other” side (C): make an integral model by clearing denominators of a_i
-            var (c4C, c6C, dC) = InternalMath.IntegralInvariants(other);
-
-            return InternalMath.IsQIsomorphic(c4E, c6E, dE, c4C, c6C, dC, out u);
+            // Compare the actual input invariants so that u includes no extra denominator scaling.
+            return InternalMath.IsQIsomorphic(c4E, c6E, dE, other.C4, other.C6, other.Discriminant, out u);
         }
 
         #endregion
@@ -684,10 +685,11 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Value equality: finite points compare by coordinates; infinity compares only to infinity.
+        /// Value equality compares all five Weierstrass coefficients; null is never equal.
         /// </summary>
         public bool Equals(EllipticCurveQ other)
         {
+            if (other is null) return false;
             return A1 == other.A1
                 && A2 == other.A2
                 && A3 == other.A3

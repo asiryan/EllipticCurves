@@ -81,13 +81,14 @@ bound, but cannot guarantee equality of the bounds. `maxSquareClasses` bounds th
 number of candidates per isogeny and throws `NotSupportedException` if exceeded.
 It does not cap factorization time or the work of finding a cubic root.
 
-All new factorizations certify their prime factors: deterministic Miller–Rabin
+Native computations, including the torsion divisor helpers, certify their prime
+factors: deterministic Miller–Rabin
 below 2^64, and recursive full n-1 primality proofs above it, with an exact trial
-division fallback. Pollard rho supplies candidate factors. Unlike the older
-torsion helper, no probable-prime result is accepted as a proof. Large integers
-can still be prohibitively expensive to factor or prove prime. Cancellation
-is checked in the factorization and search loops; a single BigInteger operation
-cannot be interrupted midway.
+division fallback. Pollard rho supplies candidate factors; no probable-prime
+result is accepted as a proof. Large integers can still be prohibitively expensive
+to factor or prove prime. APIs accepting a cancellation token check it in the
+factorization and search loops; a single BigInteger operation cannot be interrupted
+midway. The torsion API does not currently accept a cancellation token.
 
 The convenience properties recompute their results; callers doing repeated work
 can retain the returned minimal model, conductor and rank bounds.

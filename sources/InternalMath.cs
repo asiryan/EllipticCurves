@@ -45,7 +45,7 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Build an integral Weierstrass model of curve C by the scaling (x,y) = (L^2 X, L^3 Y),
+        /// Build an integral Weierstrass model of curve C by the scaling (X,Y) = (L^2 x, L^3 y),
         /// where L = lcm(denominators of a_i). Returns the integer invariants (c4,c6,Δ).
         /// </summary>
         public static (BigInteger c4, BigInteger c6, BigInteger Delta) IntegralInvariants(EllipticCurveQ C)
@@ -78,12 +78,9 @@ namespace EllipticCurves
         /// Outputs the scaling factor u if successful.
         /// </summary>
         public static bool IsQIsomorphic(BigRational c4E, BigRational c6E, BigRational dE, 
-            BigInteger c4C, BigInteger c6C, BigInteger dC, out BigRational u)
+            BigRational rc4C, BigRational rc6C, BigRational rdC, out BigRational u)
         {
             u = default;
-            var rc4C = new BigRational(c4C);
-            var rc6C = new BigRational(c6C);
-            var rdC = new BigRational(dC);
 
             bool c4zero = c4E.IsZero || rc4C.IsZero;
             bool c6zero = c6E.IsZero || rc6C.IsZero;
@@ -155,9 +152,9 @@ namespace EllipticCurves
             if (n.IsZero) return BigInteger.Zero;
             if (n.IsOne) return BigInteger.One;
 
-            // Rough initial guess ~ 2^(bitlen/k)
+            // Newton's decreasing iteration must start above the root, including when k does not divide 8.
             int bits = n.ToByteArray().Length * 8;
-            BigInteger x = BigInteger.One << Math.Max(1, bits / k);
+            BigInteger x = BigInteger.One << Math.Max(1, (bits + k - 1) / k);
 
             while (true)
             {
@@ -293,27 +290,16 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Trial factorization via Pollard–Rho with Miller–Rabin primality tests.
-        /// Returns a dictionary of prime factors with exponents for |n|.
-        /// Note: For very large inputs, this is a heuristic/“good enough” routine.
+        /// Return certified prime factors with exponents for |n|, using the shared native factorizer.
+        /// Zero retains the legacy empty-result convention; divisor enumeration handles it separately.
         /// </summary>
         public static Dictionary<BigInteger, int> FactorAbs(BigInteger n)
         {
-            var res = new Dictionary<BigInteger, int>();
-            if (n < 0) n = BigInteger.Abs(n);
-            if (n <= 1) return res;
-
-            // Remove small factor 2 quickly.
-            int e2 = 0;
-            while ((n & 1) == 0) { n >>= 1; e2++; }
-            if (e2 > 0) res[new BigInteger(2)] = e2;
-
-            if (n > 1) FactorRec(n, res);
-            return res;
+            return n.IsZero ? new Dictionary<BigInteger, int>() : NativeNumberTheory.Factor(n, default);
         }
 
         /// <summary>
-        /// Recursive helper for FactorAbs: splits composite n into prime factors using
+        /// Legacy helper, not used by FactorAbs: splits composite n into probable prime factors using
         /// Miller–Rabin (probable prime) and Pollard–Rho to find nontrivial divisors.
         /// </summary>
         public static void FactorRec(BigInteger n, Dictionary<BigInteger, int> res)
@@ -332,7 +318,7 @@ namespace EllipticCurves
 
         /// <summary>
         /// Probable-prime test: quick small trial division, then Miller–Rabin with a fixed base set.
-        /// For 64-bit sized integers the chosen bases are deterministic; for larger they are practical.
+        /// Passing this fixed base set does not prove primality, even across the full 64-bit range.
         /// </summary>
         public static bool IsProbablePrime(BigInteger n)
         {
@@ -348,7 +334,7 @@ namespace EllipticCurves
                 if (n % p == 0) return n == p;
             }
 
-            // Miller–Rabin with a standard base set (good for 64-bit and practical beyond).
+            // Legacy probable-prime check only. Certified factorization uses NativeNumberTheory.
             int[] bases = [2, 3, 5, 7, 11, 13, 17];
             BigInteger d = n - 1; int s = 0;
             while ((d & 1) == 0) { d >>= 1; s++; }

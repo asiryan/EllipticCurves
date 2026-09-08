@@ -87,9 +87,9 @@
             A minimal, allocation-friendly rational type for exact arithmetic over Q.
             
             Invariants:
-             • Always stored in canonical form: gcd(|Num|, Den) = 1
+             • Num and Den expose canonical form: gcd(|Num|, Den) = 1
              • Denominator is strictly positive (Den > 0)
-             • Zero is represented as 0/1
+             • Zero, including default(BigRational), is represented as 0/1
             
             Notes:
              • This is an immutable value type with value semantics (Equals/GetHashCode implemented).
@@ -247,7 +247,7 @@
         </member>
         <member name="M:EllipticCurves.BigRational.ToString">
             <summary>
-            Culture-invariant string: "n" for integers, "n/d" for proper fractions.
+            Culture-invariant string: "n" for integers, "n/d" for nonintegral rationals.
             Intended for logs/debugging and round-trippable parsing in simple cases.
             </summary>
         </member>
@@ -381,7 +381,7 @@
         </member>
         <member name="M:EllipticCurves.EllipticCurveQ.Multiply(EllipticCurves.EllipticCurvePoint,System.Numerics.BigInteger)">
             <summary>
-            Scalar multiplication nP using left-to-right double-and-add.
+            Scalar multiplication nP using right-to-left double-and-add.
             Supports n &lt; 0 (via negation) and n = 0 (returns O).
             </summary>
         </member>
@@ -399,11 +399,12 @@
             Enumerate rational points with bounded x = m/n (|m| ≤ numMax, 1 ≤ n ≤ denMax, gcd(m,n)=1).
             Uses the substitution y' = y + (a1 x + a3)/2 to test y'^2 being a rational square.
             Returns O first, then affine points found in the box.
+            Requires numMax >= 0 and denMax >= 1; bounds are checked when enumeration begins.
             </summary>
         </member>
         <member name="M:EllipticCurves.EllipticCurveQ.IntegralPoints(System.Int32)">
             <summary>
-            Enumerate integral points with |x| ≤ xmax (a thin wrapper over RationalPoints with denMax=1).
+            Enumerate points with integer x and y and |x| ≤ xmax, in the original model's coordinates.
             Returns O first, then affine integral points.
             </summary>
         </member>
@@ -428,6 +429,7 @@
         <member name="M:EllipticCurves.EllipticCurveQ.IsTorsionPoint(EllipticCurves.EllipticCurvePoint)">
             <summary>
             True iff the given point lies on the curve and is torsion (order &lt; ∞).
+            Throws ArgumentException if the point does not lie on the curve.
             </summary>
         </member>
         <member name="M:EllipticCurves.EllipticCurveQ.TorsionOrder(EllipticCurves.EllipticCurvePoint)">
@@ -467,7 +469,7 @@
         </member>
         <member name="M:EllipticCurves.EllipticCurveQ.Equals(EllipticCurves.EllipticCurveQ)">
             <summary>
-            Value equality: finite points compare by coordinates; infinity compares only to infinity.
+            Value equality compares all five Weierstrass coefficients; null is never equal.
             </summary>
         </member>
         <member name="M:EllipticCurves.EllipticCurveQ.Equals(System.Object)">
@@ -673,11 +675,11 @@
         </member>
         <member name="M:EllipticCurves.InternalMath.IntegralInvariants(EllipticCurves.EllipticCurveQ)">
             <summary>
-            Build an integral Weierstrass model of curve C by the scaling (x,y) = (L^2 X, L^3 Y),
+            Build an integral Weierstrass model of curve C by the scaling (X,Y) = (L^2 x, L^3 y),
             where L = lcm(denominators of a_i). Returns the integer invariants (c4,c6,Δ).
             </summary>
         </member>
-        <member name="M:EllipticCurves.InternalMath.IsQIsomorphic(EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,System.Numerics.BigInteger,System.Numerics.BigInteger,System.Numerics.BigInteger,EllipticCurves.BigRational@)">
+        <member name="M:EllipticCurves.InternalMath.IsQIsomorphic(EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational@)">
             <summary>
             Check whether two elliptic curves are Q–isomorphic by testing the scaling
             relations on invariants: c4_E = u^4 c4_C, c6_E = u^6 c6_C, Δ_E = u^12 Δ_C for some u ∈ ℚ.
@@ -752,21 +754,20 @@
         </member>
         <member name="M:EllipticCurves.InternalMath.FactorAbs(System.Numerics.BigInteger)">
             <summary>
-            Trial factorization via Pollard–Rho with Miller–Rabin primality tests.
-            Returns a dictionary of prime factors with exponents for |n|.
-            Note: For very large inputs, this is a heuristic/“good enough” routine.
+            Return certified prime factors with exponents for |n|, using the shared native factorizer.
+            Zero retains the legacy empty-result convention; divisor enumeration handles it separately.
             </summary>
         </member>
         <member name="M:EllipticCurves.InternalMath.FactorRec(System.Numerics.BigInteger,System.Collections.Generic.Dictionary{System.Numerics.BigInteger,System.Int32})">
             <summary>
-            Recursive helper for FactorAbs: splits composite n into prime factors using
+            Legacy helper, not used by FactorAbs: splits composite n into probable prime factors using
             Miller–Rabin (probable prime) and Pollard–Rho to find nontrivial divisors.
             </summary>
         </member>
         <member name="M:EllipticCurves.InternalMath.IsProbablePrime(System.Numerics.BigInteger)">
             <summary>
             Probable-prime test: quick small trial division, then Miller–Rabin with a fixed base set.
-            For 64-bit sized integers the chosen bases are deterministic; for larger they are practical.
+            Passing this fixed base set does not prove primality, even across the full 64-bit range.
             </summary>
         </member>
         <member name="M:EllipticCurves.InternalMath.MillerRabinCheck(System.Numerics.BigInteger,System.Numerics.BigInteger,System.Int32,System.Int32)">

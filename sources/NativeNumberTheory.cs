@@ -5,8 +5,7 @@ using System.Threading;
 
 namespace EllipticCurves
 {
-    // Exact arithmetic for certified results. In particular, the older FactorAbs
-    // probable-prime shortcut must not be used to certify rank or conductor.
+    // Exact arithmetic for certified results, also used by the torsion divisor helpers.
     internal static class NativeNumberTheory
     {
         internal static BigInteger Mod(BigInteger a, BigInteger m) => (a % m + m) % m;
