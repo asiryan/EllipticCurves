@@ -5,6 +5,8 @@ VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves", "EllipticCurves.csproj", "{89B4ED4D-A50E-42F4-81EF-467E95276E14}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EllipticCurves.Tests", "..\tests\EllipticCurves.Tests.csproj", "{05B8EBE6-D776-4AB7-A7DF-0091AC5EA4E5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{89B4ED4D-A50E-42F4-81EF-467E95276E14}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{89B4ED4D-A50E-42F4-81EF-467E95276E14}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{89B4ED4D-A50E-42F4-81EF-467E95276E14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05B8EBE6-D776-4AB7-A7DF-0091AC5EA4E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05B8EBE6-D776-4AB7-A7DF-0091AC5EA4E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05B8EBE6-D776-4AB7-A7DF-0091AC5EA4E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05B8EBE6-D776-4AB7-A7DF-0091AC5EA4E5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

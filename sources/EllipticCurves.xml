@@ -173,152 +173,6 @@
             Intended for logs/debugging and round-trippable parsing in simple cases.
             </summary>
         </member>
-        <member name="T:EllipticCurves.EllipticCurveLMFDB">
-            <summary>
-            Thin helper that fetches basic invariants for an elliptic curve over ℚ from the LMFDB API,
-            matching by the exact rational j-invariant and verifying Q–isomorphism via (c4,c6,Δ).
-            
-            Design:
-             • Single network call to <c>/api/ec_curvedata</c> (no secondary requests).
-             • Minimal local cache of the selected record (a-invariants, conductor, rank, etc.).
-             • No retries/backoff: the caller controls lifetime by constructing a new instance.
-            
-            Safety:
-             • Throws <see cref="T:System.InvalidOperationException"/> when the record is not initialized
-               or if no Q–isomorphic curve is found for the given j-invariant.
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurveLMFDB.#ctor(EllipticCurves.EllipticCurveQ)">
-            <summary>
-            Construct and immediately fetch/cached the matching LMFDB record
-            for <paramref name="ellipticCurve"/> (matching by j–invariant and Q–isomorphism).
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurveLMFDB.Rank">
-            <summary>
-            Algebraic rank (Mordell–Weil rank) from LMFDB curvedata.
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurveLMFDB.AnalyticRank">
-            <summary>
-            Analytic rank (ord_{s=1} L(E,s)) when present in LMFDB; otherwise <c>null</c>.
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurveLMFDB.Conductor">
-            <summary>
-            Conductor N of the (minimal) elliptic curve over ℚ.
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurveLMFDB.Label">
-            <summary>
-            LMFDB label (e.g. <c>"48.a3"</c>) of the matched minimal model.
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurveLMFDB.Url">
-            <summary>
-            Canonical human-facing LMFDB URL of the curve's page (or null if label is missing).
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurveLMFDB.TorsionStructure">
-            <summary>
-            Torsion structure in a compact textual form, e.g. <c>"Z/2Z"</c> or <c>"Z/2Z x Z/4Z"</c>.
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurveLMFDB.GlobalMinimalModel">
-            <summary>
-            Minimal (global) integral Weierstrass model reconstructed from the a-invariants in LMFDB.
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurveLMFDB.GetLmfdbRecord(EllipticCurves.EllipticCurveQ)">
-            <summary>
-            Fetch a list of candidates by exact rational j-invariant, then select the unique
-            curve Q–isomorphic to <paramref name="ellipticCurve"/> by verifying (c4,c6,Δ) scaling.
-            Caches the selected record; subsequent property reads are served from the cache.
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurveLMFDB.FormatTorsionStructure(System.Text.Json.JsonElement)">
-            <summary>
-            Accepts either an integer array (e.g. [2,4]) or a ready string (e.g. "Z/2Z x Z/4Z")
-            and returns a normalized textual form "Z/nZ" or "Z/aZ x Z/bZ".
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurveLMFDB.ParseAinvs(System.Text.Json.JsonElement)">
-            <summary>
-            Parse a-invariants from LMFDB payload. Supports either a JSON array of numbers
-            or a string form "[a1,a2,a3,a4,a6]".
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurveLMFDB.ReadBigInteger(System.Text.Json.JsonElement)">
-            <summary>
-            Parse a BigInteger from either a numeric JSON token or a string token.
-            </summary>
-        </member>
-        <member name="T:EllipticCurves.EllipticCurvePoint">
-            <summary>
-            Immutable affine point on an elliptic curve over <c>ℚ</c> (the rationals).
-            
-            <para>
-            Representation:
-            <list type="bullet">
-              <item><description>Finite points are stored as exact rationals <see cref="F:EllipticCurves.EllipticCurvePoint.X"/>, <see cref="F:EllipticCurves.EllipticCurvePoint.Y"/> with <see cref="F:EllipticCurves.EllipticCurvePoint.IsInfinity"/> = <c>false</c>.</description></item>
-              <item><description>The neutral element (point at infinity) is represented canonically by <see cref="P:EllipticCurves.EllipticCurvePoint.Infinity"/> with <see cref="F:EllipticCurves.EllipticCurvePoint.IsInfinity"/> = <c>true</c> and <see cref="F:EllipticCurves.EllipticCurvePoint.X"/>=<see cref="F:EllipticCurves.EllipticCurvePoint.Y"/>=<c>0</c>.</description></item>
-            </list>
-            </para>
-            
-            <para>
-            Equality and hashing follow value semantics:
-            two finite points are equal iff both coordinates are equal as rationals; the
-            infinity point is only equal to itself.
-            </para>
-            </summary>
-        </member>
-        <member name="F:EllipticCurves.EllipticCurvePoint.X">
-            <summary>
-            Affine <c>x</c>-coordinate (exact rational). For <see cref="P:EllipticCurves.EllipticCurvePoint.Infinity"/>, this is <c>0</c>.
-            </summary>
-        </member>
-        <member name="F:EllipticCurves.EllipticCurvePoint.Y">
-            <summary>
-            Affine <c>y</c>-coordinate (exact rational). For <see cref="P:EllipticCurves.EllipticCurvePoint.Infinity"/>, this is <c>0</c>.
-            </summary>
-        </member>
-        <member name="F:EllipticCurves.EllipticCurvePoint.IsInfinity">
-            <summary>
-            Indicates whether the point is the neutral element (the point at infinity).
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurvePoint.#ctor(EllipticCurves.BigRational,EllipticCurves.BigRational)">
-            <summary>
-            Create a finite point with given affine coordinates <paramref name="x"/>, <paramref name="y"/>.
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurvePoint.#ctor(System.Boolean)">
-            <summary>
-            Private constructor used to create the canonical infinity element.
-            </summary>
-        </member>
-        <member name="P:EllipticCurves.EllipticCurvePoint.Infinity">
-            <summary>
-            The neutral element of the elliptic curve group (point at infinity).
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurvePoint.Equals(EllipticCurves.EllipticCurvePoint)">
-            <summary>
-            Value equality: finite points compare by coordinates; infinity compares only to infinity.
-            </summary>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurvePoint.Equals(System.Object)">
-            <inheritdoc/>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurvePoint.GetHashCode">
-            <inheritdoc/>
-        </member>
-        <member name="M:EllipticCurves.EllipticCurvePoint.ToString">
-            <summary>
-            Human-readable representation: <c>"O"</c> for infinity; <c>"(x, y)"</c> for finite points.
-            Uses <see cref="M:EllipticCurves.BigRational.ToString"/> for coordinates (culture-invariant).
-            </summary>
-        </member>
         <member name="T:EllipticCurves.EllipticCurveQ">
             <summary>
             Elliptic curve over ℚ in the general Weierstrass form
@@ -332,6 +186,24 @@
                (via Lutz–Nagell + reductions), including mapping back to the original model.
             </summary>
             <remarks>Create an elliptic curve y^2 + a1*x*y + a3*y = x^3 + a2*x^2 + a4*x + a6.</remarks>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveQ.GlobalMinimalModel">
+            <summary>The reduced global minimal integral model, computed locally over Q.</summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveQ.Conductor">
+            <summary>The exact conductor, computed locally, including wild reduction at 2 and 3.</summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveQ.GetGlobalMinimalModel(System.Threading.CancellationToken)">
+            <summary>
+            Compute the reduced global minimal integral model using invariant scaling and
+            integral reconstruction. Integer factorization can be expensive; cancellation is supported.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveQ.GetConductor(System.Threading.CancellationToken)">
+            <summary>
+            Compute N = product p^f_p on a minimal model, using Tate's algorithm at 2 and 3.
+            This method performs no network access and does not require external mathematical software.
+            </summary>
         </member>
         <member name="M:EllipticCurves.EllipticCurveQ.#ctor(EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational,EllipticCurves.BigRational)">
             <summary>
@@ -519,6 +391,166 @@
         <member name="M:EllipticCurves.EllipticCurveQ.GetHashCode">
             <inheritdoc />
         </member>
+        <member name="M:EllipticCurves.EllipticCurveQ.GetRankBounds(System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Compute unconditional algebraic rank bounds locally. With rational 2-torsion,
+            use descent by 2-isogeny, exact quartic point searches and local obstructions.
+            Otherwise return a lower bound of 0 or 1 and an unknown (null) upper bound.
+            Equality of the bounds certifies the exact rank; no BSD or parity assumption is used.
+            </summary>
+            <param name="searchBound">Nonnegative bound on each primitive quartic coordinate.
+            In the fallback, bounds both numerator and denominator of the searched x coordinates.
+            Zero disables point search. Increasing this can improve the lower bound.</param>
+            <param name="maxSquareClasses">Maximum number of signed square classes per isogeny.
+            Exceeding this limit throws NotSupportedException, rather than truncating the upper bound.</param>
+            <param name="cancellationToken">Cancels factorization, enumeration and point searches.</param>
+        </member>
+        <member name="T:EllipticCurves.EllipticCurveLMFDB">
+            <summary>
+            Thin helper that fetches basic invariants for an elliptic curve over ℚ from the LMFDB API,
+            matching by the exact rational j-invariant and verifying Q–isomorphism via (c4,c6,Δ).
+            
+            Design:
+             • Single network call to <c>/api/ec_curvedata</c> (no secondary requests).
+             • Minimal local cache of the selected record (a-invariants, conductor, rank, etc.).
+             • No retries/backoff: the caller controls lifetime by constructing a new instance.
+            
+            Safety:
+             • Throws <see cref="T:System.InvalidOperationException"/> when the record is not initialized
+               or if no Q–isomorphic curve is found for the given j-invariant.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveLMFDB.#ctor(EllipticCurves.EllipticCurveQ)">
+            <summary>
+            Construct and immediately fetch/cached the matching LMFDB record
+            for <paramref name="ellipticCurve"/> (matching by j–invariant and Q–isomorphism).
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveLMFDB.Rank">
+            <summary>
+            Algebraic rank (Mordell–Weil rank) from LMFDB curvedata.
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveLMFDB.AnalyticRank">
+            <summary>
+            Analytic rank (ord_{s=1} L(E,s)) when present in LMFDB; otherwise <c>null</c>.
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveLMFDB.Conductor">
+            <summary>
+            Conductor N of the (minimal) elliptic curve over ℚ.
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveLMFDB.Label">
+            <summary>
+            LMFDB label (e.g. <c>"48.a3"</c>) of the matched minimal model.
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveLMFDB.Url">
+            <summary>
+            Canonical human-facing LMFDB URL of the curve's page (or null if label is missing).
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveLMFDB.TorsionStructure">
+            <summary>
+            Torsion structure in a compact textual form, e.g. <c>"Z/2Z"</c> or <c>"Z/2Z x Z/4Z"</c>.
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurveLMFDB.GlobalMinimalModel">
+            <summary>
+            Minimal (global) integral Weierstrass model reconstructed from the a-invariants in LMFDB.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveLMFDB.GetLmfdbRecord(EllipticCurves.EllipticCurveQ)">
+            <summary>
+            Fetch a list of candidates by exact rational j-invariant, then select the unique
+            curve Q–isomorphic to <paramref name="ellipticCurve"/> by verifying (c4,c6,Δ) scaling.
+            Caches the selected record; subsequent property reads are served from the cache.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveLMFDB.FormatTorsionStructure(System.Text.Json.JsonElement)">
+            <summary>
+            Accepts either an integer array (e.g. [2,4]) or a ready string (e.g. "Z/2Z x Z/4Z")
+            and returns a normalized textual form "Z/nZ" or "Z/aZ x Z/bZ".
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveLMFDB.ParseAinvs(System.Text.Json.JsonElement)">
+            <summary>
+            Parse a-invariants from LMFDB payload. Supports either a JSON array of numbers
+            or a string form "[a1,a2,a3,a4,a6]".
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurveLMFDB.ReadBigInteger(System.Text.Json.JsonElement)">
+            <summary>
+            Parse a BigInteger from either a numeric JSON token or a string token.
+            </summary>
+        </member>
+        <member name="T:EllipticCurves.EllipticCurvePoint">
+            <summary>
+            Immutable affine point on an elliptic curve over <c>ℚ</c> (the rationals).
+            
+            <para>
+            Representation:
+            <list type="bullet">
+              <item><description>Finite points are stored as exact rationals <see cref="F:EllipticCurves.EllipticCurvePoint.X"/>, <see cref="F:EllipticCurves.EllipticCurvePoint.Y"/> with <see cref="F:EllipticCurves.EllipticCurvePoint.IsInfinity"/> = <c>false</c>.</description></item>
+              <item><description>The neutral element (point at infinity) is represented canonically by <see cref="P:EllipticCurves.EllipticCurvePoint.Infinity"/> with <see cref="F:EllipticCurves.EllipticCurvePoint.IsInfinity"/> = <c>true</c> and <see cref="F:EllipticCurves.EllipticCurvePoint.X"/>=<see cref="F:EllipticCurves.EllipticCurvePoint.Y"/>=<c>0</c>.</description></item>
+            </list>
+            </para>
+            
+            <para>
+            Equality and hashing follow value semantics:
+            two finite points are equal iff both coordinates are equal as rationals; the
+            infinity point is only equal to itself.
+            </para>
+            </summary>
+        </member>
+        <member name="F:EllipticCurves.EllipticCurvePoint.X">
+            <summary>
+            Affine <c>x</c>-coordinate (exact rational). For <see cref="P:EllipticCurves.EllipticCurvePoint.Infinity"/>, this is <c>0</c>.
+            </summary>
+        </member>
+        <member name="F:EllipticCurves.EllipticCurvePoint.Y">
+            <summary>
+            Affine <c>y</c>-coordinate (exact rational). For <see cref="P:EllipticCurves.EllipticCurvePoint.Infinity"/>, this is <c>0</c>.
+            </summary>
+        </member>
+        <member name="F:EllipticCurves.EllipticCurvePoint.IsInfinity">
+            <summary>
+            Indicates whether the point is the neutral element (the point at infinity).
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurvePoint.#ctor(EllipticCurves.BigRational,EllipticCurves.BigRational)">
+            <summary>
+            Create a finite point with given affine coordinates <paramref name="x"/>, <paramref name="y"/>.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurvePoint.#ctor(System.Boolean)">
+            <summary>
+            Private constructor used to create the canonical infinity element.
+            </summary>
+        </member>
+        <member name="P:EllipticCurves.EllipticCurvePoint.Infinity">
+            <summary>
+            The neutral element of the elliptic curve group (point at infinity).
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurvePoint.Equals(EllipticCurves.EllipticCurvePoint)">
+            <summary>
+            Value equality: finite points compare by coordinates; infinity compares only to infinity.
+            </summary>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurvePoint.Equals(System.Object)">
+            <inheritdoc/>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurvePoint.GetHashCode">
+            <inheritdoc/>
+        </member>
+        <member name="M:EllipticCurves.EllipticCurvePoint.ToString">
+            <summary>
+            Human-readable representation: <c>"O"</c> for infinity; <c>"(x, y)"</c> for finite points.
+            Uses <see cref="M:EllipticCurves.BigRational.ToString"/> for coordinates (culture-invariant).
+            </summary>
+        </member>
         <member name="T:EllipticCurves.InternalMath">
             <summary>
             Internal numeric helpers used across the library.
@@ -675,6 +707,27 @@
             Enumerate all positive divisors of |n| from its factorization (includes 1 and |n|).
             Returns 0 only if input n was 0 (by convention).
             </summary>
+        </member>
+        <member name="T:EllipticCurves.RankBounds">
+            <summary>Unconditional bounds for the Mordell-Weil rank over Q.</summary>
+        </member>
+        <member name="P:EllipticCurves.RankBounds.LowerBound">
+            <summary>A proved lower bound; zero does not assert that the rank is zero.</summary>
+        </member>
+        <member name="P:EllipticCurves.RankBounds.UpperBound">
+            <summary>A proved upper bound, or null when no upper bound was computed.</summary>
+        </member>
+        <member name="P:EllipticCurves.RankBounds.IsExact">
+            <summary>True precisely when both proved bounds coincide.</summary>
+        </member>
+        <member name="P:EllipticCurves.RankBounds.ExactRank">
+            <summary>The exact algebraic rank when proved, otherwise null.</summary>
+        </member>
+        <member name="P:EllipticCurves.RankBounds.UsedTwoIsogenyDescent">
+            <summary>Whether rational 2-torsion allowed descent on a pair of 2-isogenous curves.</summary>
+        </member>
+        <member name="M:EllipticCurves.RankBounds.ToString">
+            <inheritdoc />
         </member>
     </members>
 </doc>
