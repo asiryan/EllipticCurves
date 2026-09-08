@@ -4,7 +4,9 @@ The public entry points are `EllipticCurveQ.GlobalMinimalModel`, `Conductor`,
 `GetGlobalMinimalModel(CancellationToken)`, `GetConductor(CancellationToken)` and
 `GetRankBounds(int searchBound, int maxSquareClasses, CancellationToken)`.
 They perform no HTTP requests, start no processes and use no elliptic-curve database.
-Singular input is rejected. Computations use `BigInteger` and `BigRational` throughout.
+Singular input is rejected. The algebraic computations use `BigInteger` and
+`BigRational` throughout. The additional analytic API uses numerical integration
+and a separate rigorous interval calculation, as described below.
 
 ## Minimal model and conductor
 
@@ -89,6 +91,107 @@ cannot be interrupted midway.
 
 The convenience properties recompute their results; callers doing repeated work
 can retain the returned minimal model, conductor and rank bounds.
+
+## Native analytic rank
+
+`EstimateAnalyticRank(AnalyticRankOptions, CancellationToken)` is independent of the
+descent API. `RootNumber` / `GetRootNumber(CancellationToken)` expose the exact sign
+W of the functional equation, including the real factor -1.
+
+Local signs use the reduction type for p >= 5 and invariant congruences for 2 and 3.
+References: [Rizzo, Tables II and III](https://doi.org/10.1023/A:1022669121502) and
+[Cowland Kellock–Dokchitser, Appendix A](https://arxiv.org/abs/2303.07883).
+For normalized valuations (v(c4),v(c6),v(Delta)) = (2,5,0), the code retains
+Rizzo's Table III condition for b >= 5; the 2023 table reverses that particular
+row. The regression fixtures include examples distinguishing these conditions,
+computed independently by PARI/GP. At 3 the c4 terms in Table II are interpreted
+with their indicated normalized valuations, including the (>=4,6,9) branch.
+
+On the minimal model, count points on its cubic modulo each prime p up to M and
+set a_p = p+1-#E(F_p), including the point at infinity. At bad primes, counting
+the singular cubic gives a_p = 0 or +/-1. A quadratic-residue sieve makes each
+prime's point count O(p). Generate a_n multiplicatively with
+a_(p^k) = a_p a_(p^(k-1)) - p a_(p^(k-2)) at good primes, and a_(p^k)=a_p^k
+at bad primes. Coefficients are exact integers.
+
+Put alpha=2*pi/sqrt(N), Lambda(s)=alpha^(-s) Gamma(s)L(E,s), and
+F(z)=alpha Lambda(1+z). Splitting the Mellin integral at t=1 gives
+
+    F^(k)(0) = alpha (1 + W*(-1)^k)
+               sum_(n>=1) a_n integral_1^infinity exp(-alpha*n*t) log(t)^k dt.
+
+After t=exp(u), integrate all moments on a finite interval with adaptive Simpson
+quadrature. Repeat with different initial subdivisions and tighter tolerance.
+The error diagnostics combine the quadrature estimates, disagreement between runs,
+an allowance for rounding, and analytic truncation bounds using |a_n| <= 2n and
+log(t)^k <= k! t. These diagnostics are not rigorous floating-point enclosures.
+Convert moments to ordinary L derivatives using the Taylor expansion of
+alpha^z/Gamma(1+z). `Derivatives[k]` is L^(k)(E,1), with no division by k!.
+
+Rank detection uses F, whose parity is exact; ordinary L derivatives do not have
+this parity. A derivative whose magnitude plus estimated error is below
+`ZeroTolerance` is treated as a numerical zero. The first derivative of the
+allowed parity exceeding 10 times that threshold, with error below a quarter
+of the threshold, determines `EstimatedRank`. Ambiguity or failure to find a
+nonzero derivative produces `Inconclusive`, not a claimed lower rank bound.
+
+### Rigorous low-rank certificates
+
+For candidate ranks 0 and 1, recompute respectively
+
+    L(E,1)  = 2 sum_(n>=1) (a_n/n) exp(-alpha*n),          W=+1,
+    L'(E,1) = 2 sum_(n>=1) (a_n/n) E1(alpha*n),          W=-1,
+    E1(x)   = integral_x^infinity exp(-t)/t dt.
+
+Every interval endpoint is an integer times 2^(-160); each operation rounds
+outwards using integer division. Pi is enclosed by Machin's alternating arctangent
+series, sqrt(N) by integer square roots, and exp(-x) by a positive exponential
+Taylor series, inversion and repeated squaring. No `Math` transcendental call or
+floating-point comparison enters certification.
+
+To enclose E1(x), subdivide [x,96] into intervals [l,r] with r <= 2l.
+For c=(l+r)/2, h=(r-l)/2, q=h/c <= 1/3 and S_j(c)=sum_(k=0)^j c^k/k!,
+
+    integral_l^r exp(-t)/t dt
+      = (2h exp(-c)/c) sum_(j even >=0) S_j(c) q^j/(j+1).
+
+The terms are positive. Keep j=0,2,...,78 and bound the remainder above by
+2q*q^80/[81(1-q^2)], since exp(-c)S_j(c) <= 1. The remaining integral from
+96 to infinity is at most exp(-96)/96. Monotonicity of E1 encloses uncertain
+lower integration limits. For an argument >=96, use [0,exp(-x)/x].
+
+With M certificate terms and q=exp(-alpha), the omitted Fourier tails are bounded by
+
+    4q^(M+1)/(1-q)                  for rank 0,
+    4q^(M+1)/(alpha*(M+1)*(1-q))    for rank 1.
+
+Only an interval excluding zero sets `Status=Certified` and `ProvenRank`.
+For rank 1, the exact negative root number already proves L(E,1)=0.
+The equality of algebraic and analytic rank in these two cases is unconditional
+by modularity and the Gross–Zagier/Kolyvagin rank theorems; see
+[Wiles's BSD survey, pp. 3–4](https://www.claymath.org/wp-content/uploads/2022/05/birchswin.pdf).
+For higher ranks, small lower derivatives are not certified zeros. Even assuming
+BSD does not eliminate this numerical uncertainty. The analytic method never
+silently modifies the unconditional descent bounds.
+
+### Analytic computation limits
+
+Defaults: derivative order 4 (supported range 0–8), `ZeroTolerance=1e-9`,
+`MaxTerms=20000`, `MaxPointCountingWork=20000000` (sum of primes),
+`MaxIntegrationEvaluations=100000`, and `MaxCertificationTerms=1024`.
+The numerical stage uses double precision. Certification uses at most the already
+computed number of coefficients; increasing its limit cannot change a numerical
+estimate into a proof unless the resulting interval excludes zero.
+
+Coefficient demand grows approximately as sqrt(N) times the logarithm of the
+requested accuracy. Direct point counting costs O(M^2/log M); the coefficient
+and residue arrays use O(M) storage. Integration evaluates the finite Fourier
+polynomial in O(M) time per sample. The method is intended for modest conductors,
+not cryptographic-size curves. Work limits return `Inconclusive`; invalid options
+and singular curves throw. Cancellation propagates as `OperationCanceledException`.
+The earlier minimization and factorization steps can dominate the cost and are
+not bounded by these numerical work limits. This is not a complete BSD leading-term
+formula implementation: periods, regulators, Tamagawa factors and Sha are absent.
 
 ## Regression data
 

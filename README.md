@@ -8,6 +8,7 @@
 * torsion/rational/integral points,  
 * short and minimal Weierstrass model,  
 * proved algebraic rank bounds (exact when the bounds coincide),
+* native analytic rank estimates, with rigorous certificates for ranks 0 and 1,
 * algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
 * conductor, etc.  
@@ -92,8 +93,8 @@ local sieve may leave an interval even when a full Selmer computation could reso
 
 For curves **without rational 2-torsion**, the current implementation proves only a
 lower bound of 0 or 1 by point search; `UpperBound` and `ExactRank` are `null`.
-General 2-descent and native analytic rank computation are not implemented. An unsuccessful
-point search never proves rank zero.
+General 2-descent is not implemented. An unsuccessful point search never proves rank zero.
+The separate analytic method below also works for curves without rational 2-torsion.
 
 `GetRankBounds(searchBound: 64)` increases the point search. `maxSquareClasses` defaults
 to 65,536 per isogeny; exceeding it throws rather than silently truncating the descent.
@@ -104,6 +105,47 @@ using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 var conductor = e.GetConductor(timeout.Token);
 var minimal = e.GetGlobalMinimalModel(timeout.Token);
 var rank = e.GetRankBounds(searchBound: 64, cancellationToken: timeout.Token);
+```
+
+## Analytic rank and BSD
+
+```csharp
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);
+var result = e.EstimateAnalyticRank();
+Console.WriteLine(result.EstimatedRank);  // 1
+Console.WriteLine(result.Status);         // Certified
+Console.WriteLine(result.ProvenRank);     // 1; null for an unproved numerical estimate
+Console.WriteLine(result.Derivatives[1]); // L'(E,1), approximately 0.3059997738340523
+Console.WriteLine(e.RootNumber);          // -1 (exact)
+```
+
+`EstimateAnalyticRank` computes Fourier coefficients and central L-function derivatives
+in C#, without HTTP or external mathematical software. BSD predicts that the order
+of vanishing equals the algebraic rank. Results distinguish three cases:
+
+- `Certified`: a rigorous interval proves analytic rank 0 or 1. Known theorems then
+  prove the same algebraic rank, so this status does not assume BSD.
+- `NumericalEstimate`: small derivatives have only been recognized numerically.
+  BSD alone does not turn numerical zero recognition into a proof.
+- `Inconclusive`: a work limit, numerical ambiguity, or the derivative-order limit
+  prevents a rank estimate. `EstimatedRank` and `ProvenRank` are null.
+
+`AnalyticRankOptions` controls the derivative order (default 4, maximum 8), zero
+threshold, number of coefficients, point-counting work, integration evaluations and
+interval-certificate length. Numerical derivatives use `double`; the separate
+rank 0/1 certificates use exact outward-rounded dyadic intervals and rigorous tails.
+`EstimatedErrors` are numerical diagnostics, not proof bounds. Large conductors are
+expensive; this implementation uses direct point counting, not SEA. No regulator,
+Tamagawa product or Tate–Shafarevich group order is computed.
+
+```csharp
+var analytic = e.EstimateAnalyticRank(new AnalyticRankOptions
+{
+    MaxDerivativeOrder = 6,
+    MaxTerms = 30000,
+    MaxPointCountingWork = 50000000,
+    ZeroTolerance = 1e-9
+}, cancellationToken: timeout.Token);
 ```
 
 See [algorithm notes](docs/native-arithmetic.md) for the bounds and limitations.

@@ -52,5 +52,13 @@ public static class Program
 
         if (!minimalMatches || !conductorMatches || !rankMatches)
             Console.WriteLine("Native arithmetic results do not match LMFDB.");
+
+        // Estimate the analytic rank locally and attempt a rigorous rank 0/1 certificate
+        var analytic = E.EstimateAnalyticRank();
+        Console.WriteLine($"Native analytic rank(E) = {analytic}");
+        Console.WriteLine($"Root number(E) = {analytic.RootNumber}");
+        Console.WriteLine($"Proved rank from L-series = {analytic.ProvenRank?.ToString() ?? "Unknown"}");
+        var analyticMatches = analytic.EstimatedRank == E_LMFDB.AnalyticRank;
+        Console.WriteLine($"Native analytic rank matches LMFDB: {analyticMatches}");
     }
 }
