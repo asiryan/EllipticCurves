@@ -3,14 +3,14 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
 	<LangVersion>12.0</LangVersion>
-	<Version>1.1.0</Version>
-	<AssemblyVersion>1.1.0</AssemblyVersion>
-	<FileVersion>1.1.0</FileVersion>
+	<Version>2.0.0</Version>
+	<AssemblyVersion>2.0.0</AssemblyVersion>
+	<FileVersion>2.0.0</FileVersion>
 	<PackageId>EllipticCurves</PackageId>
 	<Company>Valery Asiryan</Company>
 	<Authors>Valery Asiryan</Authors>
 	<Product>EllipticCurves</Product>
-	<Copyright>Valery Asiryan, © 2025</Copyright>
+	<Copyright>Valery Asiryan, © 2025-2026</Copyright>
 	<Description>.NET library for studying and working with elliptic curves (with LMFDB integration).</Description>
 	<PackageProjectUrl>https://github.com/asiryan/EllipticCurves</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/asiryan/EllipticCurves</RepositoryUrl>
