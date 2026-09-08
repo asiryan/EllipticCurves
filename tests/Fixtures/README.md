@@ -22,7 +22,7 @@ $gpPath = 'C:/path/to/gp.exe'
     Select-Object -Unique | Set-Content -Encoding utf8 tests/Fixtures/conductors.csv
 & $gpPath -q -f tests/Fixtures/generate-ranks.gp |
     Select-Object -Unique | Set-Content -Encoding utf8 tests/Fixtures/ranks.csv
-dotnet test sources/EllipticCurves.sln
+dotnet test EllipticCurves.sln
 ```
 
 The scripts fix the PARI random seed. A different PARI version may change its

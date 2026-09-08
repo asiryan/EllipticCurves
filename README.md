@@ -111,7 +111,7 @@ Run the example and regression tests with:
 
 ```sh
 dotnet run --project examples/EllipticCurves.Example.csproj
-dotnet test sources/EllipticCurves.sln
+dotnet test EllipticCurves.sln
 ```
 
 The example retains its LMFDB lookup and checks the native results against it,
