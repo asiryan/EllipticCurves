@@ -19,29 +19,6 @@ You can build **EllipticCurves** from sources or install to your own project usi
 |-------------|:-------------:|:-------------:|:--------------:|:--------------:|
 | [EllipticCurves](sources) | .NET Standard 2.0 | Cross-platform | [Release](https://github.com/asiryan/EllipticCurves/releases/) | [NuGet](https://www.nuget.org/packages/EllipticCurves/) | 
 
-## Building from source
-
-Open `EllipticCurves.sln` in Visual Studio 2022 17.8 or later with the .NET 8 SDK
-installed. Select **Debug** or **Release**, then **Build > Build Solution**
-(`Ctrl+Shift+B`). The solution includes the library, example and tests.
-
-Both configurations generate XML API documentation alongside the library DLL
-and automatically create a NuGet package containing both files:
-
-- Library and XML documentation: `sources/bin/<Configuration>/netstandard2.0/`
-- NuGet package: `sources/bin/<Configuration>/EllipticCurves.2.0.0.nupkg`
-
-Use **Release** for distribution. Debug uses the SDK's default settings for
-debugging. XML documentation is generated from the source comments during each
-build and is not maintained as a separate source file.
-
-The equivalent command-line build and test run are:
-
-```sh
-dotnet build EllipticCurves.sln -c Release
-dotnet test EllipticCurves.sln -c Release --no-build
-```
-
 # Installation
 C# interface  
 ```c#
