@@ -205,7 +205,7 @@ namespace EllipticCurves
 
                 var (c4C, c6C, dC) = InternalMath.InvariantsIntFromAinvs(a1, a2, a3, a4, a6);
 
-                if (InternalMath.IsQIsomorphic(c4E, c6E, dE, c4C, c6C, dC, out _))
+                if (InternalMath.IsQIsomorphic(c4E, c6E, dE, new BigRational(c4C), new BigRational(c6C), new BigRational(dC), out _))
                 {
                     var conductor = ReadBigInteger(row.GetProperty("conductor"));
                     var rank = row.GetProperty("rank").GetInt32();

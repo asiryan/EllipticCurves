@@ -7,7 +7,9 @@
 * discriminant and j-invariant,  
 * torsion/rational/integral points,  
 * short and minimal Weierstrass model,  
-* algebraic/analytic ranks,  
+* proved algebraic rank bounds (exact when the bounds coincide),
+* native analytic rank estimates, with rigorous certificates for ranks 0 and 1,
+* algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
 * conductor, etc.  
 
@@ -53,7 +55,110 @@ Rank(E) = 0
 Analytic rank(E) = 0
 Cond(E) = 48
 Isomorphic to E: True
+Native minimal Weierstrass model: y^2 = x^3 + x^2 - 24*x + 36
+Native rank bounds(E) = 0
+Exact native rank proved: True
+Native Cond(E) = 48
+Native minimal model matches LMFDB: True
+Native conductor matches LMFDB: True
+LMFDB rank is within native bounds: True
 ```
+
+## Rank bounds and conductor
+
+`EllipticCurveQ` computes minimal models, conductors and rank bounds in C# using
+exact integer/rational arithmetic. No database, native binary, Sage or PARI installation
+is required. `EllipticCurveLMFDB` remains available separately for optional online metadata.
+
+```csharp
+using System.Numerics;
+using EllipticCurves;
+
+var e = new EllipticCurveQ(0, -17, 0, 72, 0);
+var minimal = e.GlobalMinimalModel;
+BigInteger conductor = e.Conductor;       // 48
+RankBounds bounds = e.GetRankBounds();
+Console.WriteLine(bounds.LowerBound);     // 0
+Console.WriteLine(bounds.UpperBound);     // 0
+Console.WriteLine(bounds.ExactRank);      // 0 (null unless proved)
+```
+
+The conductor is computed on a global minimal model, with Tate's algorithm handling
+wild reduction at 2 and 3. Rational coefficients and non-minimal input models are supported.
+
+Rank bounds use descent by 2-isogeny when the curve has a rational point of order 2.
+Quartic point searches prove lower bounds; real and modular obstructions prove upper
+bounds. These are unconditional bounds, with no BSD or parity assumption. The finite
+local sieve may leave an interval even when a full Selmer computation could resolve it.
+
+For curves **without rational 2-torsion**, the current implementation proves only a
+lower bound of 0 or 1 by point search; `UpperBound` and `ExactRank` are `null`.
+General 2-descent is not implemented. An unsuccessful point search never proves rank zero.
+The separate analytic method below also works for curves without rational 2-torsion.
+
+`GetRankBounds(searchBound: 64)` increases the point search. `maxSquareClasses` defaults
+to 65,536 per isogeny; exceeding it throws rather than silently truncating the descent.
+Factorization and searches can be expensive. Use the cancellable methods when needed:
+
+```csharp
+using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+var conductor = e.GetConductor(timeout.Token);
+var minimal = e.GetGlobalMinimalModel(timeout.Token);
+var rank = e.GetRankBounds(searchBound: 64, cancellationToken: timeout.Token);
+```
+
+## Analytic rank and BSD
+
+```csharp
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);
+var result = e.EstimateAnalyticRank();
+Console.WriteLine(result.EstimatedRank);  // 1
+Console.WriteLine(result.Status);         // Certified
+Console.WriteLine(result.ProvenRank);     // 1; null for an unproved numerical estimate
+Console.WriteLine(result.Derivatives[1]); // L'(E,1), approximately 0.3059997738340523
+Console.WriteLine(e.RootNumber);          // -1 (exact)
+```
+
+`EstimateAnalyticRank` computes Fourier coefficients and central L-function derivatives
+in C#, without HTTP or external mathematical software. BSD predicts that the order
+of vanishing equals the algebraic rank. Results distinguish three cases:
+
+- `Certified`: a rigorous interval proves analytic rank 0 or 1. Known theorems then
+  prove the same algebraic rank, so this status does not assume BSD.
+- `NumericalEstimate`: small derivatives have only been recognized numerically.
+  BSD alone does not turn numerical zero recognition into a proof.
+- `Inconclusive`: a work limit, numerical ambiguity, or the derivative-order limit
+  prevents a rank estimate. `EstimatedRank` and `ProvenRank` are null.
+
+`AnalyticRankOptions` controls the derivative order (default 4, maximum 8), zero
+threshold, number of coefficients, point-counting work, integration evaluations and
+interval-certificate length. Numerical derivatives use `double`; the separate
+rank 0/1 certificates use exact outward-rounded dyadic intervals and rigorous tails.
+`EstimatedErrors` are numerical diagnostics, not proof bounds. Large conductors are
+expensive; this implementation uses direct point counting, not SEA. No regulator,
+Tamagawa product or Tate–Shafarevich group order is computed.
+
+```csharp
+var analytic = e.EstimateAnalyticRank(new AnalyticRankOptions
+{
+    MaxDerivativeOrder = 6,
+    MaxTerms = 30000,
+    MaxPointCountingWork = 50000000,
+    ZeroTolerance = 1e-9
+}, cancellationToken: timeout.Token);
+```
+
+See [algorithm notes](docs/native-arithmetic.md) for the bounds and limitations.
+Run the example and regression tests with:
+
+```sh
+dotnet run --project examples/EllipticCurves.Example.csproj
+dotnet test EllipticCurves.sln
+```
+
+The example retains its LMFDB lookup and checks the native results against it,
+so running the example requires internet access. The native API and regression
+tests work offline.
 
 # License
 **MIT**  

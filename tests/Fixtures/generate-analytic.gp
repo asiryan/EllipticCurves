@@ -1,0 +1,17 @@
+default(parisizemax, 512000000);
+default(realprecision, 60);
+rootFile=fileopen("artifacts/native-validation/root-numbers.csv","w");
+analyticFile=fileopen("artifacts/native-validation/analytic.csv","w");
+coefficientFile=fileopen("artifacts/native-validation/coefficients.csv","w");
+derivativeFile=fileopen("artifacts/native-validation/derivatives.csv","w");
+specialFile=fileopen("artifacts/native-validation/special-functions.csv","w");
+rows=readstr("tests/Fixtures/conductors.csv");
+for(i=1,#rows,my(a=eval(Str("[",rows[i],"]"))[1..5],e=ellinit(a));filewrite(rootFile,Str(a[1],",",a[2],",",a[3],",",a[4],",",a[5],",",ellrootno(e),",",ellrootno(e,2),",",ellrootno(e,3))));
+curves=[[0,-1,1,-10,-20],[0,0,1,-1,0],[0,1,1,-2,0],[0,0,1,-7,6],[1,-1,0,-79,289],[0,-17,0,72,0],[0,0,0,-1,0],[0,0,0,0,1],[0,0,0,-25,0],[1,0,1,-7,5]];
+for(i=1,#curves,my(a=curves[i],e=ellinit(a),r=ellanalyticrank(e));filewrite(analyticFile,Str(a[1],",",a[2],",",a[3],",",a[4],",",a[5],",",ellglobalred(e)[1],",",ellrootno(e),",",r[1],",",r[2])));
+for(i=1,#curves,my(a=curves[i],v=ellan(ellinit(a),100));for(n=1,#v,filewrite(coefficientFile,Str(i,",",n,",",v[n]))));
+for(i=1,2,for(k=0,8,filewrite(derivativeFile,Str(i,",",k,",",lfun(ellinit(curves[i]),1,k)))));
+args=[1/1000,1/100,1/10,1,3,10,50,95,96,97,200];
+for(i=1,#args,my(x=args[i]);filewrite(specialFile,Str(numerator(x),",",denominator(x),",",exp(-x*1.),",",eint1(x*1.))));
+fileclose(rootFile);fileclose(analyticFile);fileclose(coefficientFile);fileclose(derivativeFile);fileclose(specialFile);
+quit;

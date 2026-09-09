@@ -8,9 +8,9 @@ namespace EllipticCurves
     /// A minimal, allocation-friendly rational type for exact arithmetic over Q.
     /// 
     /// Invariants:
-    ///  • Always stored in canonical form: gcd(|Num|, Den) = 1
+    ///  • Num and Den expose canonical form: gcd(|Num|, Den) = 1
     ///  • Denominator is strictly positive (Den > 0)
-    ///  • Zero is represented as 0/1
+    ///  • Zero, including default(BigRational), is represented as 0/1
     /// 
     /// Notes:
     ///  • This is an immutable value type with value semantics (Equals/GetHashCode implemented).
@@ -23,7 +23,8 @@ namespace EllipticCurves
         public BigInteger Num { get; }
 
         /// <summary>Denominator (strictly positive by invariant).</summary>
-        public BigInteger Den { get; }
+        public BigInteger Den => denominator.IsZero ? BigInteger.One : denominator;
+        private readonly BigInteger denominator;
 
         /// <summary>The rational number 0 (stored as 0/1).</summary>
         public static readonly BigRational Zero = new BigRational(BigInteger.Zero, BigInteger.One);
@@ -54,7 +55,7 @@ namespace EllipticCurves
             // Normalize zero as 0/1 immediately.
             if (num.IsZero)
             {
-                Num = BigInteger.Zero; Den = BigInteger.One; return;
+                Num = BigInteger.Zero; denominator = BigInteger.One; return;
             }
 
             // Keep denominator positive; move sign to numerator.
@@ -62,7 +63,7 @@ namespace EllipticCurves
 
             // Reduce by gcd for a canonical representation.
             var g = BigInteger.GreatestCommonDivisor(BigInteger.Abs(num), den);
-            Num = num / g; Den = den / g;
+            Num = num / g; denominator = den / g;
         }
 
         /// <summary>Create from an integer (n/1).</summary>
@@ -241,7 +242,7 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Culture-invariant string: "n" for integers, "n/d" for proper fractions.
+        /// Culture-invariant string: "n" for integers, "n/d" for nonintegral rationals.
         /// Intended for logs/debugging and round-trippable parsing in simple cases.
         /// </summary>
         public override string ToString()
