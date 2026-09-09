@@ -73,15 +73,16 @@ public class NativeArithmeticTests
     }
 
     [Fact]
-    public void WithoutRationalTwoTorsionUpperBoundIsExplicitlyUnknown()
+    public void WithoutRationalTwoTorsionGeneralDescentProvesRanks()
     {
         var rankOne = new EllipticCurveQ(0, 0, 1, -1, 0).GetRankBounds();
         Assert.Equal(1, rankOne.LowerBound);
-        Assert.Null(rankOne.UpperBound);
+        Assert.Equal(1, rankOne.ExactRank);
+        Assert.True(rankOne.UsedGeneralTwoDescent);
         Assert.False(rankOne.UsedTwoIsogenyDescent);
         var rankZero = new EllipticCurveQ(0, -1, 1, -10, -20).GetRankBounds();
         Assert.Equal(0, rankZero.LowerBound);
-        Assert.Null(rankZero.ExactRank);
+        Assert.Equal(0, rankZero.ExactRank);
     }
 
     [Fact]

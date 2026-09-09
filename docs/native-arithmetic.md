@@ -52,34 +52,36 @@ quartic point searches and Gaussian elimination on square classes. It starts wit
 the known class of (0,0). The searches use 0 <= U,V <= searchBound and gcd(U,V)=1;
 signs of U,V are immaterial because only even powers occur.
 
-For an upper bound it eliminates classes with a real obstruction or no primitive
-solution modulo one of 256, 81, 25, 49, 11, 13, 17, 19, 23, 29, 31. Both projective
-charts are checked, including points for which a denominator is divisible by p.
-If s classes survive, the actual image dimension is at most floor(log2(s)). This
-uses containment and the power-of-two size of the actual image; the finite sieve
-survivors themselves need not form a group.
-
-Passing the sieve is **not** a claim of solubility over every Q_p, or over Q.
-The sieve gives a valid but potentially weaker bound than full isogeny Selmer
-groups. Equal final bounds prove the exact algebraic rank. The method uses neither
-an analytic rank estimate nor BSD, GRH, or a parity conjecture.
+The upper bound uses the complete isogeny Selmer groups. Local solubility is
+decided over the reals and at 2 and the prime divisors of b(a^2-4b). An iterative
+p-adic ball search uses exact square-class tests, Hensel certificates and Taylor
+valuation bounds. Both projective charts are checked, including infinity.
+Passing local tests does not assert global solubility. Equal final bounds prove
+the exact algebraic rank. No analytic rank, BSD, GRH or parity conjecture is used.
 
 For the descent construction and its distinction between local and global
 solubility, see [Cremona, Chapter III, section 3.6](https://johncremona.github.io/book/fulltext/chapter3.pdf).
 
 ## Scope and computation limits
 
-Without rational 2-torsion, the current fallback checks a bounded rational-point
-box on the reduced minimal model. A found point is proved to have infinite order
-if none of its first 12 multiples is infinity, using Mazur's torsion theorem.
-This certifies a lower bound of one; otherwise the lower bound is zero. The upper
-bound remains unknown (`null`). No general 2-descent or higher descent is implemented.
-Found points are not presented as a Mordell-Weil basis.
+Without rational 2-torsion the library uses general binary-quartic 2-descent.
+Complete enumeration and rational equivalence testing give `TwoSelmerDimension`;
+subtracting dim E(Q)[2] gives the rank upper bound. Good-reduction Kummer characters
+and points on inequivalent coverings give exact lower bounds. An infinite-order
+point also proves rank >= 1 by the first-12-multiples test, even when its Kummer
+images vanish. Found points are not presented as a Mordell-Weil basis.
+See [two-descent details](two-descent.md) for the enumeration, proof conditions,
+local tests, lower bounds and independent reference data.
 
 `searchBound = 0` disables point searches. Increasing it can improve the lower
 bound, but cannot guarantee equality of the bounds. `maxSquareClasses` bounds the
 number of candidates per isogeny and throws `NotSupportedException` if exceeded.
-It does not cap factorization time or the work of finding a cubic root.
+In general descent it bounds the number of covering classes, including the identity.
+`RankComputationOptions` additionally limits counted descent and point-search work.
+An incomplete descent returns no upper bound or Selmer dimension; `Reason` records
+the limit. Exhausting point search preserves already proved bounds. Factorization
+and the initial search for rational 2-torsion remain cancellable but are not capped
+by these work counters. Higher descents and Cassels-Tate pairings are not implemented.
 
 Native computations, including the torsion divisor helpers, certify their prime
 factors: deterministic Miller–Rabin
@@ -196,7 +198,7 @@ formula implementation: periods, regulators, Tamagawa factors and Sha are absent
 
 ## Regression data
 
-The tests include exact examples of ranks 0, 1 and 2, rational and non-minimal
+The tests include exact examples of ranks 0 through 4, rational and non-minimal
 coordinate changes, unknown results, cancellation and a strong pseudoprime which
 passed the old helper's Miller–Rabin bases. Additional fixed fixtures were computed
 independently using local PARI/GP, without curve labels or database lookup.

@@ -12,49 +12,93 @@ namespace EllipticCurves
         /// <summary>
         /// Compute unconditional algebraic rank bounds locally. With rational 2-torsion,
         /// use descent by 2-isogeny, exact quartic point searches and local obstructions.
-        /// Otherwise return a lower bound of 0 or 1 and an unknown (null) upper bound.
+        /// Otherwise use general binary-quartic 2-descent. Good-reduction Kummer
+        /// characters also certify lower bounds from several rational points.
         /// Equality of the bounds certifies the exact rank; no BSD or parity assumption is used.
         /// </summary>
         /// <param name="searchBound">Nonnegative bound on each primitive quartic coordinate.
-        /// In the fallback, bounds both numerator and denominator of the searched x coordinates.
+        /// Also bounds both numerator and denominator of the searched x coordinates on the minimal model.
         /// Zero disables point search. Increasing this can improve the lower bound.</param>
         /// <param name="maxSquareClasses">Maximum number of signed square classes per isogeny.
-        /// Exceeding this limit throws NotSupportedException, rather than truncating the upper bound.</param>
+        /// Exceeding this limit throws NotSupportedException in isogeny descent.
+        /// In general descent this bounds covering classes and exhaustion gives a null upper bound.</param>
         /// <param name="cancellationToken">Cancels factorization, enumeration and point searches.</param>
         public RankBounds GetRankBounds(int searchBound = 32, int maxSquareClasses = 65536,
             CancellationToken cancellationToken = default)
         {
             if (searchBound < 0 || searchBound == int.MaxValue) throw new ArgumentOutOfRangeException(nameof(searchBound));
             if (maxSquareClasses < 2) throw new ArgumentOutOfRangeException(nameof(maxSquareClasses));
+            return GetRankBounds(new RankComputationOptions { SearchBound = searchBound, MaxSquareClasses = maxSquareClasses }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Compute unconditional lower and upper rank bounds with explicit work limits.
+        /// An incomplete descent returns a null upper bound; point-search exhaustion
+        /// never invalidates already proved bounds. No BSD, GRH or parity assumption is used.
+        /// </summary>
+        public RankBounds GetRankBounds(RankComputationOptions options, CancellationToken cancellationToken = default)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            options = options.Snapshot();
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("A singular curve has no Mordell-Weil rank.");
             var e = GetGlobalMinimalModel(cancellationToken);
-
-            // Complete the square integrally: X=4x, Y=8y+4a1*x+4a3.
-            // Y^2 = X^3 + b2 X^2 + 8 b4 X + 16 b6.
             var a = e.B2.Num;
             var b = 8 * e.B4.Num;
             var c = 16 * e.B6.Num;
-            if (!TryCubicRoot(a, b, c, cancellationToken, out var root))
-                return new RankBounds(FindPositiveRank(e, searchBound, cancellationToken), null, false);
-
-            b += 2 * a * root + 3 * root * root;
-            a += 3 * root;
-            // Remove pure square scaling to make the quartic searches more effective.
-            foreach (var p in Factor(b, cancellationToken).Keys)
+            bool hasTwoTorsion = TryCubicRoot(a, b, c, cancellationToken, out var root);
+            int torsionDimension = 0;
+            if (hasTwoTorsion)
             {
-                var p2 = p * p;
-                var p4 = p2 * p2;
-                while (a % p2 == 0 && b % p4 == 0) { a /= p2; b /= p4; }
+                var quadraticDiscriminant = (a + root) * (a + root) - 4 * (b + a * root + root * root);
+                torsionDimension = quadraticDiscriminant > 0 && BigRational.IsSquare(new BigRational(quadraticDiscriminant), out _) ? 2 : 1;
             }
-            var first = IsogenyImageBounds(a, b, searchBound, maxSquareClasses, cancellationToken);
-            var second = IsogenyImageBounds(-2 * a, a * a - 4 * b, searchBound, maxSquareClasses, cancellationToken);
-            int lower = Math.Max(0, first.lower + second.lower - 2);
-            int upper = first.upper + second.upper - 2;
-            // A point may be divisible in the isogeny quotients and still have infinite order.
-            if (lower == 0 && upper > 0) lower = FindPositiveRank(e, searchBound, cancellationToken);
-            if (upper < lower) throw new InvalidOperationException("Inconsistent certified rank bounds.");
-            return new RankBounds(lower, upper, true);
+            var budget = new DescentBudget(options, cancellationToken);
+            var pointRank = new RationalPointRank(e, torsionDimension, budget);
+            pointRank.Search();
+            bool general = !hasTwoTorsion || options.PreferGeneralTwoDescent;
+            GeneralTwoDescent descent = null;
+            int firstImageLower = 0, secondImageLower = 0;
+            try
+            {
+                int lower, upper; int? selmerDimension = null;
+                if (general)
+                {
+                    descent = new GeneralTwoDescent(e, torsionDimension, pointRank, budget);
+                    selmerDimension = descent.ComputeSelmerDimension();
+                    lower = descent.LowerBound;
+                    upper = selmerDimension.Value - torsionDimension;
+                }
+                else
+                {
+                    b += 2 * a * root + 3 * root * root;
+                    a += 3 * root;
+                    foreach (var p in Factor(b, cancellationToken).Keys)
+                    {
+                        var p2 = p * p; var p4 = p2 * p2;
+                        while (a % p2 == 0 && b % p4 == 0) { a /= p2; b /= p4; }
+                    }
+                    var dualB = a * a - 4 * b;
+                    firstImageLower = BigRational.IsSquare(new BigRational(b), out _) ? 0 : 1;
+                    secondImageLower = BigRational.IsSquare(new BigRational(dualB), out _) ? 0 : 1;
+                    var first = IsogenyImageBounds(a, b, budget, dimension => firstImageLower = dimension);
+                    var second = IsogenyImageBounds(-2 * a, dualB, budget, dimension => secondImageLower = dimension);
+                    lower = Math.Max(pointRank.LowerBound, first.lower + second.lower - 2);
+                    upper = first.upper + second.upper - 2;
+                }
+                if (upper < lower) throw new InvalidOperationException("Inconsistent certified rank bounds.");
+                string reason = lower == upper ? "The proved lower and upper bounds agree."
+                    : "The descent upper bound exceeds the proved lower bound; no claim of global solubility or of vanishing Sha is made.";
+                if (budget.PointSearchExhausted) reason += " MaxPointSearchWork was reached.";
+                return new RankBounds(lower, upper, !general, general, selmerDimension, reason, budget.Work, budget.PointWork);
+            }
+            catch (DescentLimitException ex)
+            {
+                int lower = descent?.LowerBound ?? Math.Max(pointRank.LowerBound, firstImageLower + secondImageLower - 2);
+                string reason = ex.Message + (budget.PointSearchExhausted ? " MaxPointSearchWork was reached." : "");
+                return new RankBounds(lower, null, !general, general,
+                    reason: reason, descentWork: budget.Work, pointWork: budget.PointWork);
+            }
         }
 
         private static bool TryCubicRoot(BigInteger a, BigInteger b, BigInteger c,
@@ -72,31 +116,11 @@ namespace EllipticCurves
             return false;
         }
 
-        private static int FindPositiveRank(EllipticCurveQ e, int bound, CancellationToken token)
-        {
-            // Mazur's theorem: a rational torsion point has order at most 12.
-            // Exact additions suffice to certify one point of infinite order.
-            for (int denominator = 1; denominator <= bound; denominator++)
-            for (long numerator = -(long)bound; numerator <= bound; numerator++)
-            {
-                token.ThrowIfCancellationRequested();
-                if (BigInteger.GreatestCommonDivisor(BigInteger.Abs(numerator), denominator) != 1) continue;
-                var x = new BigRational(numerator, denominator);
-                var t = e.A1 * x + e.A3;
-                var rhs = x * x * x + e.A2 * x * x + e.A4 * x + e.A6 + t * t / 4;
-                if (!BigRational.IsSquare(rhs, out var y)) continue;
-                var point = new EllipticCurvePoint(x, y - t / 2);
-                var multiple = point;
-                int order = 1;
-                while (order <= 12 && !multiple.IsInfinity) { multiple = e.Add(multiple, point); order++; }
-                if (order > 12) return 1;
-            }
-            return 0;
-        }
-
         private static (int lower, int upper) IsogenyImageBounds(BigInteger a, BigInteger b,
-            int bound, int maxClasses, CancellationToken token)
+            DescentBudget budget, Action<int> recordLower)
         {
+            var token = budget.Token;
+            int maxClasses = budget.Options.MaxSquareClasses;
             var factors = Factor(b, token).OrderBy(pair => pair.Key).ToArray();
             long classCount = 2;
             foreach (var unused in factors)
@@ -119,68 +143,29 @@ namespace EllipticCurves
             var basis = new int[factors.Length + 1];
             AddSquareClass(basis, torsionClass);
             int survivors = 0;
-            // These are necessary tests only. Passing does not assert Q_p-solubility.
-            // Therefore omitted primes and finite precision can only weaken the upper bound.
-            var sieves = new[] { (2, 256), (3, 81), (5, 25), (7, 49),
-                (11, 11), (13, 13), (17, 17), (19, 19), (23, 23), (29, 29), (31, 31) };
+            var badPrimes = Factor(2 * b * (a * a - 4 * b), token).Keys.OrderBy(p => p).ToArray();
             foreach (int mask in Enumerable.Range(0, count))
             {
-                token.ThrowIfCancellationRequested();
+                budget.Step();
                 var d = values[mask];
                 var other = Divide(b, d);
-                // F(u,v)=d*u^4+a*u^2*v^2+(b/d)*v^4. If both end coefficients
-                // are negative, its maximum as a quadratic in (u/v)^2 must be nonnegative.
-                bool possible = !(d < 0 && other < 0 && (a <= 0 || a * a - 4 * b < 0));
-                foreach (var sieve in sieves)
-                {
-                    if (!possible) break;
-                    possible = QuarticHasResidue(d, a, other, sieve.Item1, sieve.Item2);
-                }
-                if (!possible) continue;
+                var quartic = new BinaryQuartic(d, 0, a, 0, other);
+                bool known = ReducesToZero(basis, mask);
+                if (!known && !QuarticLocalSolubility.Everywhere(quartic, badPrimes, budget)) continue;
                 survivors++;
-                if (ReducesToZero(basis, mask)) continue;
-                if (QuarticHasPoint(d, a, other, bound, token)) AddSquareClass(basis, mask);
+                if (!known && quartic.TryPoint(budget, out _, out _, out _))
+                {
+                    AddSquareClass(basis, mask);
+                    recordLower(basis.Count(x => x != 0));
+                }
             }
             if (survivors == 0) throw new InvalidOperationException("The trivial descent class was eliminated.");
+            if ((survivors & (survivors - 1)) != 0) throw new InvalidOperationException("The isogeny Selmer group does not have power-of-two order.");
             int upper = 0;
             for (int size = survivors; size > 1; size >>= 1) upper++;
-            // The actual image is an F_2-space contained in the survivors, so its dimension
-            // is <= floor(log2(survivors)), even if the finite sieve survivors are not a group.
             int lower = basis.Count(x => x != 0);
             if (lower > upper) throw new InvalidOperationException("Inconsistent isogeny image bounds.");
             return (lower, upper);
-        }
-
-        private static bool QuarticHasResidue(BigInteger d, BigInteger a, BigInteger other, int p, int modulus)
-        {
-            var squares = new bool[modulus];
-            for (int i = 0; i < modulus; i++) squares[i * i % modulus] = true;
-            long D = (long)Mod(d, modulus), A = (long)Mod(a, modulus), B = (long)Mod(other, modulus);
-            // Primitive projective charts: v=1, or u=1 and p|v.
-            for (int x = 0; x < modulus; x++)
-            {
-                long x2 = (long)x * x % modulus, x4 = x2 * x2 % modulus;
-                if (squares[(int)((D * x4 + A * x2 + B) % modulus)]) return true;
-                if (x % p == 0 && squares[(int)((D + A * x2 + B * x4) % modulus)]) return true;
-            }
-            return false;
-        }
-
-        private static bool QuarticHasPoint(BigInteger d, BigInteger a, BigInteger other, int bound, CancellationToken token)
-        {
-            if (bound == 0) return false;
-            for (int u = 0; u <= bound; u++)
-            for (int v = 0; v <= bound; v++)
-            {
-                token.ThrowIfCancellationRequested();
-                if (BigInteger.GreatestCommonDivisor(u, v) != 1) continue;
-                BigInteger u2 = (BigInteger)u * u, v2 = (BigInteger)v * v;
-                var square = d * u2 * u2 + a * u2 * v2 + other * v2 * v2;
-                if (square < 0) continue;
-                var root = InternalMath.IntegerSqrt(square);
-                if (root * root == square) return true;
-            }
-            return false;
         }
 
         private static bool ReducesToZero(int[] basis, int value)

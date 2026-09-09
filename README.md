@@ -7,7 +7,7 @@
 * discriminant and j-invariant,  
 * torsion/rational/integral points,  
 * short and minimal Weierstrass model,  
-* proved algebraic rank bounds (exact when the bounds coincide),
+* proved algebraic rank bounds by general 2-descent or descent by 2-isogeny,
 * native analytic rank estimates, with rigorous certificates for ranks 0 and 1,
 * algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
@@ -86,15 +86,24 @@ Console.WriteLine(bounds.ExactRank);      // 0 (null unless proved)
 The conductor is computed on a global minimal model, with Tate's algorithm handling
 wild reduction at 2 and 3. Rational coefficients and non-minimal input models are supported.
 
-Rank bounds use descent by 2-isogeny when the curve has a rational point of order 2.
-Quartic point searches prove lower bounds; real and modular obstructions prove upper
-bounds. These are unconditional bounds, with no BSD or parity assumption. The finite
-local sieve may leave an interval even when a full Selmer computation could resolve it.
+Rank bounds use descent by 2-isogeny when a rational point of order 2 is available,
+and general binary-quartic 2-descent otherwise. Local checks decide solubility over
+the reals and the necessary p-adic fields. Rational points, distinct soluble covering
+classes and exact good-reduction characters prove lower bounds, including ranks above 1.
+These computations do not assume BSD, GRH, parity, or finiteness of Sha.
 
-For curves **without rational 2-torsion**, the current implementation proves only a
-lower bound of 0 or 1 by point search; `UpperBound` and `ExactRank` are `null`.
-General 2-descent is not implemented. An unsuccessful point search never proves rank zero.
-The separate analytic method below also works for curves without rational 2-torsion.
+```csharp
+var e = new EllipticCurveQ(0, 0, 1, -7, 6);
+var rank = e.GetRankBounds();
+Console.WriteLine(rank.ExactRank);           // 3
+Console.WriteLine(rank.UsedGeneralTwoDescent); // True
+Console.WriteLine(rank.TwoSelmerDimension);  // 3
+```
+
+A complete descent gives a proved upper bound, which can exceed the rank because
+of Sha. An unsuccessful point search never proves rank zero. A work limit during
+descent gives `UpperBound = null` and an explanation in `Reason`; any proved lower
+bound is retained. `ExactRank` is populated only when both bounds agree.
 
 `GetRankBounds(searchBound: 64)` increases the point search. `maxSquareClasses` defaults
 to 65,536 per isogeny; exceeding it throws rather than silently truncating the descent.
@@ -106,6 +115,24 @@ var conductor = e.GetConductor(timeout.Token);
 var minimal = e.GetGlobalMinimalModel(timeout.Token);
 var rank = e.GetRankBounds(searchBound: 64, cancellationToken: timeout.Token);
 ```
+
+For more control, pass `RankComputationOptions`:
+
+```csharp
+var rank = e.GetRankBounds(new RankComputationOptions
+{
+    SearchBound = 64,
+    MaxDescentWork = 10000000,
+    MaxPointSearchWork = 2000000
+}, timeout.Token);
+Console.WriteLine(rank.Reason);
+```
+
+General descent enumerates a complete reduction region; its cost can grow rapidly
+with the curve invariants. The work limits bound counted steps, not elapsed time or
+integer factorization. Point-search exhaustion preserves a completed upper bound.
+`PreferGeneralTwoDescent` also enables the general method for curves with 2-torsion.
+See [the descent construction and proof conditions](docs/two-descent.md).
 
 ## Analytic rank and BSD
 
