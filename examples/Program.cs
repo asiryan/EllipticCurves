@@ -4,7 +4,9 @@ public static class Program
 {
     public static void Main()
     {
-        // Y^2 = X^3 - 17 X^2 + 72 X
+        // Irreducibility of the Cuboid Polynomial Pa,u(t) via a Rank-Zero Elliptic Curve
+        // https://arxiv.org/abs/2510.11768
+        // E: Y^2 = X^3 - 17 X^2 + 72 X
         var E = new EllipticCurveQ(0, -17, 0, 72, 0);
 
         Console.WriteLine("E: " + E);
@@ -50,8 +52,7 @@ public static class Program
         Console.WriteLine($"Native conductor matches LMFDB: {conductorMatches}");
         Console.WriteLine($"LMFDB rank is within native bounds: {rankMatches}");
 
-        if (!minimalMatches || !conductorMatches || !rankMatches)
-            Console.WriteLine("Native arithmetic results do not match LMFDB.");
+        if (!minimalMatches || !conductorMatches || !rankMatches) Console.WriteLine("Native arithmetic results do not match LMFDB.");
 
         // Estimate the analytic rank locally and attempt a rigorous rank 0/1 certificate
         var analytic = E.EstimateAnalyticRank();
