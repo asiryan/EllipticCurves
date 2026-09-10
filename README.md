@@ -243,7 +243,7 @@ Console.WriteLine(cm.CmDiscriminant);        // -3; zero denotes non-CM
 var threeIsogeny = cm.CreateIsogeny(new[] { new EllipticCurvePoint(0, 1) });
 Console.WriteLine(threeIsogeny.Degree);      // 3
 var two = cm.CreateTwoIsogeny(new EllipticCurvePoint(-1, 0));
-// two.Dual.Map(two.Forward.Map(Q)) == cm.Double(Q)
+// two.Dual.Map(two.Forward.Map(Q)).Equals(cm.Double(Q)) is true.
 
 var finite = e.ReduceModuloPrime(5);
 var reducedPoint = e.ReducePointModuloPrime(p, 5);

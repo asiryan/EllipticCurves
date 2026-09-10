@@ -14,7 +14,7 @@
 	<Description>.NET library for studying and working with elliptic curves (with LMFDB integration).</Description>
 	<PackageProjectUrl>https://github.com/asiryan/EllipticCurves</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/asiryan/EllipticCurves</RepositoryUrl>
-	<RepositoryType>Open-source</RepositoryType>
+	<RepositoryType>git</RepositoryType>
 	<PackageTags>elliptic curves discriminant j-invariant rank torsion rational integral points Weierstrass reduction lmfdb</PackageTags>
 	<NeutralLanguage>en</NeutralLanguage>
 	<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
@@ -22,6 +22,7 @@
 	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
 	<PackageIcon>ec_logo.png</PackageIcon>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
@@ -29,6 +30,7 @@
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
   <ItemGroup>
+	<None Include="../docs/nuget-readme.md" Pack="true" PackagePath="README.md" />
 	<None Include="LICENSE.md">
 		<Pack>True</Pack>
 		<PackagePath></PackagePath>
