@@ -190,16 +190,16 @@ var analytic = e.EstimateAnalyticRank(new AnalyticRankOptions
 ## Local data, heights, periods and saturation
 
 ```csharp
-var curve = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var e = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
 var generator = new EllipticCurvePoint(0, 0);
-var modelMap = curve.GetMinimalModelIsomorphism();
-var local = curve.GetLocalData(37); // I1, nonsplit multiplicative, c_37 = 1
-var height = curve.CanonicalHeight(generator); // approximately 0.05111140824
-var regulator = curve.Regulator(new[] { generator });
-var periods = curve.GetPeriods(); // RealPeriod approximately 5.98691729246
+var modelMap = e.GetMinimalModelIsomorphism();
+var local = e.GetLocalData(37); // I1, nonsplit multiplicative, c_37 = 1
+var height = e.CanonicalHeight(generator); // approximately 0.05111140824
+var regulator = e.Regulator(new[] { generator });
+var periods = e.GetPeriods(); // RealPeriod approximately 5.98691729246
 
-var saturation = curve.Saturate(
-    new[] { curve.Multiply(generator, 6) }, new[] { 2, 3 });
+var saturation = e.Saturate(
+    new[] { e.Multiply(generator, 6) }, new[] { 2, 3 });
 // On completion: IndexGain = 6, CertifiedPrimes = [2, 3].
 // IsComplete certifies only the requested primes, not a full Mordell-Weil basis.
 ```
@@ -212,8 +212,8 @@ requires independent input generators and reports unresolved primes when limited
 The optional LMFDB adapter exposes matching stored data:
 
 ```csharp
-var stored = await LmfdbEllipticCurve.FetchAsync(curve, cancellationToken: timeout.Token);
-var storedGenerators = stored.GetGeneratorsOnModel(curve);
+var stored = await LmfdbEllipticCurve.FetchAsync(e, cancellationToken: timeout.Token);
+var storedGenerators = stored.GetGeneratorsOnModel(e);
 var storedLocalData = stored.LocalData;
 var storedHeights = stored.GeneratorHeights;
 var storedRegulator = stored.Regulator;
