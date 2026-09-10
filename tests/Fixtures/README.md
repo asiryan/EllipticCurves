@@ -119,3 +119,32 @@ $rows | Where-Object { $_.StartsWith('L,') } |
     ForEach-Object { $_.Substring(2) } | Select-Object -Unique |
     Set-Content -Encoding utf8 tests/Fixtures/real-logarithms.csv
 ```
+
+## Faltings heights and finite extensions
+
+`generate-final-extensions.gp` uses seed 20260912 and 80-digit real precision.
+It produces independent outputs with `ellminimalmodel`, period areas, `ffgen`,
+field arithmetic, `ellcard`, `elladd` and `ellmul`. Explicit field polynomials
+are checked with `polisirreducible`. No curve database is used.
+
+- `faltings-heights.csv` (46 rows): input a1,a2,a3,a4,a6; minimal-model Faltings
+  height; stable Faltings height.
+- `finite-fields.csv` (90 distinct rows): p; ascending defining polynomial joined
+  by colons; a; b; a+b; a*b; 1/a (or -1 for a=0).
+- `extension-curves.csv` (35 rows): p; colon-separated defining polynomial;
+  a1,a2,a3,a4,a6; point count; discriminant,c4,c6,j; P.x,P.y; Q.x,Q.y;
+  (P+Q).x,(P+Q).y; signed n; (nP).x,(nP).y.
+
+Finite-field elements in these CSV files use integer base-p coefficient encodings,
+not embedding of those integers in the prime subfield. Infinity is encoded as
+the pair -1,-1. The fields have orders 4,8,9,16,25,27,49,125. The generator script
+and its reference results are only for regression verification.
+
+```powershell
+$rows = & $gpPath -q -f tests/Fixtures/generate-final-extensions.gp
+foreach ($entry in @(@('H,','faltings-heights'), @('F,','finite-fields'), @('E,','extension-curves'))) {
+    $rows | Where-Object { $_.StartsWith($entry[0]) } |
+        ForEach-Object { $_.Substring(2) } | Select-Object -Unique |
+        Set-Content -Encoding utf8 (Join-Path tests/Fixtures ($entry[1] + '.csv'))
+}
+```

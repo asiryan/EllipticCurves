@@ -1,6 +1,6 @@
 # EllipticCurves
 
-A managed C# library for elliptic curves over the rationals and prime fields,
+A managed C# library for elliptic curves over the rationals and finite fields,
 targeting .NET Standard 2.0. Native computations run offline without PARI, Sage,
 Magma or other mathematical software. LMFDB integration is optional.
 
@@ -29,12 +29,14 @@ var finite = e.ReduceModuloPrime(5);
 - General 2-descent and descent by 2-isogeny, with proved algebraic rank bounds.
 - Numerical central L-function derivatives and analytic rank estimates, with
   separate rigorous certificates for analytic ranks 0 and 1.
-- Certified canonical/local heights, subgroup regulators and periods.
+- Certified canonical/local heights, subgroup regulators, periods, and Faltings heights.
 - Subgroup saturation at explicitly requested primes and exact rational division.
 - Fourier coefficients, Frobenius traces, rational CM recognition, Velu isogenies
   with pointwise rational kernels, and dual 2-isogenies.
 - Prime-field curves, arithmetic, direct point counting and enumeration,
   including characteristics 2 and 3.
+- Exact finite extensions F_(p^k) with proved irreducible defining polynomials,
+  curve arithmetic and bounded direct enumeration of coordinate pairs.
 - Numerical elliptic logarithms of rational points on both real components.
 - Optional cached LMFDB data, including generators, heights, periods and
   isogeny-class metadata, with offline snapshot parsing.
@@ -45,16 +47,15 @@ Point searches are bounded. Saturation certifies only the requested primes and
 does not establish a full Mordell-Weil basis. Work limits can leave rank bounds
 incomplete. Numerical estimates and stored LMFDB values are distinguished from
 proofs; the library does not compute the Tate-Shafarevich group order.
-Prime-field counting uses direct search, not SEA. General isogeny-class discovery,
+Finite-field counting uses direct search, not SEA. The extension-field API checks
+q^2 coordinate pairs, with a default limit of 1000000. General isogeny-class discovery,
 higher descents and curves over general number fields are outside this release.
-
-Version 3 uses `LmfdbEllipticCurve` in place of `EllipticCurveLMFDB`; the old name
-has been removed. Callers using the old name must update it.
 
 See the [repository README](https://github.com/asiryan/EllipticCurves/blob/main/README.md)
 for examples and the algorithm notes for
 [ranks](https://github.com/asiryan/EllipticCurves/blob/main/docs/native-arithmetic.md),
 [heights, periods and saturation](https://github.com/asiryan/EllipticCurves/blob/main/docs/heights-and-saturation.md),
-and [coefficients, division, isogenies and prime fields](https://github.com/asiryan/EllipticCurves/blob/main/docs/basic-extensions.md).
+[coefficients, division, isogenies and prime fields](https://github.com/asiryan/EllipticCurves/blob/main/docs/basic-extensions.md),
+and [Faltings heights and finite extensions](https://github.com/asiryan/EllipticCurves/blob/main/docs/faltings-and-finite-fields.md).
 
 Licensed under MIT.

@@ -12,12 +12,14 @@
 * local reduction types, Kodaira symbols and Tamagawa numbers,
 * certified canonical/local heights, height pairings and subgroup regulators,
 * certified real/complex periods and period-lattice area,
+* certified Faltings and stable Faltings heights,
 * exact subgroup saturation at explicitly requested primes,
 * public Frobenius traces, Fourier coefficients and good-reduction point counts,
 * exact CM recognition over the rationals,
 * exact rational division points and Velu isogenies with rational kernels,
 * explicit 2-isogenies and their dual maps,
 * curves and point arithmetic over prime fields, including characteristics 2 and 3,
+* finite extensions F_(p^k), with exact irreducibility checks and curve arithmetic,
 * numerical elliptic logarithms of rational points on both real components,
 * algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
@@ -261,6 +263,39 @@ isogeny degrees/matrices, modular degrees, Manin constants, Faltings heights,
 analytic Sha values, leading L-values and integral-point x-coordinates. These are
 database records; in particular the Sha fields do not assert a native proof.
 See [the new API conventions and examples](docs/basic-extensions.md).
+
+## Faltings heights and finite extensions
+
+```csharp
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);
+var faltings = e.FaltingsHeight();
+var stableFaltings = e.StableFaltingsHeight();
+// Both return certified RealEnclosure values in the LMFDB normalization.
+// FaltingsHeight uses the global minimal model, even for nonminimal input.
+```
+
+Finite extensions use a specified irreducible polynomial, with coefficients in
+ascending order. Primality and irreducibility are proved when constructing the field.
+
+```csharp
+using System.Numerics;
+
+var field = new FiniteField(3, new BigInteger[] { 1, 0, 1 }); // F_9, t^2+1
+var alpha = field.Generator;
+Console.WriteLine((alpha * alpha + 1).IsZero); // True
+
+var e = new EllipticCurveFq(field,
+    field.Zero, field.Zero, field.Zero, alpha, field.One);
+var p = e.CreatePoint(0, 1);
+var twice = e.Double(p);
+var count = e.CountPoints();
+var points = e.Points();
+```
+
+`EllipticCurveFq` supports general equations, including characteristics 2 and 3.
+Counting and enumeration check all q^2 affine coordinate pairs; the default limit
+is 1000000 pairs. Field presentations must agree before their elements can be mixed.
+See [Faltings-height conventions and finite-extension limits](docs/faltings-and-finite-fields.md).
 
 Run the example and regression tests with:
 

@@ -157,6 +157,8 @@ records are reported explicitly.
 | `Regulator(storedGenerators)` | `ec_curvedata.regulator` |
 | `GetPeriods().RealPeriod` | `ec_mwbsd.real_period` |
 | `GetPeriods().Area` | `ec_mwbsd.area` |
+| `FaltingsHeight()` | `ec_curvedata.faltings_height` |
+| `StableFaltingsHeight()` | `ec_curvedata.stable_faltings_height` |
 | Generators as saturation inputs/reference | `ec_mwbsd.gens`, `torsion_generators` |
 | Proven rank bounds as a cross-check | `ec_mwbsd.rank_bounds` |
 
@@ -174,6 +176,9 @@ number. LMFDB does not supply guaranteed error bounds for these approximations;
 see [its reliability statement](https://www.lmfdb.org/EllipticCurve/Q/Reliability).
 The adapter supplies stored values, not remote methods for heights of arbitrary
 points, arbitrary regulators, complex period bases or subgroup saturation.
+
+Native Faltings-height formulas and their minimal-model normalization are described
+in [the Faltings-height and finite-extension notes](faltings-and-finite-fields.md).
 
 ## Verification
 
