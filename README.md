@@ -1,7 +1,7 @@
 <p align="center"><img width="25%" src="docs/png/ec_logo_v3b.png" /></p>
 
 # About
-**EllipticCurves** is a small C# library for studying and working with elliptic curves. It provides functionality to compute and explore:
+**EllipticCurves** is a C# library for studying elliptic curves over the rationals and finite fields. It provides functionality to compute and explore:
 * coefficients and group structure,  
 * discriminant and j-invariant,  
 * torsion/rational/integral points,  
@@ -26,14 +26,18 @@
 * conductor, etc.  
 
 # Version
-You can build **EllipticCurves** from sources or install to your own project using nuget package manager.
+Build **EllipticCurves** from source or install the NuGet package in your project.
 | Assembly | Specification | OS | Download | Package |
 |-------------|:-------------:|:-------------:|:--------------:|:--------------:|
 | [EllipticCurves](sources) | .NET Standard 2.0 | Cross-platform | [Release](https://github.com/asiryan/EllipticCurves/releases/) | [NuGet](https://www.nuget.org/packages/EllipticCurves/) | 
 
 # Installation
-C# interface  
-```c#
+```shell
+dotnet add package EllipticCurves
+```
+
+Import the namespace in your C# code:
+```csharp
 using EllipticCurves;
 ```
 To get started with **EllipticCurves** it is recommended to take a look at the [example project](examples).  
@@ -61,7 +65,7 @@ O
 (12, -12)
 LMFDB: 48.a3
 Url: https://www.lmfdb.org/EllipticCurve/Q/48.a3/
-Minimal Weirstrass model: y^2 = x^3 + x^2 - 24*x + 36
+Minimal Weierstrass model: y^2 = x^3 + x^2 - 24*x + 36
 Torsion: Z/2Z x Z/4Z
 Rank(E) = 0
 Analytic rank(E) = 0

@@ -11,7 +11,7 @@
 	<Authors>Valery Asiryan</Authors>
 	<Product>EllipticCurves</Product>
 	<Copyright>Valery Asiryan, © 2025-2026</Copyright>
-	<Description>.NET library for studying and working with elliptic curves (with LMFDB integration).</Description>
+	<Description>.NET library for elliptic curves over the rationals and finite fields, with native computations and optional LMFDB integration.</Description>
 	<PackageProjectUrl>https://github.com/asiryan/EllipticCurves</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/asiryan/EllipticCurves</RepositoryUrl>
 	<RepositoryType>git</RepositoryType>
