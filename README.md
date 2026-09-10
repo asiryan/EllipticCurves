@@ -312,5 +312,18 @@ The example retains its LMFDB lookup and checks the native results against it,
 so running the example requires internet access. The native API and regression
 tests work offline.
 
+## Desktop visualizer (Windows)
+
+The [WPF Explorer](visualizer/README.md) provides a modern desktop interface on
+.NET 8: five coefficient sliders, an interactive real-locus plot, exact basic
+invariants and bounded rational-point samples. It runs entirely offline using
+native library calculations.
+
+![Elliptic Curves Explorer](docs/png/visualizer.png)
+
+```powershell
+dotnet run --project visualizer/EllipticCurves.Visualizer.csproj -c Release
+```
+
 # License
 **MIT**  
