@@ -143,6 +143,7 @@ namespace EllipticCurves
                     throw new FormatException("LMFDB: inconsistent Tamagawa product.");
                 LocalData = values.AsReadOnly();
             }
+            ReadExtendedData(root, row);
         }
 
         private void CheckLabel(JsonElement row)
@@ -235,7 +236,7 @@ namespace EllipticCurves
         private static async Task<JsonElement> ReadJsonAsync(HttpClient client, string url, CancellationToken token)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd("EllipticCurves/2.1");
+            request.Headers.UserAgent.ParseAdd("EllipticCurves/" + typeof(LmfdbEllipticCurve).Assembly.GetName().Version.ToString(3));
             request.Headers.Accept.ParseAdd("application/json");
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseContentRead, token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();

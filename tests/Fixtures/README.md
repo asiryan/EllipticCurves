@@ -95,3 +95,27 @@ decimal precision metadata are preserved. Sources:
 LMFDB numerical values are approximations, not certified error intervals; tests
 compare them with an explicit tolerance. HTTP behavior tests use an in-memory
 handler, including pagination, failure and cancellation, and never call the site.
+
+## Rational-kernel isogenies and numerical real logarithms
+
+`generate-basic-extensions.gp` uses seed 20260911 and 70-digit real precision.
+It calls `ellisogeny`, `ellorder` and `ellpointtoz` on explicit equations, without
+a database. These are reference outputs only, not translated PARI implementation code.
+
+- `isogenies.csv`: source a1,a2,a3,a4,a6; rational kernel generator x,y; degree;
+  target c4,c6. Degrees 2,3,4,5,6 and general source equations are represented.
+- `real-logarithms.csv`: minimal a1,a2,a3,a4,a6; point x,y; real logarithm modulo
+  the least positive real period; absolute imaginary part; least positive real
+  period. Covers both real components, 2-torsion, both ordinate signs and multiples
+  with rational denominators. The imaginary sign is normalized to the library's
+  positive-imaginary period basis.
+
+```powershell
+$rows = & $gpPath -q -f tests/Fixtures/generate-basic-extensions.gp
+$rows | Where-Object { $_.StartsWith('I,') } |
+    ForEach-Object { $_.Substring(2) } |
+    Set-Content -Encoding utf8 tests/Fixtures/isogenies.csv
+$rows | Where-Object { $_.StartsWith('L,') } |
+    ForEach-Object { $_.Substring(2) } | Select-Object -Unique |
+    Set-Content -Encoding utf8 tests/Fixtures/real-logarithms.csv
+```

@@ -32,7 +32,7 @@ namespace EllipticCurves
             return a;
         }
 
-        private static long Trace(EllipticCurveQ e, int p, CancellationToken token)
+        internal static long Trace(EllipticCurveQ e, int p, CancellationToken token)
         {
             long a1 = (long)NativeNumberTheory.Mod(e.A1.Num, p), a2 = (long)NativeNumberTheory.Mod(e.A2.Num, p);
             long a3 = (long)NativeNumberTheory.Mod(e.A3.Num, p), a4 = (long)NativeNumberTheory.Mod(e.A4.Num, p);

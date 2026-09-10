@@ -14,6 +14,12 @@
 * certified canonical/local heights, height pairings and subgroup regulators,
 * certified real/complex periods and period-lattice area,
 * exact subgroup saturation at explicitly requested primes,
+* public Frobenius traces, Fourier coefficients and good-reduction point counts,
+* exact CM recognition over the rationals,
+* exact rational division points and Velu isogenies with rational kernels,
+* explicit 2-isogenies and their dual maps,
+* curves and point arithmetic over prime fields, including characteristics 2 and 3,
+* numerical elliptic logarithms of rational points on both real components,
 * algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
 * conductor, etc.  
@@ -221,6 +227,42 @@ intervals. `FromStoredDataJson(json)` reads a downloaded curve-data snapshot off
 
 See [height, period, saturation and LMFDB notes](docs/heights-and-saturation.md)
 and [rank algorithm notes](docs/native-arithmetic.md) for conventions and limits.
+
+## Coefficients, CM, division points and isogenies
+
+```csharp
+var e = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var p = new EllipticCurvePoint(0, 0);
+var ap = e.GetFrobeniusTrace(5);             // -2
+var coefficients = e.GetFourierCoefficients(100); // a[n], with a[0]=0
+var count = e.CountPoints(5);               // 8, including infinity
+var divided = e.GetDivisionPoints(e.Multiply(p, 6), 2); // exactly {3P}
+var logarithm = e.RealEllipticLogarithm(p); // numerical, on the minimal model
+
+var cm = new EllipticCurveQ(0, 0, 0, 0, 1);
+Console.WriteLine(cm.CmDiscriminant);        // -3; zero denotes non-CM
+var threeIsogeny = cm.CreateIsogeny(new[] { new EllipticCurvePoint(0, 1) });
+Console.WriteLine(threeIsogeny.Degree);      // 3
+var two = cm.CreateTwoIsogeny(new EllipticCurvePoint(-1, 0));
+// two.Dual.Map(two.Forward.Map(Q)) == cm.Double(Q)
+
+var finite = e.ReduceModuloPrime(5);
+var reducedPoint = e.ReducePointModuloPrime(p, 5);
+var order = finite.GetPointOrder(reducedPoint);
+var allPoints = finite.Points();
+```
+
+Division returns every rational preimage or an empty list proving nondivisibility;
+exhausting a work limit throws. Isogeny kernels in this API consist of rational
+points. General isogeny-class discovery and global saturation are separate,
+unimplemented tasks. Prime-field counting uses direct search, not SEA.
+
+The LMFDB adapter additionally reads stored Fourier coefficients, CM discriminants,
+isogeny degrees/matrices, modular degrees, Manin constants, Faltings heights,
+analytic Sha values, leading L-values and integral-point x-coordinates. These are
+database records; in particular the Sha fields do not assert a native proof.
+See [the new API conventions and examples](docs/basic-extensions.md).
+
 Run the example and regression tests with:
 
 ```sh
