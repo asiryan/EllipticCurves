@@ -1,4 +1,4 @@
-<p align="center"><img width="25%" src="docs/ec_logo_v3a.png" /></p>
+<p align="center"><img width="25%" src="docs/ec_logo_v3b.png" /></p>
 
 # About
 **EllipticCurves** is a small C# library for studying and working with elliptic curves. It provides functionality to compute and explore:
