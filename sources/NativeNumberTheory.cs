@@ -64,7 +64,7 @@ namespace EllipticCurves
             }
         }
 
-        private static bool IsPrime(BigInteger n, CancellationToken token)
+        internal static bool IsPrime(BigInteger n, CancellationToken token)
         {
             if (n < 2) return false;
             foreach (int p in new[] { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37 })

@@ -58,3 +58,40 @@ dotnet test EllipticCurves.sln
 
 The scripts fix the PARI random seed. A different PARI version may change its
 random stream or certified rank bounds, so review regenerated fixture changes.
+
+## Local invariants, heights and periods
+
+`generate-extended.gp` uses seed 20260910, 70-digit real precision, random general
+equations, weighted families at 2, 3, 5 and 7, short equations and fixed examples.
+All three files are deduplicated:
+
+- `local-data.csv`: input a1,a2,a3,a4,a6; prime; minimal discriminant valuation;
+  conductor valuation; PARI Kodaira code; Tamagawa number; local root number.
+  The wild cases include II, III, IV, I0*, II*, III*, IV* and long I_n* refinements.
+- `periods.csv`: input a1,a2,a3,a4,a6; primitive positive real period; absolute
+  imaginary part of the second period; BSD real period; period-lattice area.
+  Values refer to `ellminimalmodel` and cover both signs of the discriminant.
+- `heights.csv`: minimal a1,a2,a3,a4,a6; x; y; canonical height from `ellheight`.
+  Points include torsion, integral coordinates and rational denominators.
+
+```powershell
+$rows = & $gpPath -q -f tests/Fixtures/generate-extended.gp
+foreach ($entry in @(@('L,','local-data'), @('P,','periods'), @('H,','heights'))) {
+    $rows | Where-Object { $_.StartsWith($entry[0]) } |
+        ForEach-Object { $_.Substring(2) } | Select-Object -Unique |
+        Set-Content -Encoding utf8 (Join-Path tests/Fixtures ($entry[1] + '.csv'))
+}
+```
+
+`lmfdb-*.json` are unmodified aggregate JSON responses downloaded on 2026-09-10
+from `https://www.lmfdb.org/EllipticCurve/Q/data/{label}?_format=json`, for labels
+11.a1, 37.a1, 48.a3, 389.a1 and 5077.a1. Their original table names, counts and
+decimal precision metadata are preserved. Sources:
+[11.a1](https://www.lmfdb.org/EllipticCurve/Q/data/11.a1),
+[37.a1](https://www.lmfdb.org/EllipticCurve/Q/data/37.a1),
+[48.a3](https://www.lmfdb.org/EllipticCurve/Q/data/48.a3),
+[389.a1](https://www.lmfdb.org/EllipticCurve/Q/data/389.a1),
+[5077.a1](https://www.lmfdb.org/EllipticCurve/Q/data/5077.a1).
+LMFDB numerical values are approximations, not certified error intervals; tests
+compare them with an explicit tolerance. HTTP behavior tests use an in-memory
+handler, including pagination, failure and cancellation, and never call the site.

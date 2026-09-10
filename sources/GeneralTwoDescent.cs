@@ -10,18 +10,11 @@ namespace EllipticCurves
     // Curves, III.3.6 (invariants, reduction regions and rational equivalence).
     internal sealed class GeneralTwoDescent
     {
-        private sealed class Covering
-        {
-            internal readonly BinaryQuartic Form;
-            internal readonly int[] Signature;
-            internal bool HasPoint;
-            internal Covering(BinaryQuartic form, int[] signature) { Form = form; Signature = signature; }
-        }
         private readonly EllipticCurveQ curve;
         private readonly DescentBudget budget;
         private readonly RationalPointRank points;
         private readonly int torsionDimension;
-        private readonly List<Covering> coverings = new List<Covering>();
+        private readonly List<TwoDescentCovering> coverings = new List<TwoDescentCovering>();
         private readonly BigInteger[] badPrimes;
         private BigRational modelScale;
         private int solubleClasses = 1; // the identity class
@@ -150,12 +143,12 @@ namespace EllipticCurves
             if (!QuarticLocalSolubility.Everywhere(q, badPrimes, budget)) return;
             if (coverings.Count >= budget.Options.MaxSquareClasses - 1)
                 throw new DescentLimitException("MaxSquareClasses was reached while enumerating the 2-Selmer group.");
-            var covering = new Covering(q, signature);
+            var covering = new TwoDescentCovering(q, signature);
             coverings.Add(covering);
             TryPoint(q, covering);
         }
 
-        private void TryPoint(BinaryQuartic q, Covering covering)
+        private void TryPoint(BinaryQuartic q, TwoDescentCovering covering)
         {
             if (!q.TryPoint(budget, out var u, out var v, out var y)) return;
             if (y.IsZero) throw new InvalidOperationException("A nontrivial covering unexpectedly has a rational branch point.");

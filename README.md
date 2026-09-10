@@ -9,6 +9,11 @@
 * short and minimal Weierstrass model,  
 * proved algebraic rank bounds by general 2-descent or descent by 2-isogeny,
 * native analytic rank estimates, with rigorous certificates for ranks 0 and 1,
+* exact model isomorphisms and point maps,
+* local reduction types, Kodaira symbols and Tamagawa numbers,
+* certified canonical/local heights, height pairings and subgroup regulators,
+* certified real/complex periods and period-lattice area,
+* exact subgroup saturation at explicitly requested primes,
 * algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
 * conductor, etc.  
@@ -68,7 +73,7 @@ LMFDB rank is within native bounds: True
 
 `EllipticCurveQ` computes minimal models, conductors and rank bounds in C# using
 exact integer/rational arithmetic. No database, native binary, Sage or PARI installation
-is required. `EllipticCurveLMFDB` remains available separately for optional online metadata.
+is required. `LmfdbEllipticCurve` remains available separately for optional online metadata.
 
 ```csharp
 using System.Numerics;
@@ -162,8 +167,9 @@ threshold, number of coefficients, point-counting work, integration evaluations 
 interval-certificate length. Numerical derivatives use `double`; the separate
 rank 0/1 certificates use exact outward-rounded dyadic intervals and rigorous tails.
 `EstimatedErrors` are numerical diagnostics, not proof bounds. Large conductors are
-expensive; this implementation uses direct point counting, not SEA. No regulator,
-Tamagawa product or Tate–Shafarevich group order is computed.
+expensive; this implementation uses direct point counting, not SEA. Heights,
+regulators, periods and Tamagawa numbers have separate native APIs below.
+The Tate–Shafarevich group order is not computed.
 
 ```csharp
 var analytic = e.EstimateAnalyticRank(new AnalyticRankOptions
@@ -175,7 +181,46 @@ var analytic = e.EstimateAnalyticRank(new AnalyticRankOptions
 }, cancellationToken: timeout.Token);
 ```
 
-See [algorithm notes](docs/native-arithmetic.md) for the bounds and limitations.
+## Local data, heights, periods and saturation
+
+```csharp
+var curve = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var generator = new EllipticCurvePoint(0, 0);
+var modelMap = curve.GetMinimalModelIsomorphism();
+var local = curve.GetLocalData(37); // I1, nonsplit multiplicative, c_37 = 1
+var height = curve.CanonicalHeight(generator); // approximately 0.05111140824
+var regulator = curve.Regulator(new[] { generator });
+var periods = curve.GetPeriods(); // RealPeriod approximately 5.98691729246
+
+var saturation = curve.Saturate(
+    new[] { curve.Multiply(generator, 6) }, new[] { 2, 3 });
+// On completion: IndexGain = 6, CertifiedPrimes = [2, 3].
+// IsComplete certifies only the requested primes, not a full Mordell-Weil basis.
+```
+
+Real results expose exact rational `LowerBound` and `UpperBound`; `Approximation`
+is for display. `RealComputationOptions` controls absolute accuracy and work limits.
+`Regulator(points)` refers to the supplied subgroup modulo torsion. Saturation
+requires independent input generators and reports unresolved primes when limited.
+
+The optional LMFDB adapter exposes matching stored data:
+
+```csharp
+var stored = await LmfdbEllipticCurve.FetchAsync(curve, cancellationToken: timeout.Token);
+var storedGenerators = stored.GetGeneratorsOnModel(curve);
+var storedLocalData = stored.LocalData;
+var storedHeights = stored.GeneratorHeights;
+var storedRegulator = stored.Regulator;
+var storedRealPeriod = stored.RealPeriod;
+var storedArea = stored.PeriodArea;
+```
+
+The synchronous constructor remains available. Missing optional fields are `null`;
+stored decimal values retain their text and precision metadata, but are not certified
+intervals. `FromStoredDataJson(json)` reads a downloaded curve-data snapshot offline.
+
+See [height, period, saturation and LMFDB notes](docs/heights-and-saturation.md)
+and [rank algorithm notes](docs/native-arithmetic.md) for conventions and limits.
 Run the example and regression tests with:
 
 ```sh

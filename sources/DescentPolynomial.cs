@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -29,37 +30,39 @@ namespace EllipticCurves
         }
         private static BigRational[] Derivative(BigRational[] f)
             => f.Skip(1).Select((a, i) => a * (i + 1)).ToArray();
-        private static BigRational[] Quotient(BigRational[] f, BigRational[] g)
+        private static BigRational[] Quotient(BigRational[] f, BigRational[] g, CancellationToken token)
         {
             var r = (BigRational[])f.Clone();
             var result = new BigRational[f.Length - g.Length + 1];
             for (int i = r.Length - 1; i >= g.Length - 1; i--)
             {
+                token.ThrowIfCancellationRequested();
                 var q = result[i - g.Length + 1] = r[i] / g[g.Length - 1];
                 for (int j = 0; j < g.Length; j++) r[i - g.Length + 1 + j] -= q * g[j];
             }
             if (Trim(r).Length != 0) throw new InvalidOperationException("Inexact polynomial division.");
             return Trim(result);
         }
-        private static BigRational[] Remainder(BigRational[] f, BigRational[] g)
+        private static BigRational[] Remainder(BigRational[] f, BigRational[] g, CancellationToken token)
         {
             var r = (BigRational[])f.Clone();
             for (int i = r.Length - 1; i >= g.Length - 1; i--)
             {
+                token.ThrowIfCancellationRequested();
                 var q = r[i] / g[g.Length - 1];
                 for (int j = 0; j < g.Length; j++) r[i - g.Length + 1 + j] -= q * g[j];
             }
             return Trim(r);
         }
-        private static List<BigRational[]> Sturm(BigRational[] f)
+        private static List<BigRational[]> Sturm(BigRational[] f, CancellationToken token)
         {
             var sequence = new List<BigRational[]> { Trim(f) };
             if (sequence[0].Length <= 1) return sequence;
             sequence.Add(Trim(Derivative(sequence[0])));
             while (sequence[sequence.Count - 1].Length > 1)
             {
-                var r = Remainder(sequence[sequence.Count - 2], sequence[sequence.Count - 1]);
-                if (r.Length == 0) return Sturm(Quotient(sequence[0], sequence[sequence.Count - 1]));
+                var r = Remainder(sequence[sequence.Count - 2], sequence[sequence.Count - 1], token);
+                if (r.Length == 0) return Sturm(Quotient(sequence[0], sequence[sequence.Count - 1], token), token);
                 // Positive normalization limits coefficient growth and preserves variations.
                 var scale = r[r.Length - 1].Abs();
                 sequence.Add(r.Select(x => -x / scale).ToArray());
@@ -83,7 +86,8 @@ namespace EllipticCurves
             f = Trim(f);
             var roots = new List<RationalInterval>();
             if (f.Length <= 1) return roots;
-            var sequence = Sturm(f);
+            budget.Token.ThrowIfCancellationRequested();
+            var sequence = Sturm(f, budget.Token);
             BigInteger bound = 1;
             for (int i = 0; i < f.Length - 1; i++)
                 bound = BigInteger.Max(bound, 1 + Ceiling((f[i] / f[f.Length - 1]).Abs()));
@@ -129,49 +133,6 @@ namespace EllipticCurves
                     if (Evaluate(f, new BigRational(n, leading)).IsZero) return true;
                 }
             return false;
-        }
-    }
-
-    // Rational interval endpoints enclose the algebraic numbers used in reduction
-    // bounds. Integer search endpoints are always rounded towards the outside.
-    internal readonly struct RationalInterval
-    {
-        internal readonly BigRational Lower, Upper;
-        internal RationalInterval(BigRational lower, BigRational upper)
-        {
-            if (lower > upper) throw new ArgumentException("Reversed interval.");
-            Lower = lower; Upper = upper;
-        }
-        internal static RationalInterval Exact(BigRational n) => new RationalInterval(n, n);
-        public static implicit operator RationalInterval(int n) => Exact(n);
-        public static implicit operator RationalInterval(BigInteger n) => Exact(new BigRational(n));
-        public static RationalInterval operator +(RationalInterval x, RationalInterval y) => new RationalInterval(x.Lower + y.Lower, x.Upper + y.Upper);
-        public static RationalInterval operator -(RationalInterval x, RationalInterval y) => new RationalInterval(x.Lower - y.Upper, x.Upper - y.Lower);
-        public static RationalInterval operator -(RationalInterval x) => new RationalInterval(-x.Upper, -x.Lower);
-        public static RationalInterval operator *(RationalInterval x, RationalInterval y)
-        {
-            var products = new[] { x.Lower * y.Lower, x.Lower * y.Upper, x.Upper * y.Lower, x.Upper * y.Upper };
-            return new RationalInterval(products.Min(), products.Max());
-        }
-        public static RationalInterval operator /(RationalInterval x, RationalInterval y)
-        {
-            if (y.Lower <= 0 && y.Upper >= 0) throw new DescentLimitException("Root intervals do not separate a denominator in the quartic bounds.");
-            return x * new RationalInterval(1 / y.Upper, 1 / y.Lower);
-        }
-        internal RationalInterval Square()
-        {
-            var l = Lower * Lower; var u = Upper * Upper;
-            return new RationalInterval(Lower <= 0 && Upper >= 0 ? BigRational.Zero : (l < u ? l : u), l > u ? l : u);
-        }
-        internal RationalInterval Sqrt()
-        {
-            if (Upper < 0) throw new InvalidOperationException("Negative radical in quartic reduction bounds.");
-            var scale = BigInteger.One << 96;
-            BigRational lower = Lower > 0 ? Lower : BigRational.Zero;
-            var a = InternalMath.IntegerSqrt(lower.Num * scale * scale / lower.Den);
-            var b = InternalMath.IntegerSqrt(Upper.Num * scale * scale / Upper.Den);
-            // Widening even an exact root is harmless for enumeration completeness.
-            return new RationalInterval(new BigRational(a, scale), new BigRational(b + 1, scale));
         }
     }
 }

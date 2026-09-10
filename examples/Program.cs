@@ -1,4 +1,4 @@
-﻿using EllipticCurves;
+using EllipticCurves;
 
 public static class Program
 {
@@ -24,7 +24,7 @@ public static class Program
         foreach (var P in E.TorsionPoints) Console.WriteLine(P);
 
         // Compute via LMFDB
-        var E_LMFDB = new EllipticCurveLMFDB(E);
+        var E_LMFDB = new LmfdbEllipticCurve(E);
         Console.WriteLine($"LMFDB: {E_LMFDB.Label}");
         Console.WriteLine($"Url: {E_LMFDB.Url}");
         Console.WriteLine($"Minimal Weirstrass model: {E_LMFDB.GlobalMinimalModel}");

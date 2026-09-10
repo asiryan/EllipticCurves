@@ -43,33 +43,12 @@ namespace EllipticCurves
         }
 
         // Infinity must remain larger than all finite valuations after normalization.
-        private static int Valuation(BigInteger value, BigInteger p)
+        internal static int Valuation(BigInteger value, BigInteger p)
         {
             if (value.IsZero) return int.MaxValue / 4;
             int v = 0;
             while (value % p == 0) { value /= p; v++; }
             return v;
-        }
-
-        private sealed class RootInvariants
-        {
-            internal readonly int A, B, D;
-            internal readonly BigInteger U4, U6, UD, C4, C6;
-            private readonly int p;
-            internal RootInvariants(EllipticCurveQ e, int prime)
-            {
-                p = prime;
-                int a = Valuation(e.C4.Num, p), b = Valuation(e.C6.Num, p), d = Valuation(e.Discriminant.Num, p);
-                int m = Math.Min(a / 4, Math.Min(b / 6, d / 12));
-                A = a - 4 * m; B = b - 6 * m; D = d - 12 * m;
-                C4 = e.C4.Num / BigInteger.Pow(p, 4 * m);
-                C6 = e.C6.Num / BigInteger.Pow(p, 6 * m);
-                U4 = e.C4.Num.IsZero ? BigInteger.Zero : e.C4.Num / BigInteger.Pow(p, a);
-                U6 = e.C6.Num.IsZero ? BigInteger.Zero : e.C6.Num / BigInteger.Pow(p, b);
-                UD = e.Discriminant.Num / BigInteger.Pow(p, d);
-            }
-            internal BigInteger C4At(int exponent) => Divide(C4, BigInteger.Pow(p, exponent));
-            internal BigInteger C6At(int exponent) => Divide(C6, BigInteger.Pow(p, exponent));
         }
 
         private static bool Residue(BigInteger n, int modulus, params int[] values)
@@ -84,7 +63,7 @@ namespace EllipticCurves
         // Columns are (v(Delta),v(c6),v(c4)); one original Rizzo row is retained below.
         private static int RootAtTwo(EllipticCurveQ e)
         {
-            var v = new RootInvariants(e, 2);
+            var v = new RootNumberInvariants(e, 2);
             int a = v.A, b = v.B, d = v.D;
             var u = v.U4; var w = v.U6;
             if (a == 0 && b == 0)
@@ -135,7 +114,7 @@ namespace EllipticCurves
         // Rizzo, Average Root Numbers for a Nonconstant Family of Elliptic Curves (2003), Table II.
         private static int RootAtThree(EllipticCurveQ e)
         {
-            var v = new RootInvariants(e, 3);
+            var v = new RootNumberInvariants(e, 3);
             int a = v.A, b = v.B, d = v.D;
             var u = v.U4; var w = v.U6;
             if (a == 0 && b == 0) return d == 0 ? 1 : SignIf(Residue(w, 3, 1));

@@ -1,12 +1,14 @@
 # Native arithmetic over Q
 
-The public entry points are `EllipticCurveQ.GlobalMinimalModel`, `Conductor`,
+The initial public entry points are `EllipticCurveQ.GlobalMinimalModel`, `Conductor`,
 `GetGlobalMinimalModel(CancellationToken)`, `GetConductor(CancellationToken)` and
 `GetRankBounds(int searchBound, int maxSquareClasses, CancellationToken)`.
 They perform no HTTP requests, start no processes and use no elliptic-curve database.
 Singular input is rejected. The algebraic computations use `BigInteger` and
 `BigRational` throughout. The additional analytic API uses numerical integration
-and a separate rigorous interval calculation, as described below.
+and a separate rigorous interval calculation, as described below. Exact point maps,
+full local invariants, heights, periods and subgroup saturation are documented in
+[the extended arithmetic notes](heights-and-saturation.md).
 
 ## Minimal model and conductor
 
@@ -24,8 +26,9 @@ the II*, III*, IV* branches. The conductor is the product of p raised to these e
 
 The mathematical reference is [Cremona, Algorithms for Modular Elliptic Curves,
 Chapter III, sections 3.1–3.2](https://johncremona.github.io/book/fulltext/chapter3.pdf).
-The implementation uses integral reconstruction for minimization and applies only
-the required conductor portion of Tate's algorithm; it does not expose Tamagawa numbers.
+The implementation uses integral reconstruction for minimization. `GetLocalData`
+also runs the full local classification and exposes Kodaira symbols, reduction
+types, minimal discriminant valuations, Tamagawa numbers and local root numbers.
 
 ## Rank bounds with rational 2-torsion
 
@@ -194,7 +197,9 @@ not cryptographic-size curves. Work limits return `Inconclusive`; invalid option
 and singular curves throw. Cancellation propagates as `OperationCanceledException`.
 The earlier minimization and factorization steps can dominate the cost and are
 not bounded by these numerical work limits. This is not a complete BSD leading-term
-formula implementation: periods, regulators, Tamagawa factors and Sha are absent.
+formula implementation: the analytic-rank routine does not assemble a BSD quotient.
+Periods, subgroup regulators and Tamagawa factors are available separately;
+the Tate–Shafarevich group order is not computed.
 
 ## Regression data
 

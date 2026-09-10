@@ -1,0 +1,610 @@
+{
+  "labels": [
+    "11.a1",
+    "11.a",
+    "11.a1",
+    "11.a1",
+    "11.a1",
+    "11.a1",
+    "11.a1",
+    "11.a"
+  ],
+  "tables": [
+    "ec_curvedata",
+    "ec_classdata",
+    "ec_mwbsd",
+    "ec_iwasawa",
+    "ec_torsion_growth",
+    "ec_localdata",
+    "ec_galrep",
+    "ec_padic"
+  ],
+  "label_cols": [
+    "lmfdb_label",
+    "lmfdb_iso",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_iso"
+  ],
+  "timestamp": "2026-09-10T12:16:48.458441",
+  "data": [
+    [
+      {
+        "id": 1,
+        "Ciso": "11a",
+        "Clabel": "11a2",
+        "Cnumber": 2,
+        "abc_quality": 1.0929566831983986,
+        "absD": 11,
+        "adelic_genus": 37,
+        "adelic_index": 1200,
+        "adelic_level": 550,
+        "ainvs": [
+          0,
+          -1,
+          1,
+          -7820,
+          -263580
+        ],
+        "analytic_rank": 0,
+        "bad_primes": [
+          11
+        ],
+        "class_deg": 25,
+        "class_size": 3,
+        "cm": 0,
+        "conductor": 11,
+        "degree": 5,
+        "elladic_images": [
+          "25.120.0.3"
+        ],
+        "faltings_height": {
+          "__RealLiteral__": 0,
+          "data": "0.49670911509864712261136540515",
+          "prec": 97
+        },
+        "faltings_index": 2,
+        "faltings_ratio": 25,
+        "intrinsic_torsion": 1,
+        "iso_nlabel": 0,
+        "isogeny_degrees": [
+          1,
+          5,
+          25
+        ],
+        "jinv": [
+          -52893159101157376,
+          11
+        ],
+        "lmfdb_iso": "11.a",
+        "lmfdb_label": "11.a1",
+        "lmfdb_number": 1,
+        "manin_constant": 1,
+        "min_quad_twist_ainvs": [
+          0,
+          -1,
+          1,
+          -7820,
+          -263580
+        ],
+        "min_quad_twist_disc": 1,
+        "modell_images": [
+          "5B.1.2"
+        ],
+        "modm_images": [
+          "5.24.0-5.a.2.2",
+          "22.2.0.a.1",
+          "25.120.0-25.a.2.2",
+          "110.48.1.?",
+          "275.600.12.?",
+          "550.1200.37.?"
+        ],
+        "nonmax_primes": [
+          5
+        ],
+        "nonmax_rad": 5,
+        "num_bad_primes": 1,
+        "num_int_pts": 0,
+        "optimality": 0,
+        "potential_good_reduction": false,
+        "rank": 0,
+        "regulator": 1,
+        "semistable": true,
+        "serre_invariants": [
+          [
+            11,
+            12,
+            1
+          ]
+        ],
+        "sha": 1,
+        "sha_primes": [],
+        "signD": -1,
+        "stable_faltings_height": {
+          "__RealLiteral__": 0,
+          "data": "0.49670911509864712261136540515",
+          "prec": 97
+        },
+        "szpiro_ratio": 16.058687318281603,
+        "torsion": 1,
+        "torsion_primes": [],
+        "torsion_structure": []
+      }
+    ],
+    [
+      {
+        "id": 0,
+        "anlist": [
+          0,
+          1,
+          -2,
+          -1,
+          2,
+          1,
+          2,
+          -2,
+          0,
+          -2,
+          -2,
+          1,
+          -2,
+          4,
+          4,
+          -1,
+          -4,
+          -2,
+          4,
+          0,
+          2
+        ],
+        "aplist": [
+          -2,
+          -1,
+          1,
+          -2,
+          1,
+          4,
+          -2,
+          0,
+          -1,
+          0,
+          7,
+          3,
+          -8,
+          -6,
+          8,
+          -6,
+          5,
+          12,
+          -7,
+          -3,
+          4,
+          -10,
+          -6,
+          15,
+          -7
+        ],
+        "class_deg": 25,
+        "class_size": 3,
+        "conductor": 11,
+        "isogeny_matrix": [
+          [
+            1,
+            5,
+            25
+          ],
+          [
+            5,
+            1,
+            5
+          ],
+          [
+            25,
+            5,
+            1
+          ]
+        ],
+        "lmfdb_iso": "11.a",
+        "trace_hash": 1428752966040989219
+      }
+    ],
+    [
+      {
+        "id": 1,
+        "area": {
+          "__RealLiteral__": 0,
+          "data": "0.37030872469119186354160134237",
+          "prec": 97
+        },
+        "conductor": 11,
+        "gens": [],
+        "heights": [],
+        "lmfdb_label": "11.a1",
+        "ngens": 0,
+        "rank_bounds": [
+          0,
+          0
+        ],
+        "real_period": {
+          "__RealLiteral__": 0,
+          "data": "0.25384186085591068433775892335",
+          "prec": 97
+        },
+        "sha_an": {
+          "__RealLiteral__": 0,
+          "data": "1.0000000000000000000000000000",
+          "prec": 97
+        },
+        "special_value": {
+          "__RealLiteral__": 0,
+          "data": "0.25384186085591068433775892335043887465",
+          "prec": 127
+        },
+        "tamagawa_product": 1,
+        "torsion_generators": [],
+        "xcoord_integral_points": []
+      }
+    ],
+    [
+      {
+        "id": 1,
+        "iwdata": {
+          "2": [
+            0,
+            1,
+            0
+          ],
+          "3": [
+            0,
+            0
+          ],
+          "5": [
+            0,
+            2
+          ],
+          "11": [
+            1,
+            0
+          ]
+        },
+        "iwp0": 7,
+        "lmfdb_label": "11.a1"
+      }
+    ],
+    [
+      {
+        "id": 6,
+        "degree": 3,
+        "field": [
+          1,
+          1,
+          -1,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          2
+        ]
+      },
+      {
+        "id": 7,
+        "degree": 4,
+        "field": [
+          1,
+          -1,
+          1,
+          -1,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          5
+        ]
+      },
+      {
+        "id": 8,
+        "degree": 5,
+        "field": [
+          -11,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          5
+        ]
+      },
+      {
+        "id": 9,
+        "degree": 6,
+        "field": [
+          1,
+          -1,
+          2,
+          -3,
+          2,
+          -1,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          2,
+          2
+        ]
+      },
+      {
+        "id": 10,
+        "degree": 8,
+        "field": [
+          -1,
+          1,
+          2,
+          -7,
+          7,
+          -7,
+          7,
+          -4,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          3
+        ]
+      },
+      {
+        "id": 11,
+        "degree": 12,
+        "field": [
+          -1,
+          6,
+          -10,
+          4,
+          -3,
+          12,
+          -8,
+          -4,
+          5,
+          -2,
+          6,
+          -4,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          4
+        ]
+      },
+      {
+        "id": 12,
+        "degree": 12,
+        "field": [
+          1,
+          1,
+          2,
+          4,
+          7,
+          -8,
+          3,
+          2,
+          -3,
+          2,
+          0,
+          -1,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          10
+        ]
+      },
+      {
+        "id": 13,
+        "degree": 15,
+        "field": [
+          1331,
+          0,
+          0,
+          0,
+          0,
+          2541,
+          0,
+          0,
+          0,
+          0,
+          -11,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          10
+        ]
+      },
+      {
+        "id": 14,
+        "degree": 20,
+        "field": [
+          20736,
+          -8640,
+          -13680,
+          -4380,
+          11785,
+          -30338,
+          12890,
+          13055,
+          4555,
+          -11860,
+          9489,
+          -4380,
+          815,
+          -35,
+          20,
+          -77,
+          70,
+          -35,
+          15,
+          -5,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          5,
+          5
+        ]
+      },
+      {
+        "id": 16,
+        "degree": 20,
+        "field": [
+          1771561,
+          0,
+          0,
+          0,
+          0,
+          -54571,
+          0,
+          0,
+          0,
+          0,
+          1881,
+          0,
+          0,
+          0,
+          0,
+          -41,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          25
+        ]
+      },
+      {
+        "id": 15,
+        "degree": 20,
+        "field": [
+          25937424601,
+          0,
+          0,
+          0,
+          0,
+          -72634001,
+          0,
+          0,
+          0,
+          0,
+          227601,
+          0,
+          0,
+          0,
+          0,
+          -451,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "lmfdb_label": "11.a1",
+        "torsion": [
+          25
+        ]
+      }
+    ],
+    [
+      {
+        "id": 1,
+        "conductor": 11,
+        "conductor_valuation": 1,
+        "discriminant_valuation": 1,
+        "j_denominator_valuation": 1,
+        "kodaira_symbol": 5,
+        "lmfdb_label": "11.a1",
+        "prime": 11,
+        "reduction_type": 1,
+        "root_number": -1,
+        "tamagawa_number": 1
+      }
+    ],
+    [
+      {
+        "id": 1665888,
+        "adelic_gens": [
+          [
+            336,
+            145,
+            515,
+            216
+          ],
+          [
+            38,
+            41,
+            191,
+            539
+          ],
+          [
+            1,
+            50,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            50,
+            1
+          ],
+          [
+            440,
+            9,
+            127,
+            213
+          ],
+          [
+            501,
+            50,
+            500,
+            51
+          ]
+        ],
+        "adelic_image": "550.1200.37.?",
+        "conductor": 11,
+        "lmfdb_label": "11.a1",
+        "prime": 0
+      },
+      {
+        "id": 0,
+        "conductor": 11,
+        "elladic_image": "25.120.0.3",
+        "lmfdb_label": "11.a1",
+        "modell_image": "5B.1.2",
+        "prime": 5
+      }
+    ],
+    []
+  ],
+  "totals": [
+    1,
+    1,
+    1,
+    1,
+    11,
+    1,
+    2,
+    0
+  ],
+  "limit": 100
+}

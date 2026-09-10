@@ -1,0 +1,667 @@
+{
+  "labels": [
+    "389.a1",
+    "389.a",
+    "389.a1",
+    "389.a1",
+    "389.a1",
+    "389.a1",
+    "389.a1",
+    "389.a"
+  ],
+  "tables": [
+    "ec_curvedata",
+    "ec_classdata",
+    "ec_mwbsd",
+    "ec_iwasawa",
+    "ec_torsion_growth",
+    "ec_localdata",
+    "ec_galrep",
+    "ec_padic"
+  ],
+  "label_cols": [
+    "lmfdb_label",
+    "lmfdb_iso",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_label",
+    "lmfdb_iso"
+  ],
+  "timestamp": "2026-09-10T12:16:48.473208",
+  "data": [
+    [
+      {
+        "id": 1612,
+        "Ciso": "389a",
+        "Clabel": "389a1",
+        "Cnumber": 1,
+        "abc_quality": 0.6954612095570056,
+        "absD": 389,
+        "adelic_genus": 0,
+        "adelic_index": 2,
+        "adelic_level": 778,
+        "ainvs": [
+          0,
+          1,
+          1,
+          -2,
+          0
+        ],
+        "analytic_rank": 2,
+        "bad_primes": [
+          389
+        ],
+        "class_deg": 1,
+        "class_size": 1,
+        "cm": 0,
+        "conductor": 389,
+        "degree": 40,
+        "elladic_images": [],
+        "faltings_height": {
+          "__RealLiteral__": 0,
+          "data": "-0.79564165429425290828872937437",
+          "prec": 97
+        },
+        "faltings_index": 0,
+        "faltings_ratio": 1,
+        "intrinsic_torsion": 1,
+        "iso_nlabel": 0,
+        "isogeny_degrees": [
+          1
+        ],
+        "jinv": [
+          1404928,
+          389
+        ],
+        "lmfdb_iso": "389.a",
+        "lmfdb_label": "389.a1",
+        "lmfdb_number": 1,
+        "manin_constant": 1,
+        "min_quad_twist_ainvs": [
+          0,
+          1,
+          1,
+          -2,
+          0
+        ],
+        "min_quad_twist_disc": 1,
+        "modell_images": [],
+        "modm_images": [
+          "778.2.0.?"
+        ],
+        "nonmax_primes": [],
+        "nonmax_rad": 1,
+        "num_bad_primes": 1,
+        "num_int_pts": 20,
+        "optimality": 1,
+        "potential_good_reduction": false,
+        "rank": 2,
+        "regulator": {
+          "__RealLiteral__": 0,
+          "data": "0.15246017794314375162432475705",
+          "prec": 97
+        },
+        "semistable": true,
+        "serre_invariants": [
+          [
+            389,
+            390,
+            1
+          ]
+        ],
+        "sha": 1,
+        "sha_primes": [],
+        "signD": 1,
+        "stable_faltings_height": {
+          "__RealLiteral__": 0,
+          "data": "-0.79564165429425290828872937437",
+          "prec": 97
+        },
+        "szpiro_ratio": 2.3736577981532028,
+        "torsion": 1,
+        "torsion_primes": [],
+        "torsion_structure": []
+      }
+    ],
+    [
+      {
+        "id": 690,
+        "anlist": [
+          0,
+          1,
+          -2,
+          -2,
+          2,
+          -3,
+          4,
+          -5,
+          0,
+          1,
+          6,
+          -4,
+          -4,
+          -3,
+          10,
+          6,
+          -4,
+          -6,
+          -2,
+          5,
+          -6
+        ],
+        "aplist": [
+          -2,
+          -2,
+          -3,
+          -5,
+          -4,
+          -3,
+          -6,
+          5,
+          -4,
+          -6,
+          4,
+          -8,
+          -3,
+          12,
+          -2,
+          -6,
+          3,
+          -8,
+          -5,
+          -10,
+          -7,
+          -13,
+          -12,
+          -8,
+          -9
+        ],
+        "class_deg": 1,
+        "class_size": 1,
+        "conductor": 389,
+        "isogeny_matrix": [
+          [
+            1
+          ]
+        ],
+        "lmfdb_iso": "389.a",
+        "trace_hash": 680508473259657034
+      }
+    ],
+    [
+      {
+        "id": 1612,
+        "area": {
+          "__RealLiteral__": 0,
+          "data": "4.9100459911153901762683326412",
+          "prec": 97
+        },
+        "conductor": 389,
+        "gens": [
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            1
+          ]
+        ],
+        "heights": [
+          {
+            "__RealLiteral__": 0,
+            "data": "0.32700077365160495184325924541",
+            "prec": 97
+          },
+          {
+            "__RealLiteral__": 0,
+            "data": "0.47671165934373953737948605888",
+            "prec": 97
+          }
+        ],
+        "lmfdb_label": "389.a1",
+        "ngens": 2,
+        "rank_bounds": [
+          2,
+          2
+        ],
+        "real_period": {
+          "__RealLiteral__": 0,
+          "data": "4.9804251217101101506427155839",
+          "prec": 97
+        },
+        "sha_an": {
+          "__RealLiteral__": 0,
+          "data": "1.0000000000000000000000000000",
+          "prec": 97
+        },
+        "special_value": {
+          "__RealLiteral__": 0,
+          "data": "0.75931650028842677023019260789484245311",
+          "prec": 127
+        },
+        "tamagawa_product": 1,
+        "torsion_generators": [],
+        "xcoord_integral_points": [
+          -2,
+          -1,
+          0,
+          1,
+          3,
+          4,
+          6,
+          39,
+          133,
+          188
+        ]
+      }
+    ],
+    [
+      {
+        "id": 1612,
+        "iwdata": {
+          "2": [
+            2,
+            3,
+            0
+          ],
+          "3": [
+            2,
+            0
+          ],
+          "5": [
+            2,
+            0
+          ],
+          "7": [
+            2,
+            0
+          ],
+          "11": [
+            2,
+            0
+          ],
+          "13": [
+            2,
+            0
+          ],
+          "17": [
+            2,
+            0
+          ],
+          "19": [
+            2,
+            0
+          ],
+          "23": [
+            2,
+            0
+          ],
+          "29": [
+            2,
+            0
+          ],
+          "31": [
+            2,
+            0
+          ],
+          "37": [
+            2,
+            0
+          ],
+          "41": [
+            2,
+            0
+          ],
+          "43": [
+            2,
+            0
+          ],
+          "47": [
+            2,
+            0
+          ],
+          "389": [
+            3,
+            0
+          ]
+        },
+        "iwp0": 0,
+        "lmfdb_label": "389.a1"
+      }
+    ],
+    [
+      {
+        "id": 16747,
+        "degree": 3,
+        "field": [
+          11,
+          -9,
+          -1,
+          1
+        ],
+        "lmfdb_label": "389.a1",
+        "torsion": [
+          2
+        ]
+      },
+      {
+        "id": 16748,
+        "degree": 6,
+        "field": [
+          44,
+          124,
+          52,
+          -80,
+          -42,
+          0,
+          1
+        ],
+        "lmfdb_label": "389.a1",
+        "torsion": [
+          2,
+          2
+        ]
+      },
+      {
+        "id": 16749,
+        "degree": 8,
+        "field": [
+          -83,
+          -31,
+          64,
+          -67,
+          37,
+          -7,
+          7,
+          -4,
+          1
+        ],
+        "lmfdb_label": "389.a1",
+        "torsion": [
+          3
+        ]
+      },
+      {
+        "id": 16750,
+        "degree": 12,
+        "field": [
+          2533,
+          -4292,
+          -7590,
+          4028,
+          4179,
+          -2808,
+          -1192,
+          624,
+          115,
+          4,
+          -10,
+          -4,
+          1
+        ],
+        "lmfdb_label": "389.a1",
+        "torsion": [
+          4
+        ]
+      }
+    ],
+    [
+      {
+        "id": 3904,
+        "conductor": 389,
+        "conductor_valuation": 1,
+        "discriminant_valuation": 1,
+        "j_denominator_valuation": 1,
+        "kodaira_symbol": 5,
+        "lmfdb_label": "389.a1",
+        "prime": 389,
+        "reduction_type": 1,
+        "root_number": -1,
+        "tamagawa_number": 1
+      }
+    ],
+    [
+      {
+        "id": 1667446,
+        "adelic_gens": [
+          [
+            1,
+            1,
+            777,
+            0
+          ],
+          [
+            777,
+            2,
+            776,
+            3
+          ],
+          [
+            391,
+            2,
+            391,
+            3
+          ],
+          [
+            1,
+            0,
+            2,
+            1
+          ],
+          [
+            1,
+            2,
+            0,
+            1
+          ]
+        ],
+        "adelic_image": "778.2.0.?",
+        "conductor": 389,
+        "lmfdb_label": "389.a1",
+        "prime": 0
+      }
+    ],
+    [
+      {
+        "id": 5120,
+        "lmfdb_iso": "389.a",
+        "p": 5,
+        "prec": 20,
+        "unit": 16082002093061,
+        "val": 2
+      },
+      {
+        "id": 5121,
+        "lmfdb_iso": "389.a",
+        "p": 7,
+        "prec": 20,
+        "unit": 711896842136136,
+        "val": 2
+      },
+      {
+        "id": 5122,
+        "lmfdb_iso": "389.a",
+        "p": 11,
+        "prec": 20,
+        "unit": 48633638330502867569,
+        "val": 2
+      },
+      {
+        "id": 5123,
+        "lmfdb_iso": "389.a",
+        "p": 13,
+        "prec": 20,
+        "unit": 1375705414651705276681,
+        "val": 2
+      },
+      {
+        "id": 5124,
+        "lmfdb_iso": "389.a",
+        "p": 17,
+        "prec": 20,
+        "unit": 140200436863911099154838,
+        "val": 2
+      },
+      {
+        "id": 5125,
+        "lmfdb_iso": "389.a",
+        "p": 19,
+        "prec": 20,
+        "unit": 231156019609570052776845,
+        "val": 2
+      },
+      {
+        "id": 5126,
+        "lmfdb_iso": "389.a",
+        "p": 23,
+        "prec": 20,
+        "unit": 35890347384991171239646858,
+        "val": 2
+      },
+      {
+        "id": 5127,
+        "lmfdb_iso": "389.a",
+        "p": 29,
+        "prec": 20,
+        "unit": 1984208059156772830012757412,
+        "val": 2
+      },
+      {
+        "id": 5128,
+        "lmfdb_iso": "389.a",
+        "p": 31,
+        "prec": 20,
+        "unit": 8753226047831130168695486840,
+        "val": 2
+      },
+      {
+        "id": 5129,
+        "lmfdb_iso": "389.a",
+        "p": 37,
+        "prec": 20,
+        "unit": 141735829378159737459847353274,
+        "val": 2
+      },
+      {
+        "id": 5130,
+        "lmfdb_iso": "389.a",
+        "p": 41,
+        "prec": 20,
+        "unit": 1944996767540747344111101892010,
+        "val": 2
+      },
+      {
+        "id": 5131,
+        "lmfdb_iso": "389.a",
+        "p": 43,
+        "prec": 20,
+        "unit": 126014832691857445651782539638,
+        "val": 2
+      },
+      {
+        "id": 5132,
+        "lmfdb_iso": "389.a",
+        "p": 47,
+        "prec": 20,
+        "unit": 2931879115741308745725253008830,
+        "val": 2
+      },
+      {
+        "id": 5133,
+        "lmfdb_iso": "389.a",
+        "p": 53,
+        "prec": 20,
+        "unit": 129100672510210236984083063057057,
+        "val": 2
+      },
+      {
+        "id": 5134,
+        "lmfdb_iso": "389.a",
+        "p": 59,
+        "prec": 20,
+        "unit": 3912062508031725074409747582584008,
+        "val": 2
+      },
+      {
+        "id": 5135,
+        "lmfdb_iso": "389.a",
+        "p": 61,
+        "prec": 20,
+        "unit": 2135333984043897544710914984745888,
+        "val": 2
+      },
+      {
+        "id": 5136,
+        "lmfdb_iso": "389.a",
+        "p": 67,
+        "prec": 20,
+        "unit": 7497494459087502668526640329195494,
+        "val": 2
+      },
+      {
+        "id": 5137,
+        "lmfdb_iso": "389.a",
+        "p": 71,
+        "prec": 20,
+        "unit": 4681656116300235449430899504738966,
+        "val": 2
+      },
+      {
+        "id": 5138,
+        "lmfdb_iso": "389.a",
+        "p": 73,
+        "prec": 20,
+        "unit": 198099340152479011033613833244916755,
+        "val": 2
+      },
+      {
+        "id": 5139,
+        "lmfdb_iso": "389.a",
+        "p": 79,
+        "prec": 20,
+        "unit": 176368685911643338690853296790352863,
+        "val": 2
+      },
+      {
+        "id": 5140,
+        "lmfdb_iso": "389.a",
+        "p": 83,
+        "prec": 20,
+        "unit": 1338009351032517770432868580911056184,
+        "val": 2
+      },
+      {
+        "id": 5141,
+        "lmfdb_iso": "389.a",
+        "p": 89,
+        "prec": 20,
+        "unit": 5538647328875298780925290454401367013,
+        "val": 2
+      },
+      {
+        "id": 5142,
+        "lmfdb_iso": "389.a",
+        "p": 97,
+        "prec": 20,
+        "unit": 15024250500082266317162128343484437118,
+        "val": 2
+      }
+    ]
+  ],
+  "totals": [
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1,
+    23
+  ],
+  "limit": 100
+}
