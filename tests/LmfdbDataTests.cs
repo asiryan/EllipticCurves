@@ -76,6 +76,7 @@ public class LmfdbDataTests
         s = Snapshot(); Mw(s)["lmfdb_label"] = "11.a1"; Assert.Throws<FormatException>(() => LmfdbEllipticCurve.FromStoredDataJson(s.ToJsonString()));
         s = Snapshot(); Mw(s)["gens"] = new JsonArray(new JsonArray(0, 1, 1)); Assert.Throws<FormatException>(() => LmfdbEllipticCurve.FromStoredDataJson(s.ToJsonString()));
         s = Snapshot(); Mw(s)["tamagawa_product"] = 9; Assert.Throws<FormatException>(() => LmfdbEllipticCurve.FromStoredDataJson(s.ToJsonString()));
+        s = Snapshot(); Curve(s)["regulator"] = ".-1"; Assert.Throws<FormatException>(() => LmfdbEllipticCurve.FromStoredDataJson(s.ToJsonString()));
         s = Snapshot(); s["data"][5] = new JsonArray(); s["totals"][5] = 0; Assert.Throws<FormatException>(() => LmfdbEllipticCurve.FromStoredDataJson(s.ToJsonString()));
     }
     [Fact]

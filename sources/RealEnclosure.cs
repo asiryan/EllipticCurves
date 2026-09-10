@@ -23,9 +23,26 @@ namespace EllipticCurves
         internal static double ToDouble(BigRational r)
         {
             if (r.IsZero) return 0;
-            int n = RealArithmetic.BitLength(r.Num), d = RealArithmetic.BitLength(r.Den);
-            int ns = Math.Max(0, n - 54), ds = Math.Max(0, d - 54);
-            return (double)(r.Num >> ns) / (double)(r.Den >> ds) * Math.Pow(2, ns - ds);
+            int sign = r.Num.Sign;
+            var numerator = BigInteger.Abs(r.Num);
+            var denominator = r.Den;
+            int exponent = RealArithmetic.BitLength(numerator) - RealArithmetic.BitLength(denominator);
+            if (exponent > 1024) return sign * double.PositiveInfinity;
+            if (exponent < -1075) return sign * 0.0;
+            if ((exponent >= 0 ? numerator.CompareTo(denominator << exponent)
+                : (numerator << -exponent).CompareTo(denominator)) < 0) exponent--;
+            if (exponent > 1023) return sign * double.PositiveInfinity;
+
+            // Round the exact quotient once, to nearest with ties to even.
+            // Subnormals use the fixed 2^-1074 grid; avoid underflowing a scale
+            // factor before the significand has been taken into account.
+            int power = Math.Max(exponent - 52, -1074);
+            if (power >= 0) denominator <<= power;
+            else numerator <<= -power;
+            var significand = BigInteger.DivRem(numerator, denominator, out var remainder);
+            int comparison = (remainder << 1).CompareTo(denominator);
+            if (comparison > 0 || (comparison == 0 && !significand.IsEven)) significand++;
+            return sign * (double)significand * Math.Pow(2, power);
         }
     }
 }

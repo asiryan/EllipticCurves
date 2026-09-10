@@ -1,12 +1,15 @@
 using System;
 using System.Globalization;
 using System.Numerics;
+using System.Text.RegularExpressions;
 
 namespace EllipticCurves
 {
     /// <summary>A stored LMFDB decimal approximation, not a certified error interval.</summary>
     public sealed class LmfdbRealValue
     {
+        private static readonly Regex DecimalPattern = new Regex(@"\A[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\z", RegexOptions.CultureInvariant);
+
         /// <summary>The decimal text as supplied by the database.</summary>
         public string DecimalValue { get; }
         /// <summary>Stored precision metadata, when supplied; this is not an error bound.</summary>
@@ -21,9 +24,12 @@ namespace EllipticCurves
         /// <summary>Converts the stored decimal to an exact rational, without asserting mathematical accuracy.</summary>
         public BigRational AsRational()
         {
-            var parts = DecimalValue.Trim().Split('e', 'E');
-            if (parts.Length > 2) throw new FormatException("LMFDB: invalid decimal.");
-            int exponent = parts.Length == 2 ? int.Parse(parts[1], CultureInfo.InvariantCulture) : 0;
+            var value = DecimalValue?.Trim() ?? string.Empty;
+            if (!DecimalPattern.IsMatch(value)) throw new FormatException("LMFDB: invalid decimal.");
+            var parts = value.Split('e', 'E');
+            int exponent = 0;
+            if (parts.Length == 2 && !int.TryParse(parts[1], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out exponent))
+                throw new FormatException("LMFDB: decimal exponent exceeds supported range.");
             if (exponent < -10000 || exponent > 10000) throw new FormatException("LMFDB: decimal exponent exceeds supported range.");
             var mantissa = parts[0]; int dot = mantissa.IndexOf('.');
             if (dot >= 0) { exponent -= mantissa.Length - dot - 1; mantissa = mantissa.Remove(dot, 1); }
