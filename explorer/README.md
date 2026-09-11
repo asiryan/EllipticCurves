@@ -48,7 +48,9 @@ A session preserves the exact equation, slider step and positions, selected
 example, grid and sample visibility, active visualization, selected torus point,
 sidebar widths and collapsed states, Coefficients
 expansion, scroll positions, and up to 50 calculation reports with their original
-inputs, limits, timestamps and selected result. Samples and periods are recomputed
+inputs, limits and timestamps. Opening a session selects the newest result;
+browsing other results does not trigger an unsaved-changes warning. Adding,
+deleting or changing results still does. Samples and periods are recomputed
 locally as needed. Open calculation parameter windows are not saved and close when
 another session is opened.
 The real plot and torus camera are saved at **Reset view**. Opening a session,

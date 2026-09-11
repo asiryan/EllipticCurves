@@ -35,6 +35,8 @@ public sealed class ExplorerSessionTests
         };
         Assert.All(changes, changed => Assert.False(SessionChanges.Equal(baseline, changed)));
         var history = Example();
+        Assert.False(SessionChanges.Equal(history, history with { History = history.History.Skip(1).ToList() }));
+        Assert.False(SessionChanges.Equal(history, history with { History = new() }));
         var updated = history with { History = history.History.ToList() };
         Assert.True(SessionChanges.Equal(history, updated));
         updated.History[0] = updated.History[0] with { Result = "A changed result" };
@@ -69,7 +71,7 @@ public sealed class ExplorerSessionTests
         SliderStep = "1/7", SliderOffsets = new[] { 2, -3, 4, -5, 6 }, ShowGrid = false, ShowPoints = false,
         ComplexView = true, CoefficientsExpanded = true, EquationScrollOffset = 37, TorusScrollOffset = 21,
         Plot = new(1.25, -2.5, 9.75), TorusCamera = new(-47, 26, 8.4), SelectedTorusPoint = "O",
-        EquationPanel = new(false, 350), ResultsPanel = new(true, 420), SelectedResult = 1,
+        EquationPanel = new(false, 350), ResultsPanel = new(true, 420),
         History = new()
         {
             new(new("Q.TorsionStructure", "y^2 = x^3 - x", new() { ["example"] = "1/3\nπ" }, 35, 17),
@@ -88,6 +90,7 @@ public sealed class ExplorerSessionTests
             var original = Example();
             SessionFile.Save(path, original);
             var loaded = SessionFile.Load(path);
+            Assert.DoesNotContain("\"SelectedResult\"", File.ReadAllText(path));
             Assert.Equal(JsonSerializer.Serialize(original), JsonSerializer.Serialize(loaded));
             Assert.True(SessionChanges.Equal(original, loaded));
             using var model = new MainViewModel();
@@ -102,17 +105,20 @@ public sealed class ExplorerSessionTests
             Assert.Equal(new BigRational(-7, 11) + new BigRational(1, 7), coefficient.ExactValue);
             Assert.Equal(minimum, coefficient.SliderMinimum);
             using var workbench = new WorkbenchViewModel();
-            workbench.RestoreHistory(loaded.History, loaded.SelectedResult);
+            workbench.RestoreHistory(loaded.History);
             Assert.False(workbench.IsBusy);
             Assert.Null(workbench.Active);
-            Assert.Same(workbench.Jobs[1], workbench.Selected);
-            Assert.Equal("Interrupted", workbench.Selected.Status);
+            Assert.Same(workbench.Jobs[0], workbench.Selected);
+            Assert.Equal("Interrupted", workbench.Jobs[1].Status);
             Assert.Equal(original.History[0].StartedAt, workbench.Jobs[0].StartedAt);
             Assert.Equal(original.History[0].Result, workbench.Jobs[0].Result);
             Assert.Equal(35, workbench.Jobs[0].Request.TimeoutSeconds);
             Assert.Equal(17, workbench.Jobs[0].Request.MaxItems);
             Assert.Equal("1/3\nπ", workbench.Jobs[0].Request.Arguments["example"]);
             Assert.Contains("1/3", workbench.Jobs[0].Report);
+            workbench.RestoreHistory(Array.Empty<CalculationSession>());
+            Assert.Empty(workbench.Jobs);
+            Assert.Null(workbench.Selected);
         }
         finally { File.Delete(path); }
     }
@@ -129,7 +135,6 @@ public sealed class ExplorerSessionTests
     [InlineData("history")]
     [InlineData("unknown-operation")]
     [InlineData("null-arguments")]
-    [InlineData("selection")]
     public void InvalidFilesAreRejectedBeforeRestoringState(string defect)
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ec");
@@ -148,7 +153,6 @@ public sealed class ExplorerSessionTests
                 case "history": json["History"] = null; break;
                 case "unknown-operation": json["History"][0]["Request"]["OperationId"] = "missing"; break;
                 case "null-arguments": json["History"][0]["Request"]["Arguments"] = null; break;
-                case "selection": json["SelectedResult"] = 9; break;
             }
             File.WriteAllText(path, defect == "invalid-json" ? "{broken" : json.ToJsonString());
             Assert.Throws<InvalidDataException>(() => SessionFile.Load(path));

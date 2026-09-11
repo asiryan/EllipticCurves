@@ -180,8 +180,7 @@ public partial class MainWindow
             TorusCamera = TorusView.CaptureCamera(),
             EquationPanel = CaptureSidebar(equationSidebar, EquationColumn),
             ResultsPanel = CaptureSidebar(resultsSidebar, ResultsColumn),
-            History = Workbench.Jobs.Select(job => job.CaptureSession()).ToList(),
-            SelectedResult = Workbench.Selected == null ? -1 : Workbench.Jobs.IndexOf(Workbench.Selected)
+            History = Workbench.Jobs.Select(job => job.CaptureSession()).ToList()
         };
     }
 
@@ -194,7 +193,7 @@ public partial class MainWindow
         if (!Workbench.CanRun) throw new InvalidOperationException("Stop the active calculation before opening a session.");
         foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
         ViewModel.RestoreSession(saved);
-        Workbench.RestoreHistory(saved.History, saved.SelectedResult);
+        Workbench.RestoreHistory(saved.History);
         // Older files may contain a panned/zoomed view. Refit at the current layout
         // when the real plot becomes visible, including after opening in torus mode.
         realViewResetPending = true;

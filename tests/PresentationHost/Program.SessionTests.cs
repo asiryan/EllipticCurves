@@ -122,7 +122,7 @@ internal static partial class Program
         finally { File.Delete(input); File.Delete(output); }
     }
 
-    private static void CheckSessionGraphNavigation()
+    private static void CheckSessionNavigation()
     {
         var input = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ec");
         var output = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ec");
@@ -136,7 +136,14 @@ internal static partial class Program
                 {
                     Equation = "y^2 + x*y + y = x^3 - 5*x + 3", Preset = null, SliderOffsets = Array.Empty<int>(),
                     ComplexView = complex, Plot = new(1e18, -1e18, 1e8), FitRealViewWhenShown = false,
-                    TorusCamera = new(-71, 23, 8.9)
+                    TorusCamera = new(-71, 23, 8.9),
+                    History = new()
+                    {
+                        new(new("Q.TorsionStructure", "y^2 = x^3 - x", new()), new DateTime(2026, 9, 11, 21, 42, 0),
+                            "Completed", "Done", TimeSpan.FromSeconds(2), 100, "Newest result"),
+                        new(new("Q.TorsionStructure", "y^2 = x^3 + x", new()), new DateTime(2026, 9, 11, 21, 40, 0),
+                            "Completed", "Done", TimeSpan.FromSeconds(1), 100, "Older result")
+                    }
                 };
                 SessionFile.Save(input, legacy);
                 var prompts = 0;
@@ -159,6 +166,16 @@ internal static partial class Program
                     }
                     Require(torus.CaptureCamera() == TorusCameraState.Default && !window.HasUnsavedChanges,
                         "Opening/resetting a graph must leave a clean session and a default torus camera.");
+                    Require(window.Workbench.Selected == window.Workbench.Jobs[0],
+                        "Opening a session must select the newest result.");
+                    var results = (ResultsPanel)window.FindName("Results");
+                    var historyPicker = Descendants(results).OfType<ComboBox>().Single();
+                    foreach (var index in new[] { 1, 0, 1 })
+                    {
+                        historyPicker.SelectedIndex = index;
+                        Require(window.Workbench.Selected == window.Workbench.Jobs[index] && !window.HasUnsavedChanges,
+                            "Browsing the Results list must update the report without marking the session dirty.");
+                    }
                     var fitted = plot.GetResetView();
                     plot.RestoreView(new(1e18, -1e18, 1e8));
                     plot.Zoom(0.7);
@@ -169,6 +186,9 @@ internal static partial class Program
                     Require(!window.HasUnsavedChanges, "Panning, zooming or rotating a graph triggered unsaved changes.");
                     Require(window.TrySaveSession(), "An explicit save after graph navigation failed.");
                     var saved = SessionFile.Load(output);
+                    Require(System.Text.Json.JsonSerializer.Serialize(saved.History) == System.Text.Json.JsonSerializer.Serialize(legacy.History)
+                        && window.Workbench.Selected == window.Workbench.Jobs[1],
+                        "Saving must preserve every result, default to the newest and leave the displayed report unchanged.");
                     Require(saved.Plot == fitted && saved.FitRealViewWhenShown && saved.TorusCamera == TorusCameraState.Default,
                         "The file must contain Reset view regardless of the user's current graph navigation.");
                     Require(plot.CaptureView() == navigatedPlot && torus.CaptureCamera() == navigatedTorus && !window.HasUnsavedChanges,
@@ -179,6 +199,9 @@ internal static partial class Program
                     {
                         restored.RestoreSession(saved);
                         SettleSession(restored, 1120, 760);
+                        Require(restored.Workbench.Jobs.Count == 2 && restored.Workbench.Selected == restored.Workbench.Jobs[0]
+                            && restored.Workbench.Selected.Result == "Newest result",
+                            "Reopening must restore the whole history and display its newest result.");
                         var restoredPlot = (CurvePlot)restored.FindName("Plot");
                         // A file saved with the real plot hidden must fit it on first display.
                         ((ComboBox)restored.FindName("ViewMode")).SelectedIndex = 0;
@@ -193,8 +216,8 @@ internal static partial class Program
 
                     bool CloseWindow() { window.Close(); return closed; }
                     Require(action == "New" ? window.NewSession() : action == "Open" ? window.OpenSession() : CloseWindow(),
-                        $"{action} was blocked after graph navigation only.");
-                    Require(prompts == 0, $"{action} asked to save temporary graph navigation.");
+                        $"{action} was blocked after graph or result navigation only.");
+                    Require(prompts == 0, $"{action} asked to save temporary graph or result navigation.");
                 }
                 finally { if (!closed) window.Close(); }
             }

@@ -61,13 +61,14 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         NotifyState();
     }
 
-    public void RestoreHistory(IReadOnlyList<CalculationSession> history, int selectedIndex)
+    public void RestoreHistory(IReadOnlyList<CalculationSession> history)
     {
         if (!CanRun) throw new InvalidOperationException("Stop the active calculation before opening a session.");
         var restored = history.Select(CalculationJobViewModel.FromSession).ToArray();
         Jobs.Clear();
         foreach (var job in restored) Jobs.Add(job);
-        Selected = selectedIndex >= 0 ? Jobs[selectedIndex] : null;
+        // History is stored newest first; browsing another report is temporary.
+        Selected = Jobs.FirstOrDefault();
         NotifyState();
     }
 

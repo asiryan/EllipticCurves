@@ -39,7 +39,6 @@ public sealed record ExplorerSession
     public required SidebarSession EquationPanel { get; init; }
     public required SidebarSession ResultsPanel { get; init; }
     public required List<CalculationSession> History { get; init; }
-    public int SelectedResult { get; init; } = -1;
 
     public static ExplorerSession New() => new()
     {
@@ -111,8 +110,7 @@ public static class SessionFile
             throw new InvalidDataException("The session contains an invalid panel layout.");
         if (session.SelectedTorusPoint?.Length > 100_000)
             throw new InvalidDataException("The selected point is too large.");
-        if (session.History == null || session.History.Count > 50 || session.SelectedResult < -1
-            || session.SelectedResult >= session.History.Count)
+        if (session.History == null || session.History.Count > 50)
             throw new InvalidDataException("The session contains an invalid calculation history.");
         foreach (var job in session.History)
         {

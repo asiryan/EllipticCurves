@@ -1,8 +1,8 @@
 #nullable enable
 namespace EllipticCurves.Explorer.Models;
 
-// Graph navigation is temporary; files reopen at Reset view. Compare the other
-// session state without serializing large reports or committing incomplete edits.
+// Graph navigation and browsing results are temporary. Compare the session data
+// without serializing large reports or committing incomplete edits.
 public static class SessionChanges
 {
     public static bool Equal(ExplorerSession left, ExplorerSession right) =>
@@ -14,7 +14,7 @@ public static class SessionChanges
         // Background period mapping supplies O when no point has been selected.
         && PointKey(left.SelectedTorusPoint) == PointKey(right.SelectedTorusPoint)
         && left.EquationPanel == right.EquationPanel && left.ResultsPanel == right.ResultsPanel
-        && left.SelectedResult == right.SelectedResult && left.History.Count == right.History.Count
+        && left.History.Count == right.History.Count
         && left.History.Zip(right.History).All(pair => SameCalculation(pair.First, pair.Second));
 
     private static string PointKey(string? value) => value ?? EllipticCurvePoint.Infinity.ToString();
