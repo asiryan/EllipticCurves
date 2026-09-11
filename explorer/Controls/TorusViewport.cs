@@ -26,6 +26,7 @@ public sealed class TorusViewport : Grid
         span = TorusCameraState.Default.Span;
     private Point? pressedAt, previousMouse;
     private bool dragged;
+    internal event Action? ViewChanged;
 
     public IReadOnlyList<TorusPoint>? Points { get => (IReadOnlyList<TorusPoint>?)GetValue(PointsProperty); set => SetValue(PointsProperty, value); }
     public TorusPoint? SelectedPoint { get => (TorusPoint?)GetValue(SelectedPointProperty); set => SetValue(SelectedPointProperty, value); }
@@ -85,6 +86,7 @@ public sealed class TorusViewport : Grid
         camera.LookDirection = new Vector3D(-position.X, -position.Y, -position.Z);
         camera.UpDirection = new Vector3D(0, 1, 0);
         camera.Width = span * Math.Max(1, ActualWidth / Math.Max(1, ActualHeight));
+        ViewChanged?.Invoke();
     }
 
     internal TorusCameraState CaptureCamera() => new(azimuth, elevation, span);

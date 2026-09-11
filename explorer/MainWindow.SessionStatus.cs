@@ -70,6 +70,7 @@ public partial class MainWindow
     {
         if (sessionClosed) return;
         SessionStatus.Update(CurrentSessionState);
+        RefreshHistoryCommands();
         var title = SessionStatus.DisplayName + " — " + ExplorerInfo.WindowTitle;
         if (Title != title) Title = title;
         CommandManager.InvalidateRequerySuggested();

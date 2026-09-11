@@ -1,5 +1,6 @@
 #nullable enable
 using EllipticCurves.Explorer.Models;
+using System.Runtime.CompilerServices;
 
 namespace EllipticCurves.Explorer.ViewModels;
 
@@ -15,6 +16,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private CurvePreset? selectedPreset;
     private IReadOnlyList<EllipticCurvePoint> samples = Array.Empty<EllipticCurvePoint>();
     private string sampleStatus = "";
+    private readonly ConditionalWeakTable<CurveSnapshot, SampleMemento> sampleResults = new();
     public IReadOnlyList<CoefficientViewModel> Coefficients { get; }
     public IReadOnlyList<CoefficientViewModel> SimpleCoefficients { get; }
     public IReadOnlyList<CoefficientViewModel> ActiveCoefficients => IsSimpleForm ? SimpleCoefficients : Coefficients;
@@ -116,6 +118,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void StepChanged()
     {
+        if (updating || disposed) return;
         var nextStep = Step.IsValid ? Step.ExactValue : (BigRational?)null;
         if (appliedSliderStep == nextStep) return;
         appliedSliderStep = nextStep;
@@ -307,13 +310,88 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             token.ThrowIfCancellationRequested();
             Samples = points;
             SampleStatus = $"{points.Length} affine rational samples · x = m/n, |m| ≤ 12, 1 ≤ n ≤ 4";
+            RememberSamples();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception) when (!token.IsCancellationRequested)
         {
             Samples = Array.Empty<EllipticCurvePoint>();
             SampleStatus = "Rational sample search unavailable";
+            RememberSamples();
         }
+    }
+
+    // Background work can finish after the editor checkpoint was taken. All
+    // mementos for that snapshot share its eventual result, never a worker/task.
+    internal sealed class SampleMemento
+    {
+        public IReadOnlyList<EllipticCurvePoint> Points { get; set; } = Array.Empty<EllipticCurvePoint>();
+        public string Status { get; set; } = "Rational sample search was not completed.";
+    }
+
+    private void RememberSamples()
+    {
+        var result = sampleResults.GetOrCreateValue(Snapshot);
+        result.Points = Samples;
+        result.Status = SampleStatus;
+    }
+
+    internal sealed record Memento(EquationViewModel.Memento Equation, CoefficientViewModel.Memento Step,
+        CoefficientViewModel.Memento[] Coefficients, CoefficientViewModel.Memento[] SimpleCoefficients,
+        bool Simple, CurvePreset? Preset, CurveSnapshot Snapshot, SampleMemento Samples, bool Grid, bool Points)
+    {
+        public bool SameEdit(Memento other) => Equation.Text == other.Equation.Text && Step.Text == other.Step.Text
+            && Simple == other.Simple && Preset == other.Preset && Grid == other.Grid && Points == other.Points
+            && Coefficients.Zip(other.Coefficients).All(pair => SameCoefficient(pair.First, pair.Second))
+            && SimpleCoefficients.Zip(other.SimpleCoefficients).All(pair => SameCoefficient(pair.First, pair.Second));
+        private static bool SameCoefficient(CoefficientViewModel.Memento a, CoefficientViewModel.Memento b) =>
+            a.Text == b.Text && a.Anchor == b.Anchor && a.Offset == b.Offset;
+    }
+
+    internal Memento CaptureMemento() => new(Equation.CaptureMemento(), Step.CaptureMemento(),
+        Coefficients.Select(value => value.CaptureMemento()).ToArray(),
+        SimpleCoefficients.Select(value => value.CaptureMemento()).ToArray(),
+        isSimpleForm, selectedPreset, Snapshot, sampleResults.GetOrCreateValue(Snapshot), showGrid, showPoints);
+
+    internal void RestoreMemento(Memento state)
+    {
+        CancelUpdate();
+        var keepSamples = ReferenceEquals(Snapshot, state.Snapshot) && showPoints == state.Points;
+        if (!keepSamples)
+        {
+            sampleCancellation?.Cancel();
+            sampleCancellation?.Dispose();
+            sampleCancellation = null;
+            PendingSamples = Task.CompletedTask;
+        }
+        updating = true;
+        try
+        {
+            Step.RestoreMemento(state.Step);
+            appliedSliderStep = Step.IsValid ? Step.ExactValue : null;
+            Equation.RestoreMemento(state.Equation);
+            for (var i = 0; i < Coefficients.Count; i++) Coefficients[i].RestoreMemento(state.Coefficients[i]);
+            for (var i = 0; i < SimpleCoefficients.Count; i++) SimpleCoefficients[i].RestoreMemento(state.SimpleCoefficients[i]);
+            isSimpleForm = state.Simple;
+            selectedPreset = state.Preset;
+            Snapshot = state.Snapshot;
+            showGrid = state.Grid;
+            showPoints = state.Points;
+            if (!keepSamples)
+            {
+                Samples = showPoints ? state.Samples.Points : Array.Empty<EllipticCurvePoint>();
+                SampleStatus = Snapshot.IsSingular ? "Singular cubic · rational samples disabled"
+                    : showPoints ? state.Samples.Status : "Rational samples hidden";
+            }
+        }
+        finally { updating = false; }
+        NotifyForm();
+        NotifyInput();
+        OnPropertyChanged(nameof(Snapshot));
+        OnPropertyChanged(nameof(SelectedPreset));
+        OnPropertyChanged(nameof(PresetDescription));
+        OnPropertyChanged(nameof(ShowGrid));
+        OnPropertyChanged(nameof(ShowPoints));
     }
 
     public void Dispose()

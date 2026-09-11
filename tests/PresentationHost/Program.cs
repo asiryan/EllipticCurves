@@ -33,8 +33,11 @@ internal static partial class Program
                 { Source = new Uri("/EllipticCurves.Explorer;component/Themes/Theme.xaml", UriKind.Relative) });
             CheckTitleBarToggle(new ExplorerMenu());
             CheckTitleBarToggle(new SessionMenu());
+            CheckTitleBarToggle(new EditMenu());
             CheckCaptionDismissal("Explorer");
             CheckCaptionDismissal("Session");
+            CheckCaptionDismissal("Edit");
+            CheckEditHistory();
             CheckSessionMenu();
             CheckSessionRestore();
             CheckSessionLifecycle();
@@ -93,7 +96,7 @@ internal static partial class Program
             CheckViewSwitching();
             CheckTorusCycleColors();
             CheckComplexTorusView();
-            Console.WriteLine("PASS: compiled XAML loads; Session save/load and shared title-bar menus, Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
+            Console.WriteLine("PASS: compiled XAML loads; Edit Undo/Redo, graph and result mementos, Session save/load and shared title-bar menus, Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
         }
@@ -268,9 +271,11 @@ internal static partial class Program
         {
             var session = (SessionMenu)owner.FindName("Session");
             var explorer = (ExplorerMenu)owner.FindName("Explorer");
+            var edit = (EditMenu)owner.FindName("Edit");
             var header = (Panel)session.Parent;
-            Require(header.Children.IndexOf(session) + 1 == header.Children.IndexOf(explorer),
-                "Session must appear immediately before Explorer.");
+            Require(header.Children.IndexOf(session) + 1 == header.Children.IndexOf(edit)
+                && header.Children.IndexOf(edit) + 1 == header.Children.IndexOf(explorer),
+                "Title-bar menus must appear in Session, Edit, Explorer order.");
             var toggle = (ToggleButton)session.FindName("Toggle");
             var otherToggle = (ToggleButton)explorer.FindName("Toggle");
             Require(ReferenceEquals(toggle.Style, otherToggle.Style), "Title-bar menu styles differ.");
@@ -663,7 +668,7 @@ internal static partial class Program
         {
             var dialog = new ConfirmationWindow(reset ? "Reset equation?" : "Clear history?",
                 reset ? "Restore the classic curve and recenter the plot. Your current equation will be replaced."
-                    : "Remove all calculation results from this session? This cannot be undone.",
+                    : "Remove all calculation results from this session? You can restore them with Edit → Undo.",
                 reset ? "Reset equation" : "Clear history", reset ? "y^2 = x^3 - x" : null);
             try
             {

@@ -27,6 +27,7 @@ public partial class MainWindow
         if (!IsComplexView && realViewResetPending) QueueRealViewReset();
         UpdateExportState();
         QueueSessionStatusRefresh();
+        QueueHistory();
     }
 
     private void TorusStateChanged(object? sender, PropertyChangedEventArgs e)
@@ -43,15 +44,19 @@ public partial class MainWindow
         QueueRealViewReset();
     }
 
-    private void QueueRealViewReset() => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+    private void QueueRealViewReset()
     {
-        // A collapsed plot has no current layout. Keep the request until Real locus is shown.
-        if (!realViewResetPending || IsComplexView) return;
-        Plot.UpdateLayout();
-        if (Plot.ActualWidth <= 0 || Plot.ActualHeight <= 0) return;
-        Plot.Fit();
-        realViewResetPending = false;
-    }));
+        var version = historyRestoreVersion;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            // A collapsed plot has no current layout. Keep the request until Real locus is shown.
+            if (version != historyRestoreVersion || !realViewResetPending || IsComplexView) return;
+            Plot.UpdateLayout();
+            if (Plot.ActualWidth <= 0 || Plot.ActualHeight <= 0) return;
+            Plot.Fit();
+            realViewResetPending = false;
+        }));
+    }
 
     private void ResetView(object? sender, EventArgs e) => FitCurrentView();
     private void FitCurrentView()

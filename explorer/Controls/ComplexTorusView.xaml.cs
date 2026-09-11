@@ -57,6 +57,17 @@ public partial class ComplexTorusView : UserControl, IDisposable
 
     public void Fit() => TorusPlot.Fit();
     public void Zoom(double factor) => TorusPlot.Zoom(factor);
+    internal event Action? ViewChanged { add => TorusPlot.ViewChanged += value; remove => TorusPlot.ViewChanged -= value; }
+    internal ComplexTorusViewModel.Memento CaptureMemento()
+    {
+        GetBindingExpression(SnapshotProperty)?.UpdateTarget();
+        GetBindingExpression(SamplesProperty)?.UpdateTarget();
+        UpdateModel(IsLoaded && IsVisible);
+        return Model.CaptureMemento();
+    }
+    internal void RestoreMemento(ComplexTorusViewModel.Memento state, CurveSnapshot snapshot,
+        IReadOnlyList<EllipticCurvePoint> samples, bool active) =>
+        Model.RestoreMemento(state, snapshot.Curve, samples, IsLoaded && active);
     internal TorusCameraState CaptureCamera() => TorusPlot.CaptureCamera();
     internal void RestoreCamera(TorusCameraState state) => TorusPlot.RestoreCamera(state);
     internal void RestoreSelection(string? point)

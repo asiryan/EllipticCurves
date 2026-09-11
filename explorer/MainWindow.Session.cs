@@ -33,6 +33,7 @@ public partial class MainWindow
     {
         Session.Close();
         Explorer.Close();
+        Edit.Close();
         e.Handled = true;
         if (e.Command == ApplicationCommands.New) await NewSessionAsync();
         else if (e.Command == ApplicationCommands.Open) await OpenSessionAsync();
@@ -252,29 +253,37 @@ public partial class MainWindow
     {
         SessionFile.Validate(saved);
         if (!Workbench.CanRun) throw new InvalidOperationException(SessionMessages.StopCalculationBeforeOpen);
-        foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
-        ViewModel.RestoreSession(saved);
-        Workbench.RestoreHistory(saved.History);
-        // Older files may contain a panned/zoomed view. Refit at the current layout
-        // when the real plot becomes visible, including after opening in torus mode.
-        realViewResetPending = true;
-        RestoreSidebar(equationSidebar, saved.EquationPanel, EquationColumn, EquationPanel, EquationTab, EquationSplitter);
-        RestoreSidebar(resultsSidebar, saved.ResultsPanel, ResultsColumn, Results, ResultsTab, ResultsSplitter);
-        CoefficientsExpander.IsExpanded = saved.CoefficientsExpanded;
-        Plot.RestoreView(Plot.GetResetView());
-        TorusView.Fit();
-        TorusView.RestoreSelection(saved.SelectedTorusPoint);
-        ViewMode.SelectedIndex = saved.ComplexView ? 1 : 0;
-        if (realViewResetPending && !IsComplexView) QueueRealViewReset();
-        UpdateSidebarBounds();
-        var version = ++sessionRestoreVersion;
-        MarkSessionClean();
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        restoringHistory = true;
+        historyRestoreVersion++;
+        try
         {
-            if (version != sessionRestoreVersion) return;
-            EquationScroll.ScrollToVerticalOffset(saved.EquationScrollOffset);
-            TorusView.RestoreScroll(saved.TorusScrollOffset);
-        }));
+            foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
+            ViewModel.RestoreSession(saved);
+            Workbench.RestoreHistory(saved.History);
+            // Older files may contain a panned/zoomed view. Refit at the current layout
+            // when the real plot becomes visible, including after opening in torus mode.
+            realViewResetPending = true;
+            RestoreSidebar(equationSidebar, saved.EquationPanel, EquationColumn, EquationPanel, EquationTab, EquationSplitter);
+            RestoreSidebar(resultsSidebar, saved.ResultsPanel, ResultsColumn, Results, ResultsTab, ResultsSplitter);
+            CoefficientsExpander.IsExpanded = saved.CoefficientsExpanded;
+            Plot.RestoreView(Plot.GetResetView());
+            TorusView.Fit();
+            TorusView.RestoreSelection(saved.SelectedTorusPoint);
+            ViewMode.SelectedIndex = saved.ComplexView ? 1 : 0;
+            if (realViewResetPending && !IsComplexView) QueueRealViewReset();
+            UpdateSidebarBounds();
+            var version = ++sessionRestoreVersion;
+            MarkSessionClean();
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (version != sessionRestoreVersion) return;
+                EquationScroll.ScrollToVerticalOffset(saved.EquationScrollOffset);
+                TorusView.RestoreScroll(saved.TorusScrollOffset);
+                ResetInitialHistory();
+            }));
+        }
+        finally { restoringHistory = false; }
+        ResetHistory();
     }
 
 }

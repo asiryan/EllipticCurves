@@ -19,7 +19,7 @@ public partial class ResultsPanel : UserControl
     internal ResultsPanel(Func<bool>? confirmation)
     {
         confirmClearHistory = confirmation ?? (() => ConfirmationWindow.Confirm(Window.GetWindow(this),
-            "Clear history?", "Remove all calculation results from this session? This cannot be undone.", "Clear history"));
+            "Clear history?", "Remove all calculation results from this session? You can restore them with Edit → Undo.", "Clear history"));
         InitializeComponent();
     }
 

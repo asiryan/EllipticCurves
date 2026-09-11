@@ -16,6 +16,8 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
     private TorusPoint? selectedPoint;
     private string? restoredSelection;
     private bool restoringSelection;
+    private ResultMemento historyResult = new();
+    internal event Action? SelectionEdited;
     public string? SessionSelection => restoredSelection ?? SelectedPoint?.Point.ToString();
 
     public void RestoreSelection(string? point)
@@ -39,12 +41,17 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
             if (cancelledRestore) restoredSelection = null;
             if (Equals(selectedPoint, value))
             {
-                if (cancelledRestore) OnPropertyChanged(nameof(SessionSelection));
+                if (cancelledRestore)
+                {
+                    OnPropertyChanged(nameof(SessionSelection));
+                    SelectionEdited?.Invoke();
+                }
                 return;
             }
             selectedPoint = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SessionSelection));
+            if (!restoringSelection) SelectionEdited?.Invoke();
         }
     }
 
@@ -67,12 +74,14 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
         active = isActive;
         if (curveChanged)
         {
+            historyResult = new();
             samplesMapped = false;
             Lattice = null;
             SetPoints(Array.Empty<TorusPoint>());
         }
         else if (pointsChanged)
         {
+            if (samplesMapped) historyResult = new();
             samplesMapped = false;
             SetPoints(Lattice == null ? Array.Empty<TorusPoint>() : new[] { TorusPoint.Origin });
         }
@@ -176,11 +185,49 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
 
     private void NotifyState()
     {
+        historyResult.Lattice = Lattice;
+        historyResult.Points = Points;
+        historyResult.Status = IsBusy ? "Complex view preparation was not completed." : Status;
         OnPropertyChanged(nameof(Lattice));
         OnPropertyChanged(nameof(HasLattice));
         OnPropertyChanged(nameof(IsUnavailable));
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(Status));
+    }
+
+    internal sealed class ResultMemento
+    {
+        internal TorusLattice? Lattice;
+        internal IReadOnlyList<TorusPoint> Points = Array.Empty<TorusPoint>();
+        internal string Status = "Choose Complex torus to compute the period lattice.";
+    }
+    internal sealed record Memento(ResultMemento Result, string? Selection);
+    internal Memento CaptureMemento() => new(historyResult, SessionSelection);
+
+    internal void RestoreMemento(Memento state, EllipticCurveQ restoredCurve,
+        IReadOnlyList<EllipticCurvePoint> restoredSamples, bool isActive)
+    {
+        // Undoing a report edit or camera movement need not interrupt preparation
+        // of this very same graph. Keep the original worker, never restart it.
+        if (ReferenceEquals(historyResult, state.Result) && ReferenceEquals(curve, restoredCurve)
+            && samples.SequenceEqual(restoredSamples) && active == isActive)
+        {
+            restoredSelection = state.Selection;
+            SetPoints(Points);
+            return;
+        }
+        CancelPending();
+        PendingUpdate = Task.CompletedTask;
+        curve = restoredCurve;
+        samples = restoredSamples;
+        active = isActive;
+        samplesMapped = true;
+        historyResult = state.Result;
+        Lattice = historyResult.Lattice;
+        Status = historyResult.Status;
+        restoredSelection = state.Selection;
+        SetPoints(historyResult.Points);
+        NotifyState();
     }
 
     private void CancelPending()

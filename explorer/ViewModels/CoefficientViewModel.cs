@@ -104,6 +104,17 @@ public sealed class CoefficientViewModel : ObservableObject, IDataErrorInfo
         OnPropertyChanged(nameof(SliderMaximum));
     }
 
+    internal sealed record Memento(string Text, BigRational Value, BigRational Anchor, int Offset, string Error, bool Editing);
+    internal Memento CaptureMemento() => new(text, exactValue, sliderAnchor, sliderOffset, parseError, editing);
+    internal void RestoreMemento(Memento state)
+    {
+        (text, exactValue, sliderAnchor, sliderOffset, parseError, editing) =
+            (state.Text, state.Value, state.Anchor, state.Offset, state.Error, state.Editing);
+        Notify();
+        OnPropertyChanged(nameof(SliderMinimum));
+        OnPropertyChanged(nameof(SliderMaximum));
+    }
+
     private void Notify()
     {
         OnPropertyChanged(nameof(Text));

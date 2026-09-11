@@ -47,4 +47,12 @@ public sealed class EquationViewModel(Action changed) : ObservableObject, IDataE
         OnPropertyChanged(nameof(Error));
         changed();
     }
+
+    internal sealed record Memento(string Text, EllipticCurveQ Curve, string Error, bool Editing);
+    internal Memento CaptureMemento() => new(text, Curve, parseError, editing);
+    internal void RestoreMemento(Memento state)
+    {
+        (text, Curve, parseError, editing) = (state.Text, state.Curve, state.Error, state.Editing);
+        Notify();
+    }
 }

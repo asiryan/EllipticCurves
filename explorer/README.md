@@ -34,7 +34,7 @@ and the checks to run before publishing a release.
 
 ## Sessions
 
-**Session**, immediately before **Explorer** in the title bar, contains **New**,
+**Session**, before **Edit** and **Explorer** in the title bar, contains **New**,
 **Open**, **Save**, **Save as** and **Exit**. New starts with the classic curve, empty history
 and default visualization and panel settings. Open and Save use `.ec` session files;
 Exit closes Explorer.
@@ -56,7 +56,7 @@ unsaved changes, and **New session**, **Unsaved changes**, **Saving…**, **Save
 **Save failed**. File writing runs in the background; edits made during a save remain
 unsaved. Other session commands are disabled while writing.
 The menu uses the same header and popup styling as Explorer, with a single vertical
-list. Both menus close on Escape, another menu, an outside click (including the
+list. All three menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
 
 A session preserves the exact equation, slider step and positions, selected
@@ -99,6 +99,28 @@ are written when saving data changes; use **Save as** to save visual settings al
 Background sample generation does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
 The Results panel's **Export** exports an individual text report.
+
+## Undo and redo
+
+**Edit → Undo** (**Ctrl+Z**) and **Edit → Redo** (**Ctrl+Y**) restore up to 50 previous
+workspace edits: equations (including incomplete input), coefficients, exact slider
+steps and positions, calculation reports, graph mode, grid and point visibility,
+the real plot's position and zoom, and the torus camera and selected point.
+Typing and repeated wheel/slider changes are grouped after a short pause; a mouse
+drag remains one edit until it ends. The shortcuts also work while editing an equation.
+
+History uses in-memory mementos with shared computed results. Undo and Redo restore
+existing curve snapshots, samples, period data and reports without rerunning calculation
+operations or network requests. Work that had not finished preparing a graph when you
+left it is restored as incomplete. Deleting a report, clearing all reports and adding
+a completed, failed, timed-out or stopped calculation are undoable. Undo also restores
+the oldest report if a new calculation displaced it from the 50-report session limit.
+Undo and Redo are disabled while a calculation or session file operation is active.
+
+A new edit after Undo clears Redo. New and Open start a fresh undo history;
+Save preserves it. Undoing data changes back to the saved state clears the unsaved
+indicator. Graph navigation stays separate from the session's unsaved-data indicator.
+Undo history is kept only for the current run and is not written to `.ec` files.
 
 ## Explore
 

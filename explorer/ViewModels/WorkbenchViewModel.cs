@@ -1,6 +1,7 @@
 #nullable enable
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using EllipticCurves.Explorer.Computations;
 using EllipticCurves.Explorer.Models;
 
@@ -12,6 +13,10 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     private CancellationTokenSource? running;
     private bool disposed;
     private CalculationJobViewModel? selected, active;
+    private readonly ConditionalWeakTable<CalculationJobViewModel, ResultMemento> savedResults = new();
+    internal event Action? HistoryChanging;
+    internal event Action? HistoryChanged;
+    internal event Action? HistoryReplaced;
     public ObservableCollection<CalculationJobViewModel> Jobs { get; } = new();
     public CalculationJobViewModel? Selected
     {
@@ -47,19 +52,23 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     public void Delete(CalculationJobViewModel? job)
     {
         if (!CanDelete(job)) return;
+        HistoryChanging?.Invoke();
         var index = Jobs.IndexOf(job!);
         var wasSelected = job == Selected;
         Jobs.RemoveAt(index);
         if (wasSelected) Selected = Jobs.Count == 0 ? null : Jobs[Math.Min(index, Jobs.Count - 1)];
         NotifyState();
+        HistoryChanged?.Invoke();
     }
 
     public void ClearHistory()
     {
         if (!CanClearHistory) return;
+        HistoryChanging?.Invoke();
         Jobs.Clear();
         Selected = null;
         NotifyState();
+        HistoryChanged?.Invoke();
     }
 
     public void RestoreHistory(IReadOnlyList<CalculationSession> history)
@@ -71,12 +80,14 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         // History is stored newest first; browsing another report is temporary.
         Selected = Jobs.FirstOrDefault();
         NotifyState();
+        HistoryReplaced?.Invoke();
     }
 
     public async Task RunAsync(CalculationRequest request)
     {
         if (!CanRun) throw new InvalidOperationException("A calculation is already running.");
         request = request with { Arguments = new Dictionary<string, string>(request.Arguments) };
+        HistoryChanging?.Invoke();
         using var cancellation = new CancellationTokenSource();
         using var clock = new CancellationTokenSource();
         running = cancellation;
@@ -86,6 +97,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         if (Jobs.Count > ExplorerSession.HistoryLimit) Jobs.RemoveAt(Jobs.Count - 1);
         Selected = Active = job;
         NotifyState();
+        HistoryChanged?.Invoke();
         var watch = Stopwatch.StartNew();
         var timer = UpdateClockAsync(job, watch, clock.Token);
         var progress = new Progress<CalculationUpdate>(update =>
@@ -107,6 +119,9 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         {
             clock.Cancel();
             await timer;
+            // Seal the shared result before undo becomes available. Every
+            // checkpoint containing this job now sees its final report.
+            if (savedResults.TryGetValue(job, out var saved)) saved.Complete(job);
             running = null;
             Active = null;
             NotifyState();
@@ -145,5 +160,35 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     {
         disposed = true;
         Cancel();
+    }
+
+    internal sealed class ResultMemento
+    {
+        private CalculationSession saved;
+        public ResultMemento(CalculationJobViewModel job) => saved = job.CaptureSession();
+        internal void Complete(CalculationJobViewModel job) => saved = job.CaptureSession();
+        internal CalculationJobViewModel Restore() => CalculationJobViewModel.FromSession(saved);
+    }
+
+    internal sealed record Memento(ResultMemento[] Results, int Selection)
+    {
+        public bool SameResults(Memento other) => Results.SequenceEqual(other.Results);
+    }
+
+    internal Memento CaptureMemento() => new(Jobs.Select(job => savedResults.GetValue(job, value => new(value))).ToArray(),
+        Selected == null ? -1 : Jobs.IndexOf(Selected));
+
+    internal void RestoreMemento(Memento state)
+    {
+        if (!CanRun) throw new InvalidOperationException(SessionMessages.StopCalculationBeforeOpen);
+        Jobs.Clear();
+        foreach (var result in state.Results)
+        {
+            var job = result.Restore();
+            savedResults.Add(job, result);
+            Jobs.Add(job);
+        }
+        Selected = state.Selection >= 0 && state.Selection < Jobs.Count ? Jobs[state.Selection] : null;
+        NotifyState();
     }
 }

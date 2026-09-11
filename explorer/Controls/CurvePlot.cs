@@ -22,6 +22,7 @@ public sealed class CurvePlot : FrameworkElement
     private double centerX = PlotViewState.Default.CenterX, centerY = PlotViewState.Default.CenterY,
         verticalSpan = PlotViewState.Default.VerticalSpan;
     private Point? dragPosition, pointer;
+    internal event Action? ViewChanged;
 
     public CurveSnapshot? Snapshot { get => (CurveSnapshot?)GetValue(SnapshotProperty); set => SetValue(SnapshotProperty, value); }
     public IReadOnlyList<EllipticCurvePoint>? Samples { get => (IReadOnlyList<EllipticCurvePoint>?)GetValue(SamplesProperty); set => SetValue(SamplesProperty, value); }
@@ -278,7 +279,7 @@ public sealed class CurvePlot : FrameworkElement
 
     private Point BoundedScreen(double x, double y) { var p = ToScreen(x, y); return new Point(Math.Clamp(p.X, -1e7, 1e7), Math.Clamp(p.Y, -1e7, 1e7)); }
     private static double MinimumSpan(double x, double y) => Math.Max(1e-12, Math.Max(Math.Abs(x), Math.Abs(y)) * 1e-12);
-    private void RefreshGeometry() { geometryDirty = true; InvalidateVisual(); }
+    private void RefreshGeometry() { geometryDirty = true; InvalidateVisual(); ViewChanged?.Invoke(); }
     private static void InvalidateGeometry(DependencyObject source, DependencyPropertyChangedEventArgs args) => ((CurvePlot)source).RefreshGeometry();
     private FormattedText Label(string text, double size, Brush? brush = null) => new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, LabelTypeface, size, brush ?? LabelBrush, VisualTreeHelper.GetDpi(this).PixelsPerDip);
     private static string Number(double value, double step) => (Math.Abs(value) < step * 1e-7 ? 0 : value).ToString("G4", CultureInfo.InvariantCulture);

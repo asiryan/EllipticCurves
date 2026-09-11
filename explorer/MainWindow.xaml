@@ -15,8 +15,12 @@
         <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}" />
         <KeyBinding Key="S" Modifiers="Control+Shift" Command="{x:Static ApplicationCommands.SaveAs}" />
         <KeyBinding Key="F" Modifiers="Control" Command="{Binding FitCommand}" />
+        <KeyBinding Key="Z" Modifiers="Control" Command="{x:Static ApplicationCommands.Undo}" />
+        <KeyBinding Key="Y" Modifiers="Control" Command="{x:Static ApplicationCommands.Redo}" />
     </Window.InputBindings>
     <Window.CommandBindings>
+        <CommandBinding Command="{x:Static ApplicationCommands.Undo}" PreviewExecuted="EditCommandExecuted" PreviewCanExecute="EditCommandCanExecute" CanExecute="EditCommandCanExecute" />
+        <CommandBinding Command="{x:Static ApplicationCommands.Redo}" PreviewExecuted="EditCommandExecuted" PreviewCanExecute="EditCommandCanExecute" CanExecute="EditCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.New}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.Open}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.Save}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
@@ -76,6 +80,7 @@
                     </Button>
                     <Border Width="1" Height="13" Background="{StaticResource BorderBrush}" Margin="18,0,8,0" />
                     <controls:SessionMenu x:Name="Session" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <controls:EditMenu x:Name="Edit" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <controls:ExplorerMenu x:Name="Explorer" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                 </StackPanel>
                 <Grid x:Name="SessionFileIndicator" Grid.Column="1" MaxWidth="460" Margin="24,0" VerticalAlignment="Center" HorizontalAlignment="Center" ClipToBounds="True"

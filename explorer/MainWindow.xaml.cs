@@ -50,6 +50,7 @@ public partial class MainWindow : Window
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
             new Action(() => AppRoot.Margin = WindowWorkArea.GetContentMargin(this)));
         InitializeSession(sessionDialogs);
+        InitializeHistory();
     }
 
     private void UpdateWindowInsets(object? sender, EventArgs e)
@@ -60,6 +61,7 @@ public partial class MainWindow : Window
     private void WindowLoaded(object sender, RoutedEventArgs e)
     {
         if (sessionRestoreVersion == 0) ResetCurveViews(sender, e);
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ResetInitialHistory));
     }
 
     protected override void OnClosing(CancelEventArgs e)
@@ -79,6 +81,7 @@ public partial class MainWindow : Window
 
     private void WindowClosed(object? sender, EventArgs e)
     {
+        DisposeHistory();
         DisposeSessionStatus();
         Workbench.Dispose();
         TorusView.Model.PropertyChanged -= TorusStateChanged;
@@ -125,7 +128,11 @@ public partial class MainWindow : Window
     }
     private void ResetEquationClick(object sender, RoutedEventArgs e)
     {
-        if (confirmEquationReset()) ViewModel.ResetCommand.Execute(null);
+        if (confirmEquationReset())
+        {
+            CommitHistory();
+            ViewModel.ResetCommand.Execute(null);
+        }
     }
     private void MinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
     private void MaximizeClick(object sender, RoutedEventArgs e)
@@ -139,9 +146,14 @@ public partial class MainWindow : Window
     private void CoefficientEditFinished(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: CoefficientViewModel coefficient }) coefficient.CommitEdit();
+        CommitHistory();
     }
 
-    private void EquationEditFinished(object sender, KeyboardFocusChangedEventArgs e) => ViewModel.Equation.CommitEdit();
+    private void EquationEditFinished(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        ViewModel.Equation.CommitEdit();
+        CommitHistory();
+    }
 
     private void EquationKeyDown(object sender, KeyEventArgs e)
     {
@@ -149,6 +161,7 @@ public partial class MainWindow : Window
         ViewModel.Equation.CommitEdit();
         ViewModel.FlushUpdate();
         e.Handled = true;
+        CommitHistory();
     }
 
     private void CoefficientKeyDown(object sender, KeyEventArgs e)
@@ -157,6 +170,7 @@ public partial class MainWindow : Window
         coefficient.CommitEdit();
         ViewModel.FlushUpdate();
         e.Handled = true;
+        CommitHistory();
     }
 
     private void ResetSlider(object sender, MouseButtonEventArgs e)
