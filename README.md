@@ -299,9 +299,5 @@ Parameter windows feed a results panel with session history, progress, cancellat
 and time limits. Native computations run locally; only the explicit LMFDB fetch
 commands require internet access.
 
-```powershell
-dotnet run --project explorer/EllipticCurves.Explorer.csproj -c Release
-```
-
 # License
 **MIT**  
