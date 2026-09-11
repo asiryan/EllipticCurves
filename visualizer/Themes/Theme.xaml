@@ -130,6 +130,7 @@
     </Style>
     <Style TargetType="Slider">
         <Setter Property="Height" Value="28" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Slider">
@@ -143,9 +144,7 @@
                                 </Thumb>
                             </Track.Thumb>
                         </Track>
-                        <Border x:Name="Focus" BorderThickness="1" BorderBrush="{StaticResource AccentBrush}" CornerRadius="4" Opacity="0" IsHitTestVisible="False" />
                     </Grid>
-                    <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Focus" Property="Opacity" Value="0.5" /></Trigger></ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

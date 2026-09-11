@@ -103,8 +103,8 @@
                             <TextBlock Text="Multiply: * or omit" Style="{StaticResource Muted}" LineHeight="18" />
                             <TextBlock Text="Numbers: 8.325 · 8,325 · 2/7" Style="{StaticResource Muted}" LineHeight="18" ToolTip="Decimals, decimal commas, fractions and scientific notation are accepted." />
                         </StackPanel>
-                        <Expander Header="Coefficients" Foreground="{StaticResource TextBrush}" Margin="0,22,0,0" HorizontalContentAlignment="Stretch">
-                            <StackPanel Margin="0,12,0,0">
+                        <Expander Header="Coefficients" Foreground="{StaticResource TextBrush}" Margin="0,22,0,0" HorizontalContentAlignment="Stretch" Cursor="Hand">
+                            <StackPanel Margin="0,12,0,0" Cursor="Arrow">
                                 <TextBlock Text="SLIDER STEP" Style="{StaticResource Eyebrow}" Margin="0,0,0,9" />
                                 <TextBox DataContext="{Binding Step}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" MinHeight="34" AutomationProperties.Name="Slider step" LostKeyboardFocus="CoefficientEditFinished" PreviewKeyDown="CoefficientKeyDown" />
                                 <UniformGrid Columns="3" Margin="0,7,0,12"><Button Content="1" Command="{Binding SetStepCommand}" CommandParameter="1" Padding="0,6" Margin="0,0,4,0" /><Button Content="0.1" Command="{Binding SetStepCommand}" CommandParameter="0.1" Padding="0,6" Margin="0,0,4,0" /><Button Content="0.01" Command="{Binding SetStepCommand}" CommandParameter="0.01" Padding="0,6" /></UniformGrid>
