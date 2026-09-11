@@ -67,13 +67,24 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource CaptionButton}" Click="MinimizeClick" AutomationProperties.Name="Minimize">
-                        <Path Style="{StaticResource CaptionIcon}" Data="M0.5,5 H9.5" />
+                        <Path Style="{StaticResource CaptionIcon}" Data="M0,5.5 H10" />
                     </Button>
                     <Button Style="{StaticResource CaptionButton}" Click="MaximizeClick" AutomationProperties.Name="Maximize or restore">
-                        <Path Style="{StaticResource CaptionIcon}" Data="M0.5,0.5 H9.5 V9.5 H0.5 Z" />
+                        <Path>
+                            <Path.Style>
+                                <Style TargetType="Path" BasedOn="{StaticResource CaptionIcon}">
+                                    <Setter Property="Data" Value="M0.5,0.5 H9.5 V9.5 H0.5 Z" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="Maximized">
+                                            <Setter Property="Data" Value="M0.5,2.5 H7.5 V9.5 H0.5 Z M2.5,2.5 V0.5 H9.5 V7.5 H7.5" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Path.Style>
+                        </Path>
                     </Button>
                     <Button Style="{StaticResource CaptionButton}" Click="CloseClick" AutomationProperties.Name="Close">
-                        <Path Style="{StaticResource CaptionIcon}" Data="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
+                        <Path Style="{StaticResource CaptionCloseIcon}" />
                     </Button>
                 </StackPanel>
             </Grid>
