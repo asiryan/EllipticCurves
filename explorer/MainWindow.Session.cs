@@ -24,7 +24,7 @@ public partial class MainWindow
     private void SessionCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
         e.CanExecute = !sessionActionInProgress && (e.Command == ApplicationCommands.Save
-            ? sessionPath != null : e.Command == ApplicationCommands.SaveAs || Workbench.CanRun);
+            ? CanSaveToCurrentFile : e.Command == ApplicationCommands.SaveAs || Workbench.CanRun);
         e.Handled = true;
     }
 
@@ -48,7 +48,7 @@ public partial class MainWindow
                 var dialog = new SaveFileDialog
                 {
                     Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec", AddExtension = true,
-                    FileName = path ?? "session.ec", Title = "Save session as", OverwritePrompt = true
+                    FileName = path ?? "untitled.ec", Title = "Save session as", OverwritePrompt = true
                 };
                 return dialog.ShowDialog(this) == true ? dialog.FileName : null;
             },
@@ -67,6 +67,7 @@ public partial class MainWindow
     }
 
     internal bool HasUnsavedChanges => Workbench.IsBusy || HasSessionEdits;
+    private bool CanSaveToCurrentFile => sessionPath != null && (HasUnsavedChanges || sessionSaveFailed);
     private bool HasSessionEdits => cleanSession != null &&
         (ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid
          || !SessionChanges.Equal(cleanSession, ReadSession()));
@@ -80,7 +81,7 @@ public partial class MainWindow
     private async Task<bool> ConfirmSessionChangeAsync()
     {
         if (!HasUnsavedChanges) return true;
-        var result = sessionDialogs.ConfirmUnsaved(sessionPath == null ? "session.ec" : Path.GetFileName(sessionPath));
+        var result = sessionDialogs.ConfirmUnsaved(sessionPath == null ? "untitled.ec" : Path.GetFileName(sessionPath));
         return result.Choice switch
         {
             SaveChangesChoice.Save => await SaveSessionCoreAsync(false, result.FileName) && !HasSessionEdits,
@@ -137,7 +138,7 @@ public partial class MainWindow
     });
 
     internal Task<bool> TrySaveSessionAsync(bool saveAs = false, string? fileName = null) =>
-        RunSessionOperation(() => saveAs || sessionPath != null
+        RunSessionOperation(() => saveAs || CanSaveToCurrentFile
             ? SaveSessionCoreAsync(saveAs, fileName) : Task.FromResult(false));
 
     private async Task<bool> SaveSessionCoreAsync(bool saveAs, string? fileName)

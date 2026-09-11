@@ -25,8 +25,13 @@ internal static partial class Program
         string? choosePath = first;
         var pickers = 0;
         var errors = 0;
+        var writes = 0;
         var window = new MainWindow(null, new SessionDialogs(_ => new(SaveChangesChoice.Discard),
-            _ => { pickers++; return choosePath; }, () => first, (_, _) => errors++));
+            _ => { pickers++; return choosePath; }, () => first, (_, _) => errors++, (path, snapshot) =>
+            {
+                writes++;
+                return Task.Run(() => SessionFile.Save(path, snapshot));
+            }));
         try
         {
             void CheckStatus(string text, string name)
@@ -39,53 +44,65 @@ internal static partial class Program
                     "The visible file name, save status and native title must update together.");
             }
 
-            void CheckSaveAvailability(bool hasFile)
+            void CheckSaveAvailability(bool canSave)
             {
                 var menu = (SessionMenu)window.FindName("Session");
-                Require(ApplicationCommands.Save.CanExecute(null, window) == hasFile
-                    && window.SessionStatus.CanSave == hasFile && ((Button)menu.FindName("SaveButton")).IsEnabled == hasFile,
-                    "Save and Ctrl+S must be available only when the session has a file.");
+                Require(ApplicationCommands.Save.CanExecute(null, window) == canSave
+                    && window.SessionStatus.CanSave == canSave && ((Button)menu.FindName("SaveButton")).IsEnabled == canSave,
+                    "Save and Ctrl+S must require an existing file and unsaved changes or a failed save.");
                 Require(ApplicationCommands.SaveAs.CanExecute(null, window) && ((Button)menu.FindName("SaveAsButton")).IsEnabled
                     && ((Button)menu.FindName("ExitButton")).IsEnabled, "Save as and Exit must remain available for new sessions.");
+                if (!canSave)
+                {
+                    var previousWrites = writes;
+                    var previousPickers = pickers;
+                    ApplicationCommands.Save.Execute(null, window);
+                    Require(!CompleteSession(() => window.TrySaveSessionAsync())
+                        && writes == previousWrites && pickers == previousPickers,
+                        "Disabled Save must not write a file or open a picker, including through the menu handler.");
+                }
             }
 
-            CheckStatus("New session", "session.ec");
+            CheckStatus("New session", "untitled.ec");
             CheckSaveAvailability(false);
             ApplicationCommands.Save.Execute(null, window);
             Require(!CompleteSession(() => window.TrySaveSessionAsync()) && pickers == 0 && !File.Exists(first),
                 "Save without an existing file must not open a picker or write a file.");
             window.ViewModel.ShowGrid = false;
-            CheckStatus("New session", "session.ec");
+            CheckStatus("New session", "untitled.ec");
             window.ViewModel.ShowGrid = true;
-            CheckStatus("New session", "session.ec");
+            CheckStatus("New session", "untitled.ec");
             window.ViewModel.Equation.Text = "y^2 = x^3 + 7";
-            CheckStatus("Unsaved changes", "session.ec *");
+            CheckStatus("Unsaved changes", "untitled.ec *");
             ((ComboBox)window.FindName("ViewMode")).SelectedIndex = 1;
             window.ViewModel.ShowPoints = false;
-            CheckStatus("Unsaved changes", "session.ec *");
+            CheckStatus("Unsaved changes", "untitled.ec *");
             CheckSaveAvailability(false);
             Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs) && pickers == 1,
                 "The first save must choose a file through Ctrl+Shift+S.");
             CheckStatus("Saved", "curve-study.ec");
-            CheckSaveAvailability(true);
+            CheckSaveAvailability(false);
             Require(window.SessionStatus.FileLocation == first && SessionFile.Load(first).Equation == "y^2 = x^3 + 7",
                 "Saving must display the real file path and write the edited session.");
             window.ViewModel.Step.Text = "0.2";
             CheckStatus("Unsaved changes", "curve-study.ec *");
+            CheckSaveAvailability(true);
+            window.ViewModel.Step.Text = "0.01";
+            CheckStatus("Saved", "curve-study.ec");
+            CheckSaveAvailability(false);
+            window.ViewModel.Step.Text = "0.2";
+            CheckStatus("Unsaved changes", "curve-study.ec *");
+            CheckSaveAvailability(true);
             Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 1
                 && SessionFile.Load(first).SliderStep == "0.2", "Ctrl+S must overwrite the current file without a picker.");
             CheckStatus("Saved", "curve-study.ec");
+            CheckSaveAvailability(false);
             window.ViewModel.ShowGrid = false;
             window.ViewModel.ShowPoints = false;
             ((ComboBox)window.FindName("ViewMode")).SelectedIndex = 1;
             CheckStatus("Saved", "curve-study.ec");
-            CheckSaveAvailability(true);
-            Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 1,
-                "Ctrl+S must save current visual settings even without data edits.");
-            var visual = SessionFile.Load(first);
-            Require(visual.ComplexView && !visual.ShowGrid && !visual.ShowPoints,
-                "Saving a clean session must still write changed visual settings.");
-            CheckStatus("Saved", "curve-study.ec");
+            CheckSaveAvailability(false);
+            Require(SessionFile.Load(first).ShowGrid, "Disabled Save must leave the stored visual settings unchanged.");
             var original = File.ReadAllBytes(first);
 
             choosePath = null;
@@ -97,6 +114,10 @@ internal static partial class Program
             Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs) && pickers == 3,
                 "Save as must create and select another session file.");
             CheckStatus("Saved", "curve-study-copy.ec");
+            CheckSaveAvailability(false);
+            var visual = SessionFile.Load(second);
+            Require(visual.ComplexView && !visual.ShowGrid && !visual.ShowPoints,
+                "Save as must still write visual changes while the session shows Saved.");
             window.ViewModel.Equation.Text = "y^2 = x^3 - 5*x + 3";
             Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 3
                 && SessionFile.Load(second).Equation == "y^2 = x^3 - 5*x + 3" && File.ReadAllBytes(first).SequenceEqual(original),
@@ -105,23 +126,25 @@ internal static partial class Program
             choosePath = Path.Combine(directory, "missing", "failed.ec");
             Require(!ExecuteSessionCommand(window, ApplicationCommands.SaveAs) && errors == 1, "A failed save must report its error.");
             CheckStatus("Save failed", "curve-study-copy.ec");
+            CheckSaveAvailability(true);
             RenderSessionHeader(window, "session-save-failed.png");
             Require(window.SessionStatus.FileLocation == second && !File.Exists(choosePath),
                 "A failed Save as must retain the actual saved file's identity.");
             Require(ExecuteSessionCommand(window, ApplicationCommands.Save), "Retrying Ctrl+S to the existing file failed.");
             CheckStatus("Saved", "curve-study-copy.ec");
+            CheckSaveAvailability(false);
             RenderSessionHeader(window, "session-saved.png");
 
             Require(CompleteSession(window.NewSessionAsync), "New failed after saving.");
-            CheckStatus("New session", "session.ec");
+            CheckStatus("New session", "untitled.ec");
             CheckSaveAvailability(false);
             choosePath = null;
             Require(!ExecuteSessionCommand(window, ApplicationCommands.SaveAs), "Cancelling the initial Save as must not create a session file.");
-            CheckStatus("New session", "session.ec");
+            CheckStatus("New session", "untitled.ec");
             CheckSaveAvailability(false);
             Require(CompleteSession(window.OpenSessionAsync), "Opening an existing file failed.");
             CheckStatus("Saved", "curve-study.ec");
-            CheckSaveAvailability(true);
+            CheckSaveAvailability(false);
             Require(window.SessionStatus.FileLocation == first, "Open did not update the file path tooltip.");
 
             var root = (FrameworkElement)window.Content;
@@ -132,7 +155,7 @@ internal static partial class Program
             var explorer = (FrameworkElement)window.FindName("Explorer");
             var minimize = Descendants(root).OfType<Button>().Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "Minimize");
             foreach (var width in new[] { 1120, 1440, 1920 })
-            foreach (var name in new[] { "session.ec", new string('x', 180) + ".ec" })
+            foreach (var name in new[] { "untitled.ec", new string('x', 180) + ".ec" })
             {
                 window.SessionStatus.Update(Path.Combine(directory, name), true, false, false, false, true);
                 root.Measure(new Size(width, 760));

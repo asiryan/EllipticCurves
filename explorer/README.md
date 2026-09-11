@@ -40,7 +40,8 @@ and default visualization and panel settings. Open and Save use `.ec` session fi
 Exit closes Explorer.
 Use **Ctrl+N**, **Ctrl+O**, **Ctrl+S** and **Ctrl+Shift+S** for New, Open, Save and
 Save as; the shortcuts are also displayed beside their menu items. Save and Ctrl+S
-are available only after opening or saving a file. Use Save as for the first save of
+are available only for an existing file with unsaved changes or a failed save to retry.
+They are disabled while the status is **Saved**. Use Save as for the first save of
 a new session. Save writes to the current file without a picker. Save as always
 opens the file picker and makes the chosen file the current session after a successful save.
 The title bar shows its file name (the full path appears on hover), an asterisk for
@@ -86,8 +87,8 @@ Cancelling the file picker or failing to save also cancels the pending action.
 An untouched session or an unchanged saved/opened session does not prompt.
 Changes to the equation, editing parameters and results are tracked. Switching
 between 2D and 3D, toggling the grid or samples, selecting a torus point, scrolling
-or rearranging panels does not count as an edit. These visual settings are still
-written on **Save** or **Save as**, even when the session shows **Saved**.
+or rearranging panels does not count as an edit or enable Save. These visual settings
+are written when saving data changes; use **Save as** to save visual settings alone.
 Background sample generation does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
 The Results panel's **Export** exports an individual text report.

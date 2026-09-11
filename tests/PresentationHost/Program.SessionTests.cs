@@ -63,7 +63,7 @@ internal static partial class Program
                 var openPickers = 0;
                 var window = new MainWindow(null, new SessionDialogs(name =>
                     {
-                        Require(name == "session.ec", "An untitled session should suggest a default file name.");
+                        Require(name == "untitled.ec", "An untitled session should suggest a default file name.");
                         prompts++;
                         return new(choice, "renamed-study");
                     },
@@ -133,8 +133,8 @@ internal static partial class Program
                 Require(sameFile.ViewModel.Equation.Text == edited && !sameFile.HasUnsavedChanges,
                     "Opening the same file restored the stale copy from before Save.");
                 ((CurvePlot)sameFile.FindName("Plot")).Zoom(0.8);
-                Require(!sameFile.HasUnsavedChanges && CompleteSession(() => sameFile.TrySaveSessionAsync()) && !sameFile.HasUnsavedChanges,
-                    "Graph navigation must not dirty the session, and an explicit save must still work.");
+                Require(!sameFile.HasUnsavedChanges && !CompleteSession(() => sameFile.TrySaveSessionAsync()) && !sameFile.HasUnsavedChanges,
+                    "Graph navigation must leave the session saved and Save unavailable.");
                 sameFile.ViewModel.Equation.Text = "y^2 =";
                 Require(sameFile.HasUnsavedChanges && sameFile.ViewModel.Equation.Error == "",
                     "Checking unsaved edits must not commit or silently ignore incomplete input.");
@@ -412,13 +412,13 @@ internal static partial class Program
     {
         foreach (var action in new[] { "ConfirmButton", "DiscardButton", "CancelButton", "CloseButton" })
         {
-            var dialog = ConfirmationWindow.CreateSaveChangesDialog("session.ec");
+            var dialog = ConfirmationWindow.CreateSaveChangesDialog("untitled.ec");
             try
             {
                 var fileName = (TextBox)dialog.FindName("SessionFileName");
                 var save = (Button)dialog.FindName("ConfirmButton");
                 var nameError = (TextBlock)dialog.FindName("SessionNameError");
-                Require(fileName.Text == "session.ec" && !fileName.IsReadOnly && save.IsEnabled,
+                Require(fileName.Text == "untitled.ec" && !fileName.IsReadOnly && save.IsEnabled,
                     "The session file name must be prefilled and editable.");
                 foreach (var invalid in new[] { "", "   ", "../session", "bad:name", "session.", "a\\b" })
                 {
