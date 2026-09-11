@@ -22,7 +22,7 @@ public sealed class TorusViewport : Grid
     private readonly Model3DGroup markers = new();
     private readonly ModelVisual3D gridVisual = new();
     private readonly Dictionary<GeometryModel3D, (TorusPoint Point, ScaleTransform3D Scale)> markerPoints = new();
-    private double azimuth = 35, elevation = 32, span = 7;
+    private double azimuth = 35, elevation = 32, span = 5.8;
     private Point? pressedAt, previousMouse;
     private bool dragged;
 
@@ -71,7 +71,7 @@ public sealed class TorusViewport : Grid
     {
         azimuth = 35;
         elevation = 32;
-        span = 7;
+        span = 5.8;
         UpdateCamera();
     }
 
