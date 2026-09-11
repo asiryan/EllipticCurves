@@ -1,20 +1,14 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using EllipticCurves.Explorer.ViewModels;
 using EllipticCurves.Explorer.Windowing;
 using EllipticCurves.Explorer.Computations;
 using EllipticCurves.Explorer.Controls;
 using EllipticCurves.Explorer.Models;
-using Microsoft.Win32;
 
 namespace EllipticCurves.Explorer;
 
@@ -22,27 +16,14 @@ public partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; } = new();
     public WorkbenchViewModel Workbench { get; } = new();
-    private const double SidebarTabWidth = 32;
-    private readonly SidebarState equationSidebar = new(238);
-    private readonly SidebarState resultsSidebar = new(300);
     private readonly Func<bool> confirmEquationReset;
-    private bool realViewResetPending;
-
-    private sealed class SidebarState(double minimumWidth)
-    {
-        public double MinimumWidth { get; } = minimumWidth;
-        public double ExpandedWidth { get; set; } = minimumWidth;
-        public bool IsVisible { get; set; } = true;
-        public bool IsAnimating { get; set; }
-        public int AnimationVersion { get; set; }
-    }
 
     public MainWindow() : this(null) { }
     internal MainWindow(Func<bool>? confirmation, SessionDialogs? sessionDialogs = null)
     {
         confirmEquationReset = confirmation ?? (() => ConfirmationWindow.Confirm(this,
             "Reset equation?", "Restore the classic curve and recenter the plot. Your current equation will be replaced.",
-            "Reset equation", "y^2 = x^3 - x"));
+            "Reset equation", CurvePreset.ClassicEquation));
         InitializeComponent();
         DataContext = ViewModel;
         Results.DataContext = Workbench;
@@ -76,20 +57,6 @@ public partial class MainWindow : Window
         AppRoot.Margin = WindowWorkArea.GetContentMargin(this);
         UpdateSidebarBounds();
     }
-    private void UpdateSidebarBounds()
-    {
-        var available = Workspace.ActualWidth - PlotColumn.MinWidth
-            - Workspace.ColumnDefinitions[1].Width.Value - Workspace.ColumnDefinitions[3].Width.Value;
-        // Resolve both limits from requested widths so resizing the window cannot
-        // make the panels repeatedly push each other's measured width back and forth.
-        var equationWidth = Math.Min(EquationColumn.Width.Value,
-            Math.Max(EquationColumn.MinWidth, available - ResultsColumn.MinWidth));
-        ResultsColumn.MaxWidth = Math.Max(resultsSidebar.MinimumWidth, available - equationWidth);
-        var resultsWidth = Math.Min(ResultsColumn.Width.Value, ResultsColumn.MaxWidth);
-        EquationColumn.MaxWidth = Math.Max(equationSidebar.MinimumWidth, available - resultsWidth);
-        QueueSessionStatusRefresh();
-    }
-
     private void WindowLoaded(object sender, RoutedEventArgs e)
     {
         if (sessionRestoreVersion == 0) ResetCurveViews(sender, e);
@@ -123,15 +90,14 @@ public partial class MainWindow : Window
 
     private void RepositoryClick(object sender, RoutedEventArgs e)
     {
-        const string repositoryUrl = "https://github.com/asiryan/EllipticCurves";
         try
         {
-            using var browser = Process.Start(new ProcessStartInfo(repositoryUrl) { UseShellExecute = true });
+            using var browser = Process.Start(new ProcessStartInfo(ExplorerInfo.RepositoryUrl) { UseShellExecute = true });
         }
         catch (Exception error) when (error is Win32Exception or InvalidOperationException)
         {
             ConfirmationWindow.ShowMessage(this, "Open GitHub repository",
-                "Could not open the browser. Open this address manually:\n" + repositoryUrl);
+                "Could not open the browser. Open this address manually:\n" + ExplorerInfo.RepositoryUrl);
         }
     }
     private void OpenCalculation(CalculationOperation operation) => OpenCalculation(operation, null);
@@ -157,117 +123,9 @@ public partial class MainWindow : Window
         SetResultsVisible(true);
         await Workbench.RunAsync(request);
     }
-    private void ExpandResultsClick(object sender, RoutedEventArgs e) => SetResultsVisible(true);
-    private void CollapseEquationClick(object sender, RoutedEventArgs e) => SetEquationVisible(false);
-    private void ExpandEquationClick(object sender, RoutedEventArgs e) => SetEquationVisible(true);
-    private void SetEquationVisible(bool visible) =>
-        SetSidebarVisible(equationSidebar, visible, EquationColumn, EquationPanel, EquationTab, HorizontalAlignment.Right, EquationSplitter);
-    private void SetResultsVisible(bool visible) =>
-        SetSidebarVisible(resultsSidebar, visible, ResultsColumn, Results, ResultsTab, HorizontalAlignment.Left, ResultsSplitter);
-
-    private void SetSidebarVisible(SidebarState state, bool visible, ColumnDefinition column,
-        FrameworkElement panel, Button tab, HorizontalAlignment slideAlignment, GridSplitter? splitter = null)
-    {
-        if (state.IsVisible == visible) return;
-        var from = column.ActualWidth > 0 ? column.ActualWidth : column.Width.Value;
-        if (!visible && !state.IsAnimating) state.ExpandedWidth = Math.Max(state.MinimumWidth, from);
-        var to = visible ? Math.Min(state.ExpandedWidth, column.MaxWidth) : SidebarTabWidth;
-        var version = ++state.AnimationVersion;
-        state.IsVisible = visible;
-        QueueSessionStatusRefresh();
-        column.BeginAnimation(ColumnDefinition.WidthProperty, null);
-        column.MinWidth = SidebarTabWidth;
-        column.Width = new GridLength(to);
-        // Keep content at its expanded width while clipping it toward the outer edge.
-        panel.Width = Math.Max(state.MinimumWidth, visible ? to : from);
-        panel.HorizontalAlignment = slideAlignment;
-        panel.Visibility = Visibility.Visible;
-        tab.Visibility = Visibility.Collapsed;
-        if (splitter != null) splitter.Visibility = Visibility.Collapsed;
-
-        void Finish()
-        {
-            if (version != state.AnimationVersion) return;
-            column.BeginAnimation(ColumnDefinition.WidthProperty, null);
-            column.MinWidth = visible ? state.MinimumWidth : SidebarTabWidth;
-            panel.Width = double.NaN;
-            panel.HorizontalAlignment = HorizontalAlignment.Stretch;
-            panel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            if (splitter != null) splitter.Visibility = panel.Visibility;
-            tab.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
-            state.IsAnimating = false;
-        }
-
-        if (!IsLoaded || !SystemParameters.ClientAreaAnimation)
-        {
-            Finish();
-            return;
-        }
-        state.IsAnimating = true;
-        var animation = new GridLengthAnimation { From = from, To = to, Duration = TimeSpan.FromMilliseconds(200) };
-        animation.Completed += (_, _) => Finish();
-        column.BeginAnimation(ColumnDefinition.WidthProperty, animation, HandoffBehavior.SnapshotAndReplace);
-    }
-    private bool IsComplexView => ViewMode.SelectedIndex == 1;
-
-    private void ViewModeChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (e.Source != sender || TorusView == null || FitViewButton == null) return;
-        RealPlotHost.Visibility = IsComplexView ? Visibility.Collapsed : Visibility.Visible;
-        TorusView.Visibility = IsComplexView ? Visibility.Visible : Visibility.Collapsed;
-        PlotLegend.Visibility = RealPlotHost.Visibility;
-        TorusLegend.Visibility = TorusView.Visibility;
-        FitViewButton.ToolTip = IsComplexView ? "Reset torus camera (Ctrl+F)" : "Reset real plot view (Ctrl+F)";
-        if (!IsComplexView && realViewResetPending) QueueRealViewReset();
-        UpdateExportState();
-        QueueSessionStatusRefresh();
-    }
-
-    private void TorusStateChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ComplexTorusViewModel.HasLattice)) UpdateExportState();
-    }
-
-    private void UpdateExportState() => ExportPlotButton.IsEnabled = !IsComplexView || TorusView.Model.HasLattice;
-
-    private void ResetCurveViews(object? sender, EventArgs e)
-    {
-        TorusView.Fit();
-        realViewResetPending = true;
-        QueueRealViewReset();
-    }
-
-    private void QueueRealViewReset() => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
-    {
-        // A collapsed plot has no current layout. Keep the request until Real locus is shown.
-        if (!realViewResetPending || IsComplexView) return;
-        Plot.UpdateLayout();
-        if (Plot.ActualWidth <= 0 || Plot.ActualHeight <= 0) return;
-        Plot.Fit();
-        realViewResetPending = false;
-    }));
-
-    private void ResetView(object? sender, EventArgs e) => FitCurrentView();
-    private void FitCurrentView()
-    {
-        if (IsComplexView) TorusView.Fit();
-        else
-        {
-            realViewResetPending = true;
-            QueueRealViewReset();
-        }
-    }
     private void ResetEquationClick(object sender, RoutedEventArgs e)
     {
         if (confirmEquationReset()) ViewModel.ResetCommand.Execute(null);
-    }
-    private void FitClick(object sender, RoutedEventArgs e) => FitCurrentView();
-    private void ZoomInClick(object sender, RoutedEventArgs e) => ZoomCurrentView(1 / 1.25);
-    private void ZoomOutClick(object sender, RoutedEventArgs e) => ZoomCurrentView(1.25);
-    private void ZoomCurrentView(double factor)
-    {
-        if (IsComplexView) TorusView.Zoom(factor);
-        else Plot.Zoom(factor);
     }
     private void MinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
     private void MaximizeClick(object sender, RoutedEventArgs e)
@@ -311,44 +169,12 @@ public partial class MainWindow : Window
 
     private async void CopyClick(object sender, RoutedEventArgs e)
     {
-        try
+        if (ClipboardActions.CopyText(this, ViewModel.Snapshot.Summary, "Copy") && sender is Button button)
         {
-            Clipboard.SetText(ViewModel.Snapshot.Summary);
-            if (sender is Button button)
-            {
-                button.Content = "Copied ✓";
-                await Task.Delay(1400);
-                button.Content = "Copy";
-            }
-        }
-        catch (ExternalException)
-        {
-            ConfirmationWindow.ShowMessage(this, "Copy", "The clipboard is busy. Please try again.");
+            button.Content = "Copied ✓";
+            await Task.Delay(1400);
+            button.Content = "Copy";
         }
     }
 
-    private void ExportClick(object sender, RoutedEventArgs e)
-    {
-        FrameworkElement target = IsComplexView ? TorusView : Plot;
-        if (target.ActualWidth <= 0 || target.ActualHeight <= 0 || (IsComplexView && !TorusView.Model.HasLattice)) return;
-        var dialog = new SaveFileDialog
-        {
-            Filter = "PNG image (*.png)|*.png",
-            FileName = IsComplexView ? "elliptic-curve-torus.png" : "elliptic-curve.png",
-            Title = IsComplexView ? "Export the period lattice and complex torus" : "Export the current real locus"
-        };
-        if (dialog.ShowDialog(this) != true) return;
-        try
-        {
-            var bitmap = PlotImageExporter.Render(target);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using var stream = File.Create(dialog.FileName);
-            encoder.Save(stream);
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        {
-            ConfirmationWindow.ShowMessage(this, "Export plot", "The image could not be saved. Check the destination and try again.");
-        }
-    }
 }

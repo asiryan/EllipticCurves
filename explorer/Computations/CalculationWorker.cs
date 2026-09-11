@@ -23,10 +23,10 @@ public static class CalculationWorker
                 try
                 {
                     var result = await CalculationEngine.ExecuteAsync(request, Send).ConfigureAwait(false);
-                    Send(new("completed", "Calculation complete", 100, result));
+                    Send(new(CalculationProtocol.Completed, "Calculation complete", 100, result));
                     return 0;
                 }
-                catch (Exception error) { Send(new("error", error.Message)); return 1; }
+                catch (Exception error) { Send(new(CalculationProtocol.Error, error.Message)); return 1; }
             });
             // The host keeps stdin open. A disconnected host must not leave a long
             // non-cooperative library operation running as an orphan process.
@@ -36,6 +36,6 @@ public static class CalculationWorker
             var finished = await Task.WhenAny(calculation, disconnected).ConfigureAwait(false);
             return finished == calculation ? await calculation.ConfigureAwait(false) : 2;
         }
-        catch (Exception error) { Send(new("error", error.Message)); return 1; }
+        catch (Exception error) { Send(new(CalculationProtocol.Error, error.Message)); return 1; }
     }
 }

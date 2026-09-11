@@ -1,6 +1,14 @@
 #nullable enable
 namespace EllipticCurves.Explorer.Computations;
 
+public static class CalculationProtocol
+{
+    public const string WorkerArgument = "--compute-worker";
+    public const string Progress = "progress";
+    public const string Completed = "completed";
+    public const string Error = "error";
+}
+
 public sealed record CalculationRequest(string OperationId, string Equation, Dictionary<string, string> Arguments,
     int TimeoutSeconds = 120, int MaxItems = 1000);
 

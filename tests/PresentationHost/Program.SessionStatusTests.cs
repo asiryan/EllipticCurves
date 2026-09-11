@@ -40,7 +40,8 @@ internal static partial class Program
                 Require(window.SessionStatus.Status == text && window.SessionStatus.DisplayName == name,
                     $"Expected session status '{name} / {text}', got '{window.SessionStatus.DisplayName} / {window.SessionStatus.Status}'.");
                 Require(((TextBlock)window.FindName("SessionFileName")).Text == name
-                    && ((TextBlock)window.FindName("SessionSaveStatus")).Text == text && window.Title.StartsWith(name),
+                    && ((TextBlock)window.FindName("SessionSaveStatus")).Text == text
+                    && window.Title == name + " — Elliptic Curves · Explorer",
                     "The visible file name, save status and native title must update together.");
             }
 
@@ -148,6 +149,10 @@ internal static partial class Program
             Require(window.SessionStatus.FileLocation == first, "Open did not update the file path tooltip.");
 
             var root = (FrameworkElement)window.Content;
+            var repository = Descendants(root).OfType<Button>().Single(button =>
+                System.Windows.Automation.AutomationProperties.GetName(button) == "Open Elliptic Curves on GitHub");
+            Require(Equals(repository.ToolTip, "https://github.com/asiryan/EllipticCurves"),
+                "The shared repository address must resolve in the compiled title bar.");
             var indicator = (FrameworkElement)window.FindName("SessionFileIndicator");
             var badge = (FrameworkElement)window.FindName("SessionStatusBadge");
             var fileName = (TextBlock)window.FindName("SessionFileName");
@@ -157,7 +162,7 @@ internal static partial class Program
             foreach (var width in new[] { 1120, 1440, 1920 })
             foreach (var name in new[] { "untitled.ec", new string('x', 180) + ".ec" })
             {
-                window.SessionStatus.Update(Path.Combine(directory, name), true, false, false, false, true);
+                window.SessionStatus.Update(new(Path.Combine(directory, name), true, false, false, false, true));
                 root.Measure(new Size(width, 760));
                 root.Arrange(new Rect(0, 0, width, 760));
                 root.UpdateLayout();

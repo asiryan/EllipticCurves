@@ -1,27 +1,26 @@
 #nullable enable
-using System.IO;
+using EllipticCurves.Explorer.Models;
 
 namespace EllipticCurves.Explorer.ViewModels;
 
 public sealed class SessionStatusViewModel : ObservableObject
 {
-    private (string? Path, bool Modified, bool Saving, bool Failed, bool Busy, bool CanRun) state;
+    private SessionState state;
 
-    public string FileName => state.Path == null ? "untitled.ec" : Path.GetFileName(state.Path);
+    public string FileName => SessionFile.GetFileName(state.Path);
     public string DisplayName => FileName + (state.Modified ? " *" : "");
-    public string FileLocation => state.Path ?? "New session: not saved to a file yet.";
+    public string FileLocation => state.Path ?? SessionMessages.NewFileLocation;
     public bool IsSaving => state.Saving;
-    public bool NeedsSave => state.Path == null || state.Modified || state.Failed;
-    public bool CanSave => !state.Busy && state.Path != null && NeedsSave;
-    public bool CanSaveAs => !state.Busy;
-    public bool CanExit => !state.Busy;
-    public bool CanReplace => !state.Busy && state.CanRun;
-    public string Status => state.Saving ? "Saving…" : state.Failed ? "Save failed"
-        : state.Modified ? "Unsaved changes" : state.Path == null ? "New session" : "Saved";
+    public bool NeedsSave => state.NeedsSave;
+    public bool CanSave => state.CanSave;
+    public bool CanSaveAs => state.CanSaveAs;
+    public bool CanExit => state.CanExit;
+    public bool CanReplace => state.CanReplace;
+    public string Status => state.Saving ? SessionMessages.Saving : state.Failed ? SessionMessages.SaveFailed
+        : state.Modified ? SessionMessages.UnsavedChanges : state.Path == null ? SessionMessages.NewSession : SessionMessages.Saved;
 
-    internal void Update(string? path, bool modified, bool saving, bool failed, bool busy, bool canRun)
+    internal void Update(SessionState next)
     {
-        var next = (path, modified, saving, failed, busy, canRun);
         if (state == next) return;
         state = next;
         OnPropertyChanged(string.Empty);

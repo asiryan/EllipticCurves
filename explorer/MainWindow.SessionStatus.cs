@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using EllipticCurves.Explorer.ViewModels;
+using EllipticCurves.Explorer.Models;
 
 namespace EllipticCurves.Explorer;
 
@@ -15,6 +16,8 @@ public partial class MainWindow
     private readonly HashSet<CalculationJobViewModel> observedJobs = new();
     private DispatcherOperation? sessionStatusRefresh;
     private bool sessionClosed;
+    private SessionState CurrentSessionState => new(sessionPath, HasUnsavedChanges, isSavingSession,
+        sessionSaveFailed, sessionActionInProgress, Workbench.CanRun);
 
     private void InitializeSessionStatus()
     {
@@ -66,8 +69,8 @@ public partial class MainWindow
     internal void RefreshSessionStatus()
     {
         if (sessionClosed) return;
-        SessionStatus.Update(sessionPath, HasUnsavedChanges, isSavingSession, sessionSaveFailed, sessionActionInProgress, Workbench.CanRun);
-        var title = SessionStatus.DisplayName + " — Elliptic Curves · Explorer";
+        SessionStatus.Update(CurrentSessionState);
+        var title = SessionStatus.DisplayName + " — " + ExplorerInfo.WindowTitle;
         if (Title != title) Title = title;
         CommandManager.InvalidateRequerySuggested();
     }

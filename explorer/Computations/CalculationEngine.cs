@@ -23,9 +23,9 @@ public static class CalculationEngine
         }
         if (!CurveEquationText.TryParse(request.Equation, out var curve, out var equationError)) throw new FormatException(equationError);
         token.ThrowIfCancellationRequested();
-        report?.Invoke(new("progress", "Preparing curve and field"));
+        report?.Invoke(new(CalculationProtocol.Progress, "Preparing curve and field"));
         var target = CreateTarget(operation.Context, curve!, arguments, token);
-        report?.Invoke(new("progress", operation.UsesNetwork ? "Requesting LMFDB data" : "Computing · " + operation.Title));
+        report?.Invoke(new(CalculationProtocol.Progress, operation.UsesNetwork ? "Requesting LMFDB data" : "Computing · " + operation.Title));
         object? result;
         if (operation.Context == CalculationContext.Database)
         {
@@ -89,7 +89,7 @@ public static class CalculationEngine
             ? new Dictionary<string, object?> { ["Reduced rational"] = number, ["Numerator"] = number.Num, ["Denominator"] = number.Den, ["Sign"] = number.Sign, ["Is zero"] = number.IsZero }
             : target;
         token.ThrowIfCancellationRequested();
-        report?.Invoke(new("progress", "Collecting and formatting results"));
+        report?.Invoke(new(CalculationProtocol.Progress, "Collecting and formatting results"));
         return CalculationFormatter.Format(result, request.MaxItems, report, token);
     }
 

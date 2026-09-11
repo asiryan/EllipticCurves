@@ -21,7 +21,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public CoefficientViewModel Step { get; }
     public EquationViewModel Equation { get; }
     public IReadOnlyList<CurvePreset> Presets => CurvePreset.All;
-    public CurveSnapshot Snapshot { get; private set; } = new(new EllipticCurveQ(0, 0, 0, -1, 0));
+    public CurveSnapshot Snapshot { get; private set; } = new(CurvePreset.Classic.CreateCurve());
     public bool HasInputError => Equation.Error.Length != 0 || ActiveCoefficients.Any(value => value.Error.Length != 0);
     public bool HasIncompleteInput => !Equation.IsValid || ActiveCoefficients.Any(value => !value.IsValid);
     public string InputStatus => HasInputError ? "Check the equation · showing the last valid curve"
@@ -56,12 +56,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         };
         Step.SetExact(new BigRational(1, 100));
         updating = true;
-        Coefficients[3].SetExact(-1);
+        Coefficients[3].SetExact(CurvePreset.Classic.A4);
         updating = false;
-        ResetCommand = new RelayCommand(_ => ApplyPreset(CurvePreset.All[0]));
+        ResetCommand = new RelayCommand(_ => ApplyPreset(CurvePreset.Classic));
         FitCommand = new RelayCommand(_ => ViewResetRequested?.Invoke(this, EventArgs.Empty));
         SetStepCommand = new RelayCommand(value => { Step.Text = value?.ToString() ?? ""; Step.CommitEdit(); });
-        ApplyPreset(CurvePreset.All[0]);
+        ApplyPreset(CurvePreset.Classic);
         // The initial snapshot already contains the classic curve.
         RefreshSamples();
     }

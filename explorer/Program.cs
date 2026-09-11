@@ -9,7 +9,7 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        if (args.Length == 1 && args[0] == "--compute-worker")
+        if (args.Length == 1 && args[0] == CalculationProtocol.WorkerArgument)
         {
             // A WinExe has no console. Use the redirected handles directly;
             // changing Console.OutputEncoding tries to access a nonexistent console.

@@ -52,7 +52,7 @@ public static class CalculationInput
             type == typeof(bool) ? ParameterKind.Boolean : IsPoints(type) ? ParameterKind.Multiline : ParameterKind.Text);
     }
 
-    private static string Default(Type type, string key) => type == typeof(EllipticCurveQ) ? "y^2 = x^3 - x"
+    private static string Default(Type type, string key) => type == typeof(EllipticCurveQ) ? CurvePreset.ClassicEquation
         : IsPoints(type) ? "0; 0" : IsIntegers(type) ? "2; 3; 5"
         : type == typeof(bool) ? "False" : type == typeof(FiniteFieldElement) ? (key is "x" or "y" ? "0" : "1")
         : key is "u" or "d" or "den" or "a" or "b" ? "1" : key is "n" or "k" or "exponent" ? "2"

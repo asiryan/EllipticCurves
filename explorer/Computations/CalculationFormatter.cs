@@ -75,7 +75,7 @@ public static class CalculationFormatter
                         if (index >= maxItems || text.Length >= MaxCharacters) { shortened = true; break; }
                         Write("[" + index + "]", item, depth + 1);
                         index++;
-                        if (index % 100 == 0) report?.Invoke(new("progress",
+                        if (index % 100 == 0) report?.Invoke(new(CalculationProtocol.Progress,
                             count.HasValue ? "Formatting items · " + index + " / " + count : "Collecting items · " + index,
                             count is > 0 ? 100.0 * index / count.Value : null));
                     }

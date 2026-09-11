@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using EllipticCurves.Explorer.Computations;
@@ -64,14 +63,7 @@ public partial class ResultsPanel : UserControl
     {
         var selected = Selected;
         if (selected == null) return;
-        try
-        {
-            Clipboard.SetText(selected.Report);
-        }
-        catch (ExternalException)
-        {
-            ConfirmationWindow.ShowMessage(Window.GetWindow(this), "Copy result", "The clipboard is busy. Please try again.");
-        }
+        ClipboardActions.CopyText(Window.GetWindow(this), selected.Report, "Copy result");
     }
 
     private void ExportClick(object sender, RoutedEventArgs e)

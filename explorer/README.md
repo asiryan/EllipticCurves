@@ -355,6 +355,23 @@ It uses an invisible native layout host and shows no application windows:
 dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release
 ```
 
+## Code organization
+
+- `ExplorerInfo` owns the application title and repository address shared by C# and XAML.
+- `SessionFile` owns `.ec` naming, file-picker filters, format identifiers, validation and file I/O.
+  `ExplorerSession` contains the saved data and the history limit. `SessionMessages` contains shared session labels.
+- `SessionState` defines command availability for both the menu and keyboard shortcuts.
+  `SessionStatusViewModel` presents that state; `SessionChanges` compares only data that requires saving.
+- `MainWindow.Session` manages session operations, `MainWindow.SessionStatus` observes changes,
+  `MainWindow.Sidebars` manages panel layout, and `MainWindow.Plot` handles view navigation and image export.
+- `CalculationProtocol` and `CalculationStatus` name the existing worker messages and stored status values.
+  `CurvePreset.Classic` and `ClassicEquation` define the initial curve used by the editor, sessions and calculation inputs.
+- `ClipboardActions` handles copying and clipboard errors for the equation and calculation reports.
+
+Shared values belong with their owning feature. Text used in only one place stays
+beside that UI or operation. Refactoring these definitions must preserve the session
+format, worker messages and displayed text; the tests use literal expectations for those contracts.
+
 The desktop project uses the [Microsoft .NET Desktop SDK settings](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props-desktop).
 
 The application logo is `ec_logo.png`; it is embedded as a WPF resource for the

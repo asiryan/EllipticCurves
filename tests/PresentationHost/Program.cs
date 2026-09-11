@@ -58,6 +58,8 @@ internal static partial class Program
             panel.Arrange(new Rect(0, 0, 300, 800));
             panel.UpdateLayout();
             var history = Descendants(panel).OfType<ComboBox>().Single();
+            Require(Descendants(panel).OfType<TextBlock>().Any(text => text.Text == "SESSION HISTORY · LAST 50"),
+                "The history heading must show the session's report limit.");
             var style = history.ItemContainerStyle;
             var opening = style.Setters.OfType<EventSetter>().Single(s => s.Event == FrameworkElement.ContextMenuOpeningEvent);
             var onOpening = (ContextMenuEventHandler)opening.Handler;

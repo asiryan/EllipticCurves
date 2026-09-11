@@ -23,8 +23,9 @@ public partial class MainWindow
 
     private void SessionCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-        e.CanExecute = !sessionActionInProgress && (e.Command == ApplicationCommands.Save
-            ? CanSaveToCurrentFile : e.Command == ApplicationCommands.SaveAs || Workbench.CanRun);
+        var state = CurrentSessionState;
+        e.CanExecute = e.Command == ApplicationCommands.Save ? state.CanSave
+            : e.Command == ApplicationCommands.SaveAs ? state.CanSaveAs : state.CanReplace;
         e.Handled = true;
     }
 
@@ -47,8 +48,8 @@ public partial class MainWindow
             {
                 var dialog = new SaveFileDialog
                 {
-                    Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec", AddExtension = true,
-                    FileName = path ?? "untitled.ec", Title = "Save session as", OverwritePrompt = true
+                    Filter = SessionFile.DialogFilter, DefaultExt = SessionFile.Extension, AddExtension = true,
+                    FileName = path ?? SessionFile.DefaultFileName, Title = SessionMessages.SaveAsTitle, OverwritePrompt = true
                 };
                 return dialog.ShowDialog(this) == true ? dialog.FileName : null;
             },
@@ -56,8 +57,8 @@ public partial class MainWindow
             {
                 var dialog = new OpenFileDialog
                 {
-                    Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec",
-                    Title = "Open session", CheckFileExists = true, Multiselect = false
+                    Filter = SessionFile.DialogFilter, DefaultExt = SessionFile.Extension,
+                    Title = SessionMessages.OpenTitle, CheckFileExists = true, Multiselect = false
                 };
                 return dialog.ShowDialog(this) == true ? dialog.FileName : null;
             },
@@ -67,7 +68,6 @@ public partial class MainWindow
     }
 
     internal bool HasUnsavedChanges => Workbench.IsBusy || HasSessionEdits;
-    private bool CanSaveToCurrentFile => sessionPath != null && (HasUnsavedChanges || sessionSaveFailed);
     private bool HasSessionEdits => cleanSession != null &&
         (ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid
          || !SessionChanges.Equal(cleanSession, ReadSession()));
@@ -81,7 +81,7 @@ public partial class MainWindow
     private async Task<bool> ConfirmSessionChangeAsync()
     {
         if (!HasUnsavedChanges) return true;
-        var result = sessionDialogs.ConfirmUnsaved(sessionPath == null ? "untitled.ec" : Path.GetFileName(sessionPath));
+        var result = sessionDialogs.ConfirmUnsaved(SessionFile.GetFileName(sessionPath));
         return result.Choice switch
         {
             SaveChangesChoice.Save => await SaveSessionCoreAsync(false, result.FileName) && !HasSessionEdits,
@@ -132,14 +132,17 @@ public partial class MainWindow
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
-            sessionDialogs.ShowError("Open session", "The session could not be opened.\n\n" + error.Message);
+            sessionDialogs.ShowError(SessionMessages.OpenTitle, "The session could not be opened.\n\n" + error.Message);
             return false;
         }
     });
 
-    internal Task<bool> TrySaveSessionAsync(bool saveAs = false, string? fileName = null) =>
-        RunSessionOperation(() => saveAs || CanSaveToCurrentFile
-            ? SaveSessionCoreAsync(saveAs, fileName) : Task.FromResult(false));
+    internal Task<bool> TrySaveSessionAsync(bool saveAs = false, string? fileName = null)
+    {
+        var state = CurrentSessionState;
+        if (!(saveAs ? state.CanSaveAs : state.CanSave)) return Task.FromResult(false);
+        return RunSessionOperation(() => SaveSessionCoreAsync(saveAs, fileName));
+    }
 
     private async Task<bool> SaveSessionCoreAsync(bool saveAs, string? fileName)
     {
@@ -149,16 +152,10 @@ public partial class MainWindow
         {
             sessionSaveFailed = true;
             RefreshSessionStatus();
-            sessionDialogs.ShowError("Save session", error.Message);
+            sessionDialogs.ShowError(SessionMessages.SaveTitle, error.Message);
             return false;
         }
-        var suggestedPath = sessionPath;
-        if (!string.IsNullOrWhiteSpace(fileName))
-        {
-            fileName = fileName.Trim();
-            if (!fileName.EndsWith(".ec", StringComparison.OrdinalIgnoreCase)) fileName += ".ec";
-            suggestedPath = sessionPath == null ? fileName : Path.Combine(Path.GetDirectoryName(sessionPath)!, fileName);
-        }
+        var suggestedPath = SessionFile.SuggestSavePath(sessionPath, fileName);
         var choosePath = saveAs || sessionPath == null || !string.Equals(suggestedPath, sessionPath, StringComparison.OrdinalIgnoreCase);
         var path = choosePath ? sessionDialogs.ChooseSavePath(suggestedPath) : sessionPath;
         if (path == null) return false;
@@ -181,7 +178,7 @@ public partial class MainWindow
             sessionSaveFailed = true;
             isSavingSession = false;
             RefreshSessionStatus();
-            sessionDialogs.ShowError("Save session", "The session could not be saved.\n\n" + error.Message);
+            sessionDialogs.ShowError(SessionMessages.SaveTitle, "The session could not be saved.\n\n" + error.Message);
             return false;
         }
         finally
@@ -238,13 +235,10 @@ public partial class MainWindow
         };
     }
 
-    private static SidebarSession CaptureSidebar(SidebarState state, ColumnDefinition column) => new(state.IsVisible,
-        Math.Max(state.MinimumWidth, state.IsVisible && !state.IsAnimating ? column.Width.Value : state.ExpandedWidth));
-
     internal void RestoreSession(ExplorerSession saved)
     {
         SessionFile.Validate(saved);
-        if (!Workbench.CanRun) throw new InvalidOperationException("Stop the active calculation before opening a session.");
+        if (!Workbench.CanRun) throw new InvalidOperationException(SessionMessages.StopCalculationBeforeOpen);
         foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
         ViewModel.RestoreSession(saved);
         Workbench.RestoreHistory(saved.History);
@@ -270,20 +264,4 @@ public partial class MainWindow
         }));
     }
 
-    private static void RestoreSidebar(SidebarState state, SidebarSession saved, ColumnDefinition column,
-        FrameworkElement panel, Button tab, GridSplitter splitter)
-    {
-        state.AnimationVersion++;
-        state.IsAnimating = false;
-        state.IsVisible = saved.Visible;
-        state.ExpandedWidth = saved.Width;
-        column.BeginAnimation(ColumnDefinition.WidthProperty, null);
-        column.MinWidth = saved.Visible ? state.MinimumWidth : SidebarTabWidth;
-        column.MaxWidth = double.PositiveInfinity;
-        column.Width = new GridLength(saved.Visible ? saved.Width : SidebarTabWidth);
-        panel.Width = double.NaN;
-        panel.HorizontalAlignment = HorizontalAlignment.Stretch;
-        panel.Visibility = splitter.Visibility = saved.Visible ? Visibility.Visible : Visibility.Collapsed;
-        tab.Visibility = saved.Visible ? Visibility.Collapsed : Visibility.Visible;
-    }
 }

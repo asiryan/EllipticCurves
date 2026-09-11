@@ -156,6 +156,8 @@ public sealed class ExplorerSessionTests
             var original = Example();
             SessionFile.Save(path, original);
             var loaded = SessionFile.Load(path);
+            Assert.Equal("EllipticCurves.Explorer.Session", loaded.Format);
+            Assert.Equal(1, loaded.Version);
             Assert.DoesNotContain("\"SelectedResult\"", File.ReadAllText(path));
             Assert.Equal(JsonSerializer.Serialize(original), JsonSerializer.Serialize(loaded));
             Assert.True(SessionChanges.Equal(original, loaded));

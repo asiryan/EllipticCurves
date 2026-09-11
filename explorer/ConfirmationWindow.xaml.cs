@@ -1,8 +1,8 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
+using EllipticCurves.Explorer.Models;
 
 namespace EllipticCurves.Explorer;
 
@@ -47,7 +47,7 @@ public partial class ConfirmationWindow : Window
 
     internal static ConfirmationWindow CreateSaveChangesDialog(string sessionName)
     {
-        var dialog = new ConfirmationWindow("Unsaved changes",
+        var dialog = new ConfirmationWindow(SessionMessages.UnsavedChanges,
             "Save changes to this session before continuing? Choosing Discard will lose the unsaved changes.", "Save")
             { Width = 520 };
         dialog.DiscardButton.Visibility = Visibility.Visible;
@@ -66,8 +66,7 @@ public partial class ConfirmationWindow : Window
     private void SessionFileNameChanged(object sender, TextChangedEventArgs e)
     {
         if (SessionNamePanel.Visibility != Visibility.Visible) return;
-        var name = SessionFileName.Text.Trim();
-        var valid = name.Length > 0 && !name.EndsWith('.') && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+        var valid = SessionFile.IsValidFileName(SessionFileName.Text);
         ConfirmButton.IsEnabled = valid;
         SessionNameError.Visibility = valid ? Visibility.Collapsed : Visibility.Visible;
     }

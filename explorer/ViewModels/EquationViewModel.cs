@@ -6,9 +6,9 @@ namespace EllipticCurves.Explorer.ViewModels;
 
 public sealed class EquationViewModel(Action changed) : ObservableObject, IDataErrorInfo
 {
-    private string text = "y^2 = x^3 - x", parseError = "";
+    private string text = CurvePreset.ClassicEquation, parseError = "";
     private bool editing;
-    public EllipticCurveQ Curve { get; private set; } = new(0, 0, 0, -1, 0);
+    public EllipticCurveQ Curve { get; private set; } = CurvePreset.Classic.CreateCurve();
     public bool IsValid => parseError.Length == 0;
     public string Error => editing ? "" : parseError;
     public string this[string columnName] => columnName == nameof(Text) ? Error : "";

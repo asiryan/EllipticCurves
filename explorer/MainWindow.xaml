@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:controls="clr-namespace:EllipticCurves.Explorer.Controls"
-        Title="Elliptic Curves · Explorer" Width="1440" Height="920" MinWidth="1120" MinHeight="760"
+        xmlns:local="clr-namespace:EllipticCurves.Explorer"
+        Title="{x:Static local:ExplorerInfo.WindowTitle}" Width="1440" Height="920" MinWidth="1120" MinHeight="760"
         WindowStartupLocation="CenterScreen" Background="{StaticResource BackgroundBrush}"
         Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" FontSize="13"
         Icon="ec_logo.png" UseLayoutRounding="True" Loaded="WindowLoaded" Closed="WindowClosed">
@@ -67,7 +68,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="0,8,0,0">
                     <Button Click="RepositoryClick" Style="{StaticResource QuietButton}" Padding="0" Cursor="Hand"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                            ToolTip="https://github.com/asiryan/EllipticCurves" AutomationProperties.Name="Open Elliptic Curves on GitHub">
+                            ToolTip="{x:Static local:ExplorerInfo.RepositoryUrl}" AutomationProperties.Name="Open Elliptic Curves on GitHub">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="ec_logo.png" Width="28" Height="28" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Elliptic Curves logo" />
                             <TextBlock Text="ELLIPTIC CURVES" FontWeight="SemiBold" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" />

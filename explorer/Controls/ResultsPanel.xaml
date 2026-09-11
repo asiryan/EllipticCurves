@@ -52,7 +52,7 @@
                 </StackPanel>
             </Border>
             <StackPanel Grid.Row="3" Margin="0,0,0,12" Visibility="{Binding HasResults, Converter={StaticResource BooleanVisibility}}">
-                <TextBlock Text="SESSION HISTORY · LAST 50" Style="{StaticResource Eyebrow}" FontSize="9" Margin="0,0,0,7" />
+                <TextBlock Text="{Binding HistoryHeading}" Style="{StaticResource Eyebrow}" FontSize="9" Margin="0,0,0,7" />
                 <ComboBox ItemsSource="{Binding Jobs}" SelectedItem="{Binding Selected}" DisplayMemberPath="HistoryLabel" AutomationProperties.Name="Calculation history" ToolTip="Right-click a history entry to delete it.">
                     <ComboBox.ItemContainerStyle><Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
                         <EventSetter Event="ContextMenuOpening" Handler="HistoryContextMenuOpening" />

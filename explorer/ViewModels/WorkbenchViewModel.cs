@@ -39,6 +39,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     public bool HasSelection => Selected != null;
     public bool HasResults => Jobs.Count > 0;
     public bool CanClearHistory => CanRun && HasResults;
+    public string HistoryHeading => $"SESSION HISTORY · LAST {ExplorerSession.HistoryLimit}";
     public bool CanDelete(CalculationJobViewModel? job) => job != null && job != Active && Jobs.Contains(job);
     public string Summary => IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Explorer" : Jobs.Count + " calculations this session";
     public RelayCommand CancelCommand => new(_ => Cancel());
@@ -63,7 +64,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
 
     public void RestoreHistory(IReadOnlyList<CalculationSession> history)
     {
-        if (!CanRun) throw new InvalidOperationException("Stop the active calculation before opening a session.");
+        if (!CanRun) throw new InvalidOperationException(SessionMessages.StopCalculationBeforeOpen);
         var restored = history.Select(CalculationJobViewModel.FromSession).ToArray();
         Jobs.Clear();
         foreach (var job in restored) Jobs.Add(job);
@@ -82,14 +83,14 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         var job = new CalculationJobViewModel(request, CalculationCatalog.Get(request.OperationId).Title);
         Jobs.Insert(0, job);
         // Keep the current session bounded; each result can contain up to 2 MB of text.
-        if (Jobs.Count > 50) Jobs.RemoveAt(Jobs.Count - 1);
+        if (Jobs.Count > ExplorerSession.HistoryLimit) Jobs.RemoveAt(Jobs.Count - 1);
         Selected = Active = job;
         NotifyState();
         var watch = Stopwatch.StartNew();
         var timer = UpdateClockAsync(job, watch, clock.Token);
         var progress = new Progress<CalculationUpdate>(update =>
         {
-            if (disposed || job.Status != "Running") return;
+            if (disposed || job.Status != CalculationStatus.Running) return;
             job.Stage = update.Message;
             job.Percent = update.Percent;
         });
@@ -99,7 +100,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
             job.Status = outcome.Status;
             job.Stage = outcome.Message;
             job.Elapsed = watch.Elapsed;
-            job.Percent = outcome.Status == "Completed" ? 100 : 0;
+            job.Percent = outcome.Status == CalculationStatus.Completed ? 100 : 0;
             job.Result = outcome.Text ?? outcome.Message;
         }
         finally
