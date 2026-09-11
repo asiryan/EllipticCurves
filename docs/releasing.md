@@ -43,12 +43,10 @@ Run `build.bat --help` for usage. The individual commands follow below.
 
 The library sets `Version`, `AssemblyVersion` and `FileVersion` in its project
 file. Use that file as the source of truth for the NuGet version.
-Explorer explicitly sets its application version to `3.2.0`, matching the library,
-in its project file. Update both projects when releasing a new version.
-The Console project has no explicit version settings and uses the SDK's default
-`Version`. A project reference does not inherit the library's version. If all
-release artifacts should share a version, update the applications' version
-properties explicitly before packaging them.
+Only the library has explicit version settings. Console and Explorer use the
+SDK's default application assembly versions; their project references do not
+inherit the library's version. Identify their release archives by the library
+release they accompany.
 
 The NuGet README is [docs/nuget-readme.md](nuget-readme.md), not the root README.
 The library project packs it as `README.md`, together with `LICENSE.md`,
