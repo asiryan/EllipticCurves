@@ -14,6 +14,17 @@ public partial class ExplorerMenu : UserControl
     private void PopupOpened(object? sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => SearchBox.Focus()));
     private void PopupKeyDown(object sender, KeyEventArgs e)
     { if (e.Key == Key.Escape) { Toggle.IsChecked = false; Toggle.Focus(); e.Handled = true; } }
+    private void CategorySelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source != sender) return;
+        // Reset after the category binding has replaced and laid out the items.
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            OperationsList.ApplyTemplate();
+            if (OperationsList.Template?.FindName("PART_ScrollViewer", OperationsList) is ScrollViewer scroll)
+                scroll.ScrollToTop();
+        }));
+    }
     private void OperationMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not DependencyObject source
