@@ -9,6 +9,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Interop;
+using EllipticCurves;
 using EllipticCurves.Explorer.Models;
 using EllipticCurves.Explorer.Windowing;
 using EllipticCurves.Explorer;
@@ -71,6 +72,7 @@ internal static class Program
             CheckConfirmationDialogs();
             CheckDockAnimation();
             CheckPlotRendering();
+            CheckComplexTorusView();
             Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
@@ -79,6 +81,58 @@ internal static class Program
     }
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+
+    private static void CheckComplexTorusView()
+    {
+        using var view = new ComplexTorusView();
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        dispatcher.Invoke(() => view.Model.Update(curve, new[]
+        {
+            new EllipticCurvePoint(-1, 0), new EllipticCurvePoint(0, 0), new EllipticCurvePoint(1, 0)
+        }, true));
+        var preparation = view.Model.PendingUpdate;
+        var frame = new DispatcherFrame();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var timer = new DispatcherTimer(TimeSpan.FromMilliseconds(20), DispatcherPriority.Background,
+            (_, _) => { if (preparation.IsCompleted || watch.Elapsed.TotalSeconds > 20) frame.Continue = false; }, dispatcher);
+        try { Dispatcher.PushFrame(frame); }
+        finally { timer.Stop(); }
+        Require(preparation.IsCompleted, "Complex torus preparation did not finish.");
+        preparation.GetAwaiter().GetResult();
+        Require(view.Model.HasLattice && view.Model.Points.Count == 4, "Complex view lost the classic curve's half-period points.");
+
+        void Layout(double width, double height)
+        {
+            view.Measure(new Size(width, height));
+            view.Arrange(new Rect(0, 0, width, height));
+            view.UpdateLayout();
+            dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(view.UpdateLayout));
+        }
+        Layout(800, 540);
+        var lattice = (PeriodLatticePlot)view.FindName("LatticePlot");
+        var torus = (TorusViewport)view.FindName("TorusPlot");
+        var picker = Descendants(view).OfType<ComboBox>().Single();
+        picker.SelectedIndex = 2;
+        dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(view.UpdateLayout));
+        Require(Equals(lattice.SelectedPoint, view.Model.Points[2]) && Equals(torus.SelectedPoint, lattice.SelectedPoint),
+            "The point selector must highlight the same point on the lattice and torus.");
+        torus.SetCurrentValue(TorusViewport.SelectedPointProperty, view.Model.Points[3]);
+        dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(view.UpdateLayout));
+        Require(Equals(picker.SelectedItem, view.Model.Points[3]) && Equals(lattice.SelectedPoint, picker.SelectedItem),
+            "Selecting a torus marker did not update the other views.");
+        view.ShowGrid = false;
+        Require(!lattice.ShowGrid && !torus.ShowGrid, "Complex grid visibility is not shared.");
+        view.Zoom(0.8);
+        view.Fit();
+        var bitmap = new RenderTargetBitmap(800, 540, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(view);
+        Layout(400, 240);
+        Require(lattice.ActualWidth >= 100 && lattice.ActualHeight >= 90 && torus.ActualHeight >= 90,
+            "The complex diagrams collapsed in a small viewport.");
+        var scroll = Descendants(view).OfType<ScrollViewer>().First();
+        Require(scroll.ScrollableHeight > 0, "The compact complex view must scroll instead of crushing the diagrams.");
+    }
     private static void CheckExplorerSelection()
     {
         var menu = new ExplorerMenu();

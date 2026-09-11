@@ -56,10 +56,10 @@ and the checks to run before publishing a release.
   formula field contains invalid input.
 - See the discriminant, j-invariant, c₄, c₆, real component count and short model
   update after a 300 ms pause in valid input; **Enter** applies it immediately.
-  The graph always uses the entered coordinates; the short
+  The real-locus graph uses the entered coordinates; the short
   model is shown separately in transformed coordinates.
 - Drag the plot to pan and use the mouse wheel to zoom about the pointer. Both
-  axes use the same scale. Edits preserve the viewport. **Fit curve**, a double-click
+  axes use the same scale. Edits preserve the viewport. **Reset view**, a double-click
   or **Ctrl+F** recenters the view around the real branch points and part of the
   unbounded branch. With the plot focused, **Home** fits and **+ / −** zoom.
   Slider arrow keys move by the chosen exact step.
@@ -71,6 +71,46 @@ and the checks to run before publishing a release.
   `y^2 = x^3 - x` and recentering the plot. The custom dark dialog opens centered
   on the main window with **Cancel** focused; Escape or the close button cancels.
 - Copy the equation and exact invariants, or export the current plot to PNG.
+
+## Complex torus
+
+The plot's mode selector switches between **Real locus · E(ℝ)** and
+**Complex torus · E(ℂ)**. The complex view has two linked panels:
+
+- **Period lattice** shows a fundamental parallelogram with its opposite edges
+  identified. The drawing is scaled by ω₁, so its two basis vectors are 1 and
+  τ = ω₂/ω₁. This basis is adapted to the real points; τ is not reduced to the
+  modular fundamental domain. The numerical periods above it refer to the global minimal model;
+  their tooltip gives that model's equation.
+- **Complex torus** shows a fixed topological embedding of ℂ/Λ. The ring's
+  radii do not represent the curve's complex structure; that information is in
+  the lattice and τ. The turquoise and blue cycles correspond to ω₁ and ω₂.
+
+Gold markers represent the same bounded rational samples as the real plot.
+The point at infinity **O** is included at the lattice origin. Select a point
+from the dropdown or click a marker in either panel to highlight it in both.
+Repeated boundary markers in the parallelogram represent the same point after
+edge identification. Exact x/y coordinates remain in the entered curve's model;
+their period coordinates u and v are numerical elliptic logarithms, with
+z ≡ uω₁ + vω₂. Up to 32 distinct affine samples are mapped, with the mapped count
+and any numerical failures shown below the view. This is not a complete point list.
+
+Drag the torus to rotate it and scroll to zoom. With it focused, arrow keys rotate,
+**Home** resets the camera and **+ / −** zoom. **Reset view**, a double-click on
+the torus, or **Ctrl+F** restores the camera. Arrow keys in the lattice cycle
+through the markers. **Grid** toggles the subdivisions in both panels;
+**Rational samples** hides affine markers while retaining O. The real plot keeps
+its viewport when switching modes. **Export plot** saves the visible complex
+view, including both panels, to PNG. In a small window the complex view scrolls
+vertically to keep its diagrams readable.
+
+Period and point mapping calculations run locally in the background only while
+the complex mode is open. They use a 180 ms debounce, a 15-second cancellation
+deadline and bounded root-isolation/iteration work. Changing the curve or leaving
+the mode cancels outstanding work; late results cannot replace the current curve.
+The period lattice remains usable if subsequent point mapping reaches its limit.
+Singular cubics (Δ = 0) show an explanation
+instead of a smooth torus. No internet connection or extra graphics package is needed.
 
 ## Calculation scope
 
@@ -98,9 +138,10 @@ text input retains the last valid curve with a neutral editing status. Validatio
 is shown after leaving the field or pressing **Enter**, so partial input such as
 `-` or `1/` is not highlighted while typing.
 
-Rank, conductor, torsion enumeration, heights and periods are not automatically
-computed by this application. Coefficient updates invoke only the inexpensive native
-invariants and the bounded sample search described above.
+In **Real locus** mode, coefficient updates invoke only the inexpensive native
+invariants and the bounded sample search described above. The optional complex
+view additionally computes periods and numerical point mappings. Rank, conductor,
+torsion enumeration and heights require an explicit Explorer calculation.
 
 ## Explorer calculations
 
@@ -206,6 +247,7 @@ not included in `dotnet test EllipticCurves.sln`. It loads the real theme and ma
 workspace and verifies Explorer click/focus scrolling, history-menu deletion,
 acceptance/rejection of Clear and Reset, the presence of Repeat, both sidebars'
 folding, aligned bounds at different window sizes, animation and PNG rendering.
+It also checks the complex view's shared point selection and compact layout.
 It uses an invisible native layout host and shows no application windows:
 
 ```powershell

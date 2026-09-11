@@ -16,6 +16,11 @@
             <Setter Property="Width" Value="44" />
             <Setter Property="Padding" Value="0" />
         </Style>
+        <Style x:Key="PlotNavigationButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
         <Style x:Key="SidebarSplitter" TargetType="GridSplitter">
             <Setter Property="Width" Value="4" />
             <Setter Property="HorizontalAlignment" Value="Center" />
@@ -117,7 +122,7 @@
                         <TextBlock Text="START SOMEWHERE" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
                         <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name" AutomationProperties.Name="Curve preset" />
                         <TextBlock Text="{Binding PresetDescription}" Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="Your zoom stays in place.&#10;Fit curve recenters the view." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="The graph updates automatically after a short pause when you edit the equation." />
+                        <TextBlock Text="Your zoom stays in place.&#10;Reset view recenters the view." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="The graph updates automatically after a short pause when you edit the equation." />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -156,27 +161,37 @@
                         <Grid Margin="16,10" MinHeight="32">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <WrapPanel VerticalAlignment="Center">
-                                <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <Run Text="Real locus" FontWeight="SemiBold" /><Run Text="&#160;&#160;&#160;E(ℝ)" FontFamily="Cambria Math" FontSize="15" Foreground="{StaticResource MutedBrush}" BaselineAlignment="Baseline" />
-                                </TextBlock>
+                                <ComboBox x:Name="ViewMode" Width="190" Margin="0,0,16,0" SelectedIndex="0" SelectionChanged="ViewModeChanged"
+                                          AutomationProperties.Name="Visualization mode" ToolTip="Choose the real curve or the complex period lattice and torus">
+                                    <ComboBoxItem Content="Real locus · E(ℝ)" />
+                                    <ComboBoxItem Content="Complex torus · E(ℂ)" />
+                                </ComboBox>
                                 <CheckBox Content="Grid" IsChecked="{Binding ShowGrid}" Height="28" VerticalContentAlignment="Center" Margin="0,0,16,0" />
                                 <CheckBox Content="Rational samples" IsChecked="{Binding ShowPoints}" Height="28" VerticalContentAlignment="Center" />
                             </WrapPanel>
                             <Button x:Name="ExportPlotButton" Grid.Column="1" Content="Export plot ↗" Click="ExportClick" Padding="10,6" FontSize="11" Margin="16,0,0,0" VerticalAlignment="Center" ToolTip="Save the current plot as a PNG image" />
                         </Grid>
-                        <controls:CurvePlot x:Name="Plot" Grid.Row="1" Snapshot="{Binding Snapshot}" Samples="{Binding Samples}" ShowGrid="{Binding ShowGrid}" ShowPoints="{Binding ShowPoints}" Margin="8,0" AutomationProperties.Name="Real elliptic curve plot. Drag to pan, scroll to zoom. Control F to fit." />
-                        <Border Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#222B35" CornerRadius="8" Padding="18" Visibility="{Binding Snapshot.IsPlotUnavailable, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="These coefficients exceed the plot's numerical precision.&#10;Your equation and invariants are still exact." TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" /></Border>
-                        <Border Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,8,0,0" Background="#332B1E" CornerRadius="6" Padding="10,6" IsHitTestVisible="False" Visibility="{Binding Snapshot.IsSingular, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="Δ = 0 · singular cubic" Foreground="{StaticResource WarningBrush}" FontSize="11" /></Border>
+                        <Grid x:Name="RealPlotHost" Grid.Row="1">
+                            <controls:CurvePlot x:Name="Plot" Snapshot="{Binding Snapshot}" Samples="{Binding Samples}" ShowGrid="{Binding ShowGrid}" ShowPoints="{Binding ShowPoints}" Margin="8,0" AutomationProperties.Name="Real elliptic curve plot. Drag to pan, scroll to zoom. Control F to fit." />
+                            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="#222B35" CornerRadius="8" Padding="18" Visibility="{Binding Snapshot.IsPlotUnavailable, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="These coefficients exceed the plot's numerical precision.&#10;Your equation and invariants are still exact." TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" /></Border>
+                            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,8,0,0" Background="#332B1E" CornerRadius="6" Padding="10,6" IsHitTestVisible="False" Visibility="{Binding Snapshot.IsSingular, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="Δ = 0 · singular cubic" Foreground="{StaticResource WarningBrush}" FontSize="11" /></Border>
+                        </Grid>
+                        <controls:ComplexTorusView x:Name="TorusView" Grid.Row="1" Snapshot="{Binding Snapshot}" Samples="{Binding Samples}"
+                                                   ShowGrid="{Binding ShowGrid}" Visibility="Collapsed" />
                         <Grid x:Name="PlotFooter" Grid.Row="2" Margin="16,0,16,12" MinHeight="32">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <WrapPanel x:Name="PlotLegend" VerticalAlignment="Center" Margin="0,0,16,0">
                                 <StackPanel Orientation="Horizontal" Height="20" Margin="0,0,18,0"><Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" Margin="0,0,7,0" /><TextBlock Text="Numerical real locus" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" /></StackPanel>
                                 <StackPanel Orientation="Horizontal" Height="20"><Ellipse Width="6" Height="6" Fill="#F7CC7C" Margin="0,0,7,0" /><TextBlock Text="Exact rational samples" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" /></StackPanel>
                             </WrapPanel>
-                            <StackPanel x:Name="PlotNavigation" Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
-                                <Button Content="−" Width="34" Padding="0,6" Click="ZoomOutClick" ToolTip="Zoom out" AutomationProperties.Name="Zoom out" />
-                                <Button Content="+" Width="34" Padding="0,6" Margin="5,0" Click="ZoomInClick" ToolTip="Zoom in" AutomationProperties.Name="Zoom in" />
-                                <Button Content="Fit curve" Padding="10,6" Click="FitClick" ToolTip="Fit curve (Ctrl+F)" />
+                            <WrapPanel x:Name="TorusLegend" VerticalAlignment="Center" Margin="0,0,16,0" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Height="20" Margin="0,0,18,0"><Ellipse Width="6" Height="6" Fill="{StaticResource TextBrush}" Margin="0,0,7,0" /><TextBlock Text="Selected point" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Height="20"><Ellipse Width="6" Height="6" Fill="#F7CC7C" Margin="0,0,7,0" /><TextBlock Text="Exact rational samples" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" /></StackPanel>
+                            </WrapPanel>
+                            <StackPanel x:Name="PlotNavigation" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Height="30" Orientation="Horizontal">
+                                <Button Content="−" Style="{StaticResource PlotNavigationButton}" Click="ZoomOutClick" ToolTip="Zoom out" AutomationProperties.Name="Zoom out" />
+                                <Button Content="+" Style="{StaticResource PlotNavigationButton}" Margin="5,0" Click="ZoomInClick" ToolTip="Zoom in" AutomationProperties.Name="Zoom in" />
+                                <Button x:Name="FitViewButton" Content="Reset view" Style="{StaticResource PlotNavigationButton}" Width="90" Click="FitClick" ToolTip="Reset real plot view (Ctrl+F)" />
                             </StackPanel>
                         </Grid>
                     </Grid>

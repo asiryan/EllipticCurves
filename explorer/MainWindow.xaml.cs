@@ -49,6 +49,7 @@ public partial class MainWindow : Window
         Results.HideRequested += () => SetResultsVisible(false);
         Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
         ViewModel.ViewResetRequested += ResetView;
+        TorusView.Model.PropertyChanged += TorusStateChanged;
         SourceInitialized += UpdateWindowInsets;
         StateChanged += UpdateWindowInsets;
         LocationChanged += UpdateWindowInsets;
@@ -83,6 +84,8 @@ public partial class MainWindow : Window
     private void WindowClosed(object? sender, EventArgs e)
     {
         Workbench.Dispose();
+        TorusView.Model.PropertyChanged -= TorusStateChanged;
+        TorusView.Dispose();
         ViewModel.ViewResetRequested -= ResetView;
         ViewModel.Dispose();
     }
@@ -173,14 +176,44 @@ public partial class MainWindow : Window
         animation.Completed += (_, _) => Finish();
         column.BeginAnimation(ColumnDefinition.WidthProperty, animation, HandoffBehavior.SnapshotAndReplace);
     }
-    private void ResetView(object? sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(Plot.Fit));
+    private bool IsComplexView => ViewMode.SelectedIndex == 1;
+
+    private void ViewModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source != sender || TorusView == null || FitViewButton == null) return;
+        RealPlotHost.Visibility = IsComplexView ? Visibility.Collapsed : Visibility.Visible;
+        TorusView.Visibility = IsComplexView ? Visibility.Visible : Visibility.Collapsed;
+        PlotLegend.Visibility = RealPlotHost.Visibility;
+        TorusLegend.Visibility = TorusView.Visibility;
+        FitViewButton.ToolTip = IsComplexView ? "Reset torus camera (Ctrl+F)" : "Reset real plot view (Ctrl+F)";
+        UpdateExportState();
+    }
+
+    private void TorusStateChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ComplexTorusViewModel.HasLattice)) UpdateExportState();
+    }
+
+    private void UpdateExportState() => ExportPlotButton.IsEnabled = !IsComplexView || TorusView.Model.HasLattice;
+
+    private void ResetView(object? sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(FitCurrentView));
+    private void FitCurrentView()
+    {
+        if (IsComplexView) TorusView.Fit();
+        else Plot.Fit();
+    }
     private void ResetEquationClick(object sender, RoutedEventArgs e)
     {
         if (confirmEquationReset()) ViewModel.ResetCommand.Execute(null);
     }
-    private void FitClick(object sender, RoutedEventArgs e) => Plot.Fit();
-    private void ZoomInClick(object sender, RoutedEventArgs e) => Plot.Zoom(1 / 1.25);
-    private void ZoomOutClick(object sender, RoutedEventArgs e) => Plot.Zoom(1.25);
+    private void FitClick(object sender, RoutedEventArgs e) => FitCurrentView();
+    private void ZoomInClick(object sender, RoutedEventArgs e) => ZoomCurrentView(1 / 1.25);
+    private void ZoomOutClick(object sender, RoutedEventArgs e) => ZoomCurrentView(1.25);
+    private void ZoomCurrentView(double factor)
+    {
+        if (IsComplexView) TorusView.Zoom(factor);
+        else Plot.Zoom(factor);
+    }
     private void MinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
     private void MaximizeClick(object sender, RoutedEventArgs e)
     {
@@ -241,17 +274,19 @@ public partial class MainWindow : Window
 
     private void ExportClick(object sender, RoutedEventArgs e)
     {
+        FrameworkElement target = IsComplexView ? TorusView : Plot;
+        if (target.ActualWidth <= 0 || target.ActualHeight <= 0 || (IsComplexView && !TorusView.Model.HasLattice)) return;
         var dialog = new SaveFileDialog
         {
             Filter = "PNG image (*.png)|*.png",
-            FileName = "elliptic-curve.png",
-            Title = "Export the current real locus"
+            FileName = IsComplexView ? "elliptic-curve-torus.png" : "elliptic-curve.png",
+            Title = IsComplexView ? "Export the period lattice and complex torus" : "Export the current real locus"
         };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
-            var bitmap = new RenderTargetBitmap((int)Math.Ceiling(Plot.ActualWidth * 2), (int)Math.Ceiling(Plot.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
-            bitmap.Render(Plot);
+            var bitmap = new RenderTargetBitmap((int)Math.Ceiling(target.ActualWidth * 2), (int)Math.Ceiling(target.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
+            bitmap.Render(target);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var stream = File.Create(dialog.FileName);
