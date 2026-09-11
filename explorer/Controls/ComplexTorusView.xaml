@@ -1,0 +1,70 @@
+<UserControl x:Class="EllipticCurves.Explorer.Controls.ComplexTorusView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EllipticCurves.Explorer.Controls">
+    <Border Background="#121920">
+    <ScrollViewer Style="{StaticResource WorkbenchScrollViewer}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <Grid x:Name="ContentRoot" Margin="16,0,16,10" Height="380">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel Margin="0,0,0,10" Visibility="{Binding HasLattice, Converter={StaticResource BooleanVisibility}}">
+            <TextBlock Text="E(ℂ) ≅ ℂ / Λ" FontFamily="Cambria Math" FontSize="16" />
+            <TextBlock Text="{Binding Lattice.BasisText}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                       Margin="0,5,0,0" TextWrapping="Wrap" ToolTip="{Binding Lattice.ModelNote}" />
+        </StackPanel>
+        <Grid Grid.Row="1" Visibility="{Binding HasLattice, Converter={StaticResource BooleanVisibility}}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}" Background="#121920" Padding="10" CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <TextBlock Text="PERIOD LATTICE" Style="{StaticResource Eyebrow}" />
+                    <controls:PeriodLatticePlot x:Name="LatticePlot" Grid.Row="1" Lattice="{Binding Lattice}" Points="{Binding Points}"
+                                               SelectedPoint="{Binding SelectedPoint, Mode=TwoWay}" AutomationProperties.Name="Period lattice. Click a marker or use arrow keys to select a point." />
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Text="{Binding Lattice.TauText}" FontFamily="Consolas" FontSize="11" TextTrimming="CharacterEllipsis"
+                                   ToolTip="τ = ω₂/ω₁ in the real-adapted period basis; it is not reduced to the modular fundamental domain." />
+                        <TextBlock Text="Opposite edges are identified · ω₁ scaled to 1" Style="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource Card}" Background="#121920" Padding="10" CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <TextBlock Text="COMPLEX TORUS" Style="{StaticResource Eyebrow}" />
+                    <controls:TorusViewport x:Name="TorusPlot" Grid.Row="1" Points="{Binding Points}" SelectedPoint="{Binding SelectedPoint, Mode=TwoWay}"
+                                            AutomationProperties.Name="Complex torus. Drag or use arrow keys to rotate, scroll to zoom. Home resets the camera." />
+                    <StackPanel Grid.Row="2">
+                        <TextBlock FontFamily="Cambria Math" FontSize="12"><Run Text="ω₁ cycle" Foreground="#63E6CF" /><Run Text="    " /><Run Text="ω₂ cycle" Foreground="#84AAFF" /></TextBlock>
+                        <TextBlock Text="Drag to rotate · scroll to zoom" Style="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+        <StackPanel Grid.Row="2" Margin="0,10,0,0" Visibility="{Binding HasLattice, Converter={StaticResource BooleanVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <TextBlock Text="POINT" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Points}" SelectedItem="{Binding SelectedPoint}" DisplayMemberPath="DisplayName"
+                          ToolTip="{Binding SelectedPoint.DisplayName}" AutomationProperties.Name="Point shared by the lattice and torus" />
+            </Grid>
+            <TextBlock Text="{Binding SelectedPoint.CoordinateText}" FontFamily="Consolas" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" />
+            <TextBlock Text="Topological torus · complex structure is encoded by τ, not the ring shape." Style="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,0" />
+        </StackPanel>
+        <TextBlock Grid.Row="3" Text="{Binding Status}" Style="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0"
+                   Visibility="{Binding HasLattice, Converter={StaticResource BooleanVisibility}}" />
+        <Border Grid.RowSpan="3" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="380" Padding="24"
+                Visibility="{Binding IsUnavailable, Converter={StaticResource BooleanVisibility}}">
+            <StackPanel>
+                <TextBlock Text="Complex torus" FontSize="18" FontWeight="SemiBold" TextAlignment="Center" />
+                <TextBlock Text="{Binding Status}" Style="{StaticResource Muted}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,12,0,0" />
+                <ProgressBar Height="3" Margin="20,18,20,0" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanVisibility}}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+    </ScrollViewer>
+    </Border>
+</UserControl>

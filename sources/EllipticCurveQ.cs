@@ -327,7 +327,7 @@ namespace EllipticCurves
         /// Pipeline (no LMFDB):
         ///  0) Convert to short integral model Y^2 = X^3 + A'X + B'.
         ///  1) Use reductions at several good primes to restrict possible orders (Mazur admissible).
-        ///  2) Apply Lutz–Nagell: Y^2 | |Δ'| and search via divisors to find integral torsion points.
+        ///  2) Apply Lutz–Nagell: Y^2 | |Δ'|; find integral X by exact cubic bisection.
         ///  3) Map the points back to the ORIGINAL model (inverse of the short/scale transform).
         /// Set contains Infinity and all affine torsion points; subsequent calls reuse the cache.
         /// </summary>
@@ -341,7 +341,14 @@ namespace EllipticCurves
                     var Es = ShortWeierstrass; // y^2 = x^3 + A x + B
                     var A = Es.A4; var B = Es.A6;
 
-                    var d = InternalMath.Lcm(A.Den, B.Den);
+                    // Only clear the denominators with the powers needed by
+                    // A*d^4 and B*d^6; using their LCM as d inflates the search.
+                    BigInteger d = BigInteger.One;
+                    foreach (var p in InternalMath.FactorAbs(InternalMath.Lcm(A.Den, B.Den)).Keys)
+                    {
+                        int exponent = Math.Max((Valuation(A.Den, p) + 3) / 4, (Valuation(B.Den, p) + 5) / 6);
+                        d *= BigInteger.Pow(p, exponent);
+                    }
                     var Aint = A * BigRational.FromFraction(BigInteger.Pow(d, 4), BigInteger.One);
                     var Bint = B * BigRational.FromFraction(BigInteger.Pow(d, 6), BigInteger.One);
                     if (Aint.Den != BigInteger.One || Bint.Den != BigInteger.One)
@@ -377,93 +384,35 @@ namespace EllipticCurves
                         if (gcdOrders.IsZero || (gcdOrders % n) == 0) possibleOrders.Add(n);
                     }
 
+                    if (gcdOrders.IsOne)
+                        return torsionPoints = Array.AsReadOnly(new[] { EllipticCurvePoint.Infinity });
+
                     // ---- 2) Lutz–Nagell search on integral short model ----
                     var T = new HashSet<EllipticCurvePoint> { EllipticCurvePoint.Infinity };
 
-                    // 2a) 2-torsion: X | B'  and X^3 + A'X + B' = 0
-                    foreach (var x in InternalMath.EnumerateDivisorsAbs(Bshort))
+                    // 2a) 2-torsion: the integral roots of X^3 + A'X + B'.
+                    foreach (var x in InternalMath.IntegralShortCubicRoots(Ashort, Bshort))
+                        T.Add(new EllipticCurvePoint(new BigRational(x), BigRational.Zero));
+
+                    // The reduction bound counts the whole group, including O.
+                    // Reaching it proves completeness without factoring Delta.
+                    if (gcdOrders.IsZero || T.Count < gcdOrders)
                     {
-                        if (InternalMath.EvalCubic(Ashort, Bshort, x) == 0)
-                            T.Add(new EllipticCurvePoint(new BigRational(x), BigRational.Zero));
-                        if (x != 0 && InternalMath.EvalCubic(Ashort, Bshort, -x) == 0)
-                            T.Add(new EllipticCurvePoint(new BigRational(-x), BigRational.Zero));
-                    }
-                    // Edge: B' = 0 ⇒ X = ±sqrt(−A') if square
-                    if (Bshort.IsZero)
-                    {
-                        var negA = BigInteger.Negate(Ashort);
-                        if (negA.Sign >= 0)
+                        // 2b) Torsion with Y != 0: Y^2 divides |Delta|.
+                        var factDelta = InternalMath.FactorAbs(Delta);
+                        foreach (var y2 in InternalMath.EnumerateSquareDivisors(factDelta))
                         {
-                            var s = InternalMath.IntegerSqrt(negA);
-                            if (s * s == negA && s != 0)
+                            var y = InternalMath.IntegerSqrt(y2);
+                            foreach (var x in InternalMath.IntegralShortCubicRoots(Ashort, Bshort - y2))
                             {
-                                if (InternalMath.EvalCubic(Ashort, Bshort, s) == 0)
-                                    T.Add(new EllipticCurvePoint(new BigRational(s), BigRational.Zero));
-                                if (InternalMath.EvalCubic(Ashort, Bshort, -s) == 0)
-                                    T.Add(new EllipticCurvePoint(new BigRational(-s), BigRational.Zero));
-                            }
-                        }
-                    }
-
-                    // 2b) torsion with y != 0 (orders other than 2): y^2 | |Δ'|
-                    var factDelta = InternalMath.FactorAbs(Delta);
-                    foreach (var y2 in InternalMath.EnumerateSquareDivisors(factDelta)) // y2 ≥ 1
-                    {
-                        if (y2.IsZero) continue;
-                        var y = InternalMath.IntegerSqrt(y2); // exact sqrt
-
-                        var C = Bshort - y2; // X^3 + A'X + (B' − y^2) = 0
-                        if (C.IsZero)
-                        {
-                            var P1 = new EllipticCurvePoint(new BigRational(0), new BigRational(y));
-                            var P2 = new EllipticCurvePoint(new BigRational(0), new BigRational(-y));
-                            if (Eint.IsOnCurve(P1) && InternalMath.IsTorsionWithCandidates(Eint, P1, possibleOrders)) T.Add(P1);
-                            if (Eint.IsOnCurve(P2) && InternalMath.IsTorsionWithCandidates(Eint, P2, possibleOrders)) T.Add(P2);
-
-                            var negA = BigInteger.Negate(Ashort);
-                            if (negA.Sign >= 0)
-                            {
-                                var s = InternalMath.IntegerSqrt(negA);
-                                if (s * s == negA && s != 0)
+                                var point = new EllipticCurvePoint(new BigRational(x), new BigRational(y));
+                                if (InternalMath.IsTorsionWithCandidates(Eint, point, possibleOrders))
                                 {
-                                    var xs = new[] { s, BigInteger.Negate(s) };
-                                    for (int t = 0; t < xs.Length; t++)
-                                    {
-                                        var x = xs[t];
-                                        if (InternalMath.EvalCubic(Ashort, Bshort, x) == y2)
-                                        {
-                                            var Q1 = new EllipticCurvePoint(new BigRational(x), new BigRational(y));
-                                            var Q2 = new EllipticCurvePoint(new BigRational(x), new BigRational(-y));
-                                            if (Eint.IsOnCurve(Q1) && InternalMath.IsTorsionWithCandidates(Eint, Q1, possibleOrders)) T.Add(Q1);
-                                            if (Eint.IsOnCurve(Q2) && InternalMath.IsTorsionWithCandidates(Eint, Q2, possibleOrders)) T.Add(Q2);
-                                        }
-                                    }
+                                    T.Add(point);
+                                    T.Add(Eint.Negate(point));
                                 }
                             }
-                            continue;
-                        }
-
-                        var absC = C >= 0 ? C : -C;
-                        foreach (var x in InternalMath.EnumerateDivisorsAbs(absC))
-                        {
-                            if (InternalMath.EvalCubic(Ashort, Bshort, x) == y2)
-                            {
-                                var R1 = new EllipticCurvePoint(new BigRational(x), new BigRational(y));
-                                var R2 = new EllipticCurvePoint(new BigRational(x), new BigRational(-y));
-                                if (Eint.IsOnCurve(R1) && InternalMath.IsTorsionWithCandidates(Eint, R1, possibleOrders)) T.Add(R1);
-                                if (Eint.IsOnCurve(R2) && InternalMath.IsTorsionWithCandidates(Eint, R2, possibleOrders)) T.Add(R2);
-                            }
-                            if (x != 0)
-                            {
-                                var nx = -x;
-                                if (InternalMath.EvalCubic(Ashort, Bshort, nx) == y2)
-                                {
-                                    var R1 = new EllipticCurvePoint(new BigRational(nx), new BigRational(y));
-                                    var R2 = new EllipticCurvePoint(new BigRational(nx), new BigRational(-y));
-                                    if (Eint.IsOnCurve(R1) && InternalMath.IsTorsionWithCandidates(Eint, R1, possibleOrders)) T.Add(R1);
-                                    if (Eint.IsOnCurve(R2) && InternalMath.IsTorsionWithCandidates(Eint, R2, possibleOrders)) T.Add(R2);
-                                }
-                            }
+                            if (T.Count == gcdOrders) break;
                         }
                     }
 

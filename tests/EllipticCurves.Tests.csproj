@@ -6,6 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="WorkerHost/**/*.cs" />
+    <Compile Remove="PresentationHost/**/*.cs" />
+    <Compile Include="../console/*.cs" Exclude="../console/Program.cs" Link="Console/%(Filename)%(Extension)" />
+    <Compile Include="../explorer/Models/*.cs" Link="Explorer/Models/%(Filename)%(Extension)" />
+    <Compile Include="../explorer/Computations/*.cs" Link="Explorer/Computations/%(Filename)%(Extension)" />
+    <Compile Include="../explorer/ViewModels/*.cs" Link="Explorer/ViewModels/%(Filename)%(Extension)" />
     <None Update="Fixtures/*.csv" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -14,5 +20,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <ProjectReference Include="../sources/EllipticCurves.csproj" />
+    <ProjectReference Include="WorkerHost/WorkerHost.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <Target Name="CopyCalculationWorkerHost" AfterTargets="Build">
+    <ItemGroup><WorkerHostFiles Include="WorkerHost/bin/$(Configuration)/net8.0/*" /></ItemGroup>
+    <Copy SourceFiles="@(WorkerHostFiles)" DestinationFolder="$(OutDir)worker" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

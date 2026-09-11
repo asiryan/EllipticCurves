@@ -1,0 +1,136 @@
+#nullable enable
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using EllipticCurves.Explorer.Computations;
+
+namespace EllipticCurves.Explorer.ViewModels;
+
+public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : ObservableObject, IDisposable
+{
+    private readonly CalculationRunner runner = runner ?? new();
+    private CancellationTokenSource? running;
+    private bool disposed;
+    private CalculationJobViewModel? selected, active;
+    public ObservableCollection<CalculationJobViewModel> Jobs { get; } = new();
+    public CalculationJobViewModel? Selected
+    {
+        get => selected;
+        set
+        {
+            selected = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelection));
+        }
+    }
+
+    public CalculationJobViewModel? Active
+    {
+        get => active;
+        private set
+        {
+            active = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsBusy => running != null;
+    public bool CanRun => !IsBusy && !disposed;
+    public bool HasSelection => Selected != null;
+    public bool HasResults => Jobs.Count > 0;
+    public bool CanClearHistory => CanRun && HasResults;
+    public bool CanDelete(CalculationJobViewModel? job) => job != null && job != Active && Jobs.Contains(job);
+    public string Summary => IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Explorer" : Jobs.Count + " calculations this session";
+    public RelayCommand CancelCommand => new(_ => Cancel());
+
+    public void Delete(CalculationJobViewModel? job)
+    {
+        if (!CanDelete(job)) return;
+        var index = Jobs.IndexOf(job!);
+        var wasSelected = job == Selected;
+        Jobs.RemoveAt(index);
+        if (wasSelected) Selected = Jobs.Count == 0 ? null : Jobs[Math.Min(index, Jobs.Count - 1)];
+        NotifyState();
+    }
+
+    public void ClearHistory()
+    {
+        if (!CanClearHistory) return;
+        Jobs.Clear();
+        Selected = null;
+        NotifyState();
+    }
+
+    public async Task RunAsync(CalculationRequest request)
+    {
+        if (!CanRun) throw new InvalidOperationException("A calculation is already running.");
+        request = request with { Arguments = new Dictionary<string, string>(request.Arguments) };
+        using var cancellation = new CancellationTokenSource();
+        using var clock = new CancellationTokenSource();
+        running = cancellation;
+        var job = new CalculationJobViewModel(request, CalculationCatalog.Get(request.OperationId).Title);
+        Jobs.Insert(0, job);
+        // Keep the current session bounded; each result can contain up to 2 MB of text.
+        if (Jobs.Count > 50) Jobs.RemoveAt(Jobs.Count - 1);
+        Selected = Active = job;
+        NotifyState();
+        var watch = Stopwatch.StartNew();
+        var timer = UpdateClockAsync(job, watch, clock.Token);
+        var progress = new Progress<CalculationUpdate>(update =>
+        {
+            if (disposed || job.Status != "Running") return;
+            job.Stage = update.Message;
+            job.Percent = update.Percent;
+        });
+        try
+        {
+            var outcome = await runner.RunAsync(request, update => ((IProgress<CalculationUpdate>)progress).Report(update), cancellation.Token);
+            job.Status = outcome.Status;
+            job.Stage = outcome.Message;
+            job.Elapsed = watch.Elapsed;
+            job.Percent = outcome.Status == "Completed" ? 100 : 0;
+            job.Result = outcome.Text ?? outcome.Message;
+        }
+        finally
+        {
+            clock.Cancel();
+            await timer;
+            running = null;
+            Active = null;
+            NotifyState();
+        }
+    }
+
+    private static async Task UpdateClockAsync(CalculationJobViewModel job, Stopwatch watch, CancellationToken token)
+    {
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(500, token);
+                job.Elapsed = watch.Elapsed;
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    public void Cancel()
+    {
+        if (Active != null) Active.Stage = "Stopping calculation…";
+        running?.Cancel();
+    }
+
+    private void NotifyState()
+    {
+        OnPropertyChanged(nameof(IsBusy));
+        OnPropertyChanged(nameof(CanRun));
+        OnPropertyChanged(nameof(HasResults));
+        OnPropertyChanged(nameof(Summary));
+        OnPropertyChanged(nameof(CanClearHistory));
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        Cancel();
+    }
+}

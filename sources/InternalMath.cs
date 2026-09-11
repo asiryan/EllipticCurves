@@ -223,13 +223,46 @@ namespace EllipticCurves
             return x * x * x + A * x + B;
         }
 
+        /// <summary>All integer roots of x^3 + A*x + B, without factoring B.</summary>
+        internal static IEnumerable<BigInteger> IntegralShortCubicRoots(BigInteger A, BigInteger B)
+        {
+            // Cauchy's bound contains every root. Split the integers at the two
+            // stationary points, then use exact bisection on each monotone part.
+            var bound = BigInteger.One + BigInteger.Max(BigInteger.Abs(A), BigInteger.Abs(B));
+            bool TryRoot(BigInteger lower, BigInteger upper, bool increasing, out BigInteger root)
+            {
+                while (lower <= upper)
+                {
+                    var middle = lower + (upper - lower) / 2;
+                    var value = EvalCubic(A, B, middle);
+                    if (value.IsZero) { root = middle; return true; }
+                    if ((value.Sign < 0) == increasing) lower = middle + 1;
+                    else upper = middle - 1;
+                }
+                root = default;
+                return false;
+            }
+
+            if (A.Sign >= 0)
+            {
+                if (TryRoot(-bound, bound, true, out var root)) yield return root;
+                yield break;
+            }
+
+            var turning = IntegerSqrt(-A / 3);
+            if (TryRoot(-bound, -turning - 1, true, out var left)) yield return left;
+            if (TryRoot(-turning, turning, false, out var center)) yield return center;
+            if (TryRoot(turning + 1, bound, true, out var right)) yield return right;
+        }
+
         /// <summary>
         /// floor(sqrt(n)) for n ≥ 0 via a monotone Newton iteration specialized to k=2.
         /// </summary>
         public static BigInteger IntegerSqrt(BigInteger n)
         {
             if (n <= 1) return n;
-            BigInteger x0 = n, x1 = (n >> 1) + 1;
+            // The first Newton step must decrease for n=2 as well.
+            BigInteger x0 = n, x1 = (n + 1) >> 1;
             while (x1 < x0) { x0 = x1; x1 = (x1 + n / x1) >> 1; }
             return x0;
         }

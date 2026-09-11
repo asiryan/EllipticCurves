@@ -1,0 +1,51 @@
+<Window x:Class="EllipticCurves.Explorer.ConfirmationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" FontSize="13"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner" UseLayoutRounding="True"
+        FocusManager.FocusedElement="{Binding ElementName=DialogRoot}"
+        KeyboardNavigation.TabNavigation="Cycle" ContentRendered="WindowContentRendered">
+    <Window.Resources>
+        <Style x:Key="ConfirmationActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="132" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="16,7" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        </Style>
+    </Window.Resources>
+    <Grid x:Name="DialogRoot" Focusable="True" KeyboardNavigation.IsTabStop="False" FocusVisualStyle="{x:Null}">
+    <Border Margin="12" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1" CornerRadius="12">
+        <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35" Color="Black" /></Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid Margin="24,16,12,0" Background="Transparent" MouseLeftButtonDown="HeaderMouseLeftButtonDown">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock x:Name="Heading" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
+                <Button x:Name="CloseButton" Grid.Column="1" Click="CancelClick" Style="{StaticResource QuietButton}"
+                        Width="32" Height="32" Padding="0" IsTabStop="False" VerticalAlignment="Top"
+                        Foreground="{StaticResource MutedBrush}" AutomationProperties.Name="Close confirmation">
+                    <Path Style="{StaticResource CaptionCloseIcon}" Stroke="{StaticResource MutedBrush}" />
+                </Button>
+            </Grid>
+            <StackPanel Grid.Row="1" Margin="24,10,24,24">
+                <TextBlock x:Name="Message" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" LineHeight="20" />
+                <Border x:Name="DetailPanel" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,16,0,0" Visibility="Collapsed">
+                    <TextBlock x:Name="Detail" FontFamily="Consolas" FontSize="16" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
+                </Border>
+            </StackPanel>
+            <Border Grid.Row="2" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,1,0,0" CornerRadius="0,0,11,11" Padding="24,14">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="ConfirmButton" Click="ConfirmClick" Style="{StaticResource ConfirmationActionButton}" Margin="0,0,8,0" />
+                    <Button x:Name="CancelButton" Content="Cancel" Click="CancelClick" IsCancel="True" IsDefault="True"
+                            Style="{StaticResource ConfirmationActionButton}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+    </Grid>
+</Window>

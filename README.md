@@ -31,54 +31,29 @@ Build **EllipticCurves** from source or install the NuGet package in your projec
 |-------------|:-------------:|:-------------:|:--------------:|:--------------:|
 | [EllipticCurves](sources) | .NET Standard 2.0 | Cross-platform | [Release](https://github.com/asiryan/EllipticCurves/releases/) | [NuGet](https://www.nuget.org/packages/EllipticCurves/) | 
 
+The NuGet package contains the library. The [Console application](console/README.md)
+and [desktop Explorer](explorer/README.md) are distributed separately. Their Windows
+release archives include .NET and run without a separate runtime installation.
+See [release preparation](docs/releasing.md) for version
+settings, validation and packaging commands.
+
 # Installation
 ```shell
 dotnet add package EllipticCurves
 ```
 
+This installs the latest published stable package. The examples below describe
+the current source checkout, which may be newer. For changes not yet published
+to NuGet, reference the library project or build a local package using
+[the packaging instructions](docs/releasing.md#nuget-package).
+
 Import the namespace in your C# code:
 ```csharp
 using EllipticCurves;
 ```
-To get started with **EllipticCurves** it is recommended to take a look at the [example project](examples).  
-Here are some results for the [elliptic curve](https://arxiv.org/abs/2510.11768): **Y^2 = X^3 - 17X^2 + 72X**.
-```
-E: y^2 = x^3 - 17*x^2 + 72*x
-Short Weierstrass: y^2 = x^3 - 73/3*x + 1190/27
-Torsion: Z/2Z x Z/4Z
-b2 = -68
-b4 = 144
-b6 = 0
-b8 = -5184
-D  = 82944
-c4 = 1168
-c6 = -38080
-j  = 1556068/81
-Torsion points:
-O
-(0, 0)
-(8, 0)
-(9, 0)
-(6, 6)
-(6, -6)
-(12, 12)
-(12, -12)
-LMFDB: 48.a3
-Url: https://www.lmfdb.org/EllipticCurve/Q/48.a3/
-Minimal Weierstrass model: y^2 = x^3 + x^2 - 24*x + 36
-Torsion: Z/2Z x Z/4Z
-Rank(E) = 0
-Analytic rank(E) = 0
-Cond(E) = 48
-Isomorphic to E: True
-Native minimal Weierstrass model: y^2 = x^3 + x^2 - 24*x + 36
-Native rank bounds(E) = 0
-Exact native rank proved: True
-Native Cond(E) = 48
-Native minimal model matches LMFDB: True
-Native conductor matches LMFDB: True
-LMFDB rank is within native bounds: True
-```
+
+See the [Console application](console/README.md) for command-line arguments, run instructions
+and sample output.
 
 ## Rank bounds and conductor
 
@@ -301,16 +276,30 @@ Counting and enumeration check all q^2 affine coordinate pairs; the default limi
 is 1000000 pairs. Field presentations must agree before their elements can be mixed.
 See [Faltings-height conventions and finite-extension limits](docs/faltings-and-finite-fields.md).
 
-Run the example and regression tests with:
+## Tests
+
+From the repository root, with the .NET 8 SDK installed, run the portable
+regression tests with:
 
 ```sh
-dotnet run --project examples/EllipticCurves.Example.csproj
-dotnet test EllipticCurves.sln
+dotnet test tests/EllipticCurves.Tests.csproj -c Release
 ```
 
-The example retains its LMFDB lookup and checks the native results against it,
-so running the example requires internet access. The native API and regression
-tests work offline.
+The regression tests work offline after dependencies have been restored. The Windows-only WPF
+regression check is a separate command documented in
+[the Explorer development guide](explorer/README.md#development).
+
+## Desktop Explorer (Windows)
+
+The [WPF Explorer](explorer/README.md) provides a modern desktop interface on
+.NET 8: full formula input for simple and general Weierstrass equations, optional
+exploration sliders, an interactive real-locus plot, a linked period-lattice and
+3D complex-torus view, exact invariants and bounded rational-point samples.
+The Explorer menu exposes the library's computations,
+including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
+Parameter windows feed a results panel with session history, progress, cancellation
+and time limits. Native computations run locally; only the explicit LMFDB fetch
+commands require internet access.
 
 # License
 **MIT**  

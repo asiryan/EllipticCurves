@@ -93,7 +93,12 @@ division fallback. Pollard rho supplies candidate factors; no probable-prime
 result is accepted as a proof. Large integers can still be prohibitively expensive
 to factor or prove prime. APIs accepting a cancellation token check it in the
 factorization and search loops; a single BigInteger operation cannot be interrupted
-midway. The torsion API does not currently accept a cancellation token.
+midway. Rational torsion uses a short integral model with denominator scaling
+weighted by the fourth and sixth powers. Lutz–Nagell candidates are found by
+exact cubic bisection, without factoring each candidate's constant term; the
+search stops once its good-reduction upper bound is attained. Factoring the
+model's discriminant may still be expensive when that bound is not attained.
+The torsion API does not currently accept a cancellation token.
 
 The convenience properties recompute their results; callers doing repeated work
 can retain the returned minimal model, conductor and rank bounds.
@@ -193,8 +198,12 @@ Coefficient demand grows approximately as sqrt(N) times the logarithm of the
 requested accuracy. Direct point counting costs O(M^2/log M); the coefficient
 and residue arrays use O(M) storage. Integration evaluates the finite Fourier
 polynomial in O(M) time per sample. The method is intended for modest conductors,
-not cryptographic-size curves. Work limits return `Inconclusive`; invalid options
-and singular curves throw. Cancellation propagates as `OperationCanceledException`.
+not cryptographic-size curves. Exhausting the numerical coefficient or integration
+budget returns `Inconclusive`. If a numerical rank is resolved but low-rank
+certification is disabled or its interval still contains zero (for example because
+too few certificate terms were allowed), the result is `NumericalEstimate`, with
+`ProvenRank = null`. Invalid options and singular curves throw. Cancellation
+propagates as `OperationCanceledException`.
 The earlier minimization and factorization steps can dominate the cost and are
 not bounded by these numerical work limits. This is not a complete BSD leading-term
 formula implementation: the analytic-rank routine does not assemble a BSD quotient.
