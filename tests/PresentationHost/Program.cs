@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Automation;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using EllipticCurves.Visualizer.Models;
 using EllipticCurves.Visualizer.Windowing;
 using EllipticCurves.Visualizer;
 using EllipticCurves.Visualizer.Computations;
@@ -53,10 +55,11 @@ internal static class Program
             onOpening(row, null!);
             delete.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, delete));
             Require(workbench.Jobs.Count == 0 && workbench.Selected == null, "Last-result deletion did not clear the panel.");
-            Require(Descendants(panel).OfType<Button>().Any(b => Equals(b.Content, "Repeat…")), "Repeat button is missing.");
+            Require(Descendants(panel).OfType<Button>().Any(b => Equals(b.Content, "Repeat")), "Repeat button is missing.");
             CheckWorkspaceLayout(request);
             CheckDockAnimation();
-            Console.WriteLine("PASS: compiled XAML loads; history deletion, Repeat, title indicator, plot export, navigation placement and both full-height sidebars checked. No windows opened.");
+            CheckPlotRendering();
+            Console.WriteLine("PASS: compiled XAML loads; history deletion, Repeat, title indicator, PNG rendering, navigation placement and both full-height sidebars checked. No windows opened.");
             app.Shutdown();
             return 0;
         }
@@ -64,6 +67,40 @@ internal static class Program
     }
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+    private static void CheckPlotRendering()
+    {
+        foreach (var equation in new[] { "y^2=x^3-x", "y^2+xy+y=x^3-x", "y^2=x^3", "y^2=x^3-3*x-2", "y^2=x^3+1e400*x" })
+        {
+            Require(CurveEquationText.TryParse(equation, out var curve, out var error), error);
+            var plot = new CurvePlot { Snapshot = new CurveSnapshot(curve!) };
+            plot.Measure(new Size(800, 500));
+            plot.Arrange(new Rect(0, 0, 800, 500));
+            plot.Fit();
+            plot.Zoom(0.8);
+            plot.Zoom(1.25);
+            plot.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(1600, 1000, 192, 192, PixelFormats.Pbgra32);
+            bitmap.Render(plot);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var stream = new System.IO.MemoryStream();
+            encoder.Save(stream);
+            stream.Position = 0;
+            var decoded = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+            Require(decoded.PixelWidth == 1600 && decoded.PixelHeight == 1000, "PNG export lost its dimensions.");
+            var pixels = new byte[1600 * 1000 * 4];
+            bitmap.CopyPixels(pixels, 1600 * 4, 0);
+            // Antialiased strokes can round composited alpha down by one; check the
+            // untouched background and ensure no part of the bitmap is left empty.
+            Require(pixels[3] == 255 && pixels[^1] == 255 && pixels.Where((_, i) => i % 4 == 3).All(alpha => alpha != 0),
+                "Plot export has a transparent background.");
+            if (equation == "y^2=x^3-x")
+            {
+                var hasCurve = Enumerable.Range(0, 1600 * 1000).Any(i => pixels[4 * i] == 207 && pixels[4 * i + 1] == 230 && pixels[4 * i + 2] == 99);
+                Require(hasCurve, "PNG export omitted the real locus.");
+            }
+        }
+    }
     private static void CheckDockAnimation()
     {
         var column = new ColumnDefinition { Width = new GridLength(320) };

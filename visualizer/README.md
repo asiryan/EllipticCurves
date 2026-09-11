@@ -70,7 +70,9 @@ terms; sampling is split at real roots to preserve disconnected components.
 The point at infinity is not drawn in the affine plot.
 Inputs outside the numerical plot's representable range retain exact invariants
 and show a plot precision message. To bound input processing, text is limited to
-4096 characters and scientific exponents to ±4096.
+4096 characters and scientific exponents to ±4096. Numerators and denominators
+of intermediate expressions and normalized coefficients are limited to 32768 bits
+(roughly 9800 decimal digits), so nested numeric powers cannot freeze the editor.
 
 Gold markers are exact affine rational points found with `RationalPoints(12, 4)`:
 their x-coordinates are `m/n`, with `|m| ≤ 12` and `1 ≤ n ≤ 4`. This is a bounded
@@ -135,7 +137,7 @@ Results retain their input curve, parameters and proof/certification status.
 Height results include exact enclosure bounds; database decimals are labelled
 as approximations. A completed calculation does not imply a proved rank or a
 complete Mordell–Weil basis: the library's status and reason are preserved.
-Use **Copy**, **Save…** or **Repeat…** on the displayed result. To remove a result, right-click
+Use **Copy**, **Save** or **Repeat** on the displayed result. To remove a result, right-click
 its entry in the history dropdown and choose **Delete**. This deletes that entry,
 even when another result is displayed; stop an active calculation before deleting it. History keeps the last
 50 calculations for the current session; save reports before closing the app.
@@ -175,7 +177,7 @@ non-cooperative cancellation and disconnect behavior without opening any UI.
 
 On Windows, also run the compiled-XAML regression check. It loads the real theme
 and main workspace, verifies history-menu deletion, Repeat, both sidebars' folding,
-aligned bounds at different window sizes and the animation, and never opens a window:
+aligned bounds at different window sizes, the animation and PNG rendering, and never opens a window:
 
 ```powershell
 dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release

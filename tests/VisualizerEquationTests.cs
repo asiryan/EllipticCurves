@@ -66,6 +66,33 @@ public sealed class VisualizerEquationTests
         Assert.False(CurveEquationText.TryParse("y^2=x^3+" + new string('(', 100) + "1" + new string(')', 100), out _, out _));
     }
 
+    [Theory]
+    [InlineData("2")]
+    [InlineData("1/2")]
+    public void RejectsExplosiveNestedPowers(string constant)
+    {
+        // Cross the parser's limit without exhausting memory if the guard regresses.
+        for (var i = 0; i < 10; i++) constant = "(" + constant + ")^3";
+        Assert.False(CurveEquationText.TryParse("y^2=x^3+" + constant, out var curve, out var error));
+        Assert.Null(curve);
+        Assert.Contains("too large", error);
+    }
+
+    [Fact]
+    public void GuardsGrowthDuringLeadingCoefficientNormalization()
+    {
+        Assert.False(CurveEquationText.TryParse("(1e-4000)^2*y^2=(1e-4000)^2*x^3+1e4000", out _, out var error));
+        Assert.Contains("too large", error);
+    }
+
+    [Fact]
+    public void LargeScientificCoefficientsRemainExact()
+    {
+        Assert.True(CurveEquationText.TryParse("y^2=x^3+1e4000*x+1e-4000", out var curve, out var error), error);
+        Assert.Equal(ParseRational("1e4000"), curve.A4);
+        Assert.Equal(ParseRational("1e-4000"), curve.A6);
+    }
+
     [Fact]
     public void FormattedEquationsRoundTripExactly()
     {

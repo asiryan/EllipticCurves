@@ -1,4 +1,5 @@
 #nullable enable
+using System.Numerics;
 using System.Text;
 
 namespace EllipticCurves.Visualizer.Models;
@@ -6,6 +7,10 @@ namespace EllipticCurves.Visualizer.Models;
 /// <summary>A bounded polynomial parser for rational Weierstrass equations.</summary>
 public static class CurveEquationText
 {
+    // Text length and nesting alone do not bound expressions such as ((2^3)^3)^3.
+    // Limit intermediate rationals as well, since parsing runs on the editor thread.
+    private const int MaxCoefficientBits = 32768;
+
     public static bool TryParse(string text, out EllipticCurveQ? curve, out string error)
     {
         curve = null;
@@ -25,9 +30,9 @@ public static class CurveEquationText
             var leading = Coefficient(polynomial, (0, 2));
             if (leading.IsZero || Coefficient(polynomial, (3, 0)) != -leading)
                 throw new FormatException("The equation must reduce to y^2 + a1*xy + a3*y = x^3 + a2*x^2 + a4*x + a6.");
-            curve = new EllipticCurveQ(Coefficient(polynomial, (1, 1)) / leading,
-                -Coefficient(polynomial, (2, 0)) / leading, Coefficient(polynomial, (0, 1)) / leading,
-                -Coefficient(polynomial, (1, 0)) / leading, -Coefficient(polynomial, (0, 0)) / leading);
+            curve = new EllipticCurveQ(Bounded(Coefficient(polynomial, (1, 1)) / leading),
+                Bounded(-Coefficient(polynomial, (2, 0)) / leading), Bounded(Coefficient(polynomial, (0, 1)) / leading),
+                Bounded(-Coefficient(polynomial, (1, 0)) / leading), Bounded(-Coefficient(polynomial, (0, 0)) / leading));
             return true;
         }
         catch (FormatException exception) { error = exception.Message; return false; }
@@ -61,13 +66,20 @@ public static class CurveEquationText
     private static BigRational Coefficient(Dictionary<(int X, int Y), BigRational> polynomial, (int, int) term)
         => polynomial.TryGetValue(term, out var value) ? value : BigRational.Zero;
 
+    private static BigRational Bounded(BigRational value)
+    {
+        if (BigInteger.Abs(value.Num).GetBitLength() > MaxCoefficientBits || value.Den.GetBitLength() > MaxCoefficientBits)
+            throw new FormatException("The equation produces numbers that are too large. Simplify the coefficients.");
+        return value;
+    }
+
     private static Dictionary<(int X, int Y), BigRational> Add(Dictionary<(int X, int Y), BigRational> left,
         Dictionary<(int X, int Y), BigRational> right, int sign)
     {
         var result = new Dictionary<(int X, int Y), BigRational>(left);
         foreach (var (term, value) in right)
         {
-            var sum = Coefficient(result, term) + sign * value;
+            var sum = Bounded(Coefficient(result, term) + sign * value);
             if (sum.IsZero) result.Remove(term);
             else result[term] = sum;
         }
@@ -83,7 +95,7 @@ public static class CurveEquationText
             {
                 var term = (X: a.X + b.X, Y: a.Y + b.Y);
                 if (term.X + term.Y > 3) throw new FormatException("Only polynomials of degree at most 3 are supported.");
-                var sum = Coefficient(result, term) + av * bv;
+                var sum = Bounded(Coefficient(result, term) + Bounded(av * bv));
                 if (sum.IsZero) result.Remove(term);
                 else result[term] = sum;
             }
@@ -91,7 +103,7 @@ public static class CurveEquationText
     }
 
     private static Dictionary<(int X, int Y), BigRational> Constant(BigRational value)
-        => value.IsZero ? new() : new() { [(0, 0)] = value };
+        => value.IsZero ? new() : new() { [(0, 0)] = Bounded(value) };
 
     private sealed class Parser(string input)
     {

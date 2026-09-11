@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves.Example", "e
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves.Visualizer", "visualizer\EllipticCurves.Visualizer.csproj", "{36DBA0FA-EAD5-4A3D-84E2-8039148769A2}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkerHost", "tests\WorkerHost\WorkerHost.csproj", "{2B19F376-A30C-49CF-A7E5-B4AA6330C979}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{36DBA0FA-EAD5-4A3D-84E2-8039148769A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36DBA0FA-EAD5-4A3D-84E2-8039148769A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36DBA0FA-EAD5-4A3D-84E2-8039148769A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B19F376-A30C-49CF-A7E5-B4AA6330C979}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B19F376-A30C-49CF-A7E5-B4AA6330C979}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B19F376-A30C-49CF-A7E5-B4AA6330C979}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B19F376-A30C-49CF-A7E5-B4AA6330C979}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
