@@ -31,8 +31,12 @@ internal static class Program
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
                 { Source = new Uri("/EllipticCurves.Explorer;component/Themes/Theme.xaml", UriKind.Relative) });
-            CheckExplorerToggle();
-            CheckExplorerCaptionDismissal();
+            CheckTitleBarToggle(new ExplorerMenu());
+            CheckTitleBarToggle(new SessionMenu());
+            CheckCaptionDismissal("Explorer");
+            CheckCaptionDismissal("Session");
+            CheckSessionMenu();
+            CheckSessionRestore();
             CheckExplorerSelection();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();
@@ -79,7 +83,7 @@ internal static class Program
             CheckViewSwitching();
             CheckTorusCycleColors();
             CheckComplexTorusView();
-            Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
+            Console.WriteLine("PASS: compiled XAML loads; Session save/load and shared title-bar menus, Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
         }
@@ -235,10 +239,147 @@ internal static class Program
         Require(scroll.ScrollableHeight > 0, "The compact complex view must scroll instead of crushing the diagrams.");
     }
 
-    private static void CheckExplorerCaptionDismissal()
+    private static void CheckSessionMenu()
     {
         var owner = new MainWindow();
-        var menu = (ExplorerMenu)owner.FindName("Explorer");
+        try
+        {
+            var session = (SessionMenu)owner.FindName("Session");
+            var explorer = (ExplorerMenu)owner.FindName("Explorer");
+            var header = (Panel)session.Parent;
+            Require(header.Children.IndexOf(session) + 1 == header.Children.IndexOf(explorer),
+                "Session must appear immediately before Explorer.");
+            var toggle = (ToggleButton)session.FindName("Toggle");
+            var otherToggle = (ToggleButton)explorer.FindName("Toggle");
+            Require(ReferenceEquals(toggle.Style, otherToggle.Style), "Title-bar menu styles differ.");
+            foreach (var control in new UserControl[] { session, explorer })
+                System.Windows.Data.BindingOperations.ClearBinding((Popup)control.FindName("MenuPopup"), Popup.IsOpenProperty);
+            toggle.IsChecked = true;
+            otherToggle.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = Mouse.PreviewMouseDownEvent });
+            Require(toggle.IsChecked == false, "Opening Explorer did not dismiss Session.");
+            otherToggle.IsChecked = true;
+            toggle.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = Mouse.PreviewMouseDownEvent });
+            Require(otherToggle.IsChecked == false, "Opening Session did not dismiss Explorer.");
+
+            // Use an unconnected menu so actions can be exercised without file dialogs.
+            var menu = new SessionMenu();
+            var popup = (Popup)menu.FindName("MenuPopup");
+            var menuToggle = (ToggleButton)menu.FindName("Toggle");
+            System.Windows.Data.BindingOperations.ClearBinding(popup, Popup.IsOpenProperty);
+            var actions = new List<string>();
+            menu.OpenRequested += () => actions.Add("Open");
+            menu.SaveRequested += () => actions.Add("Save");
+            menu.ExitRequested += () => actions.Add("Exit");
+            var buttons = Descendants(popup.Child).OfType<Button>().ToArray();
+            Require(buttons.Select(button => button.Content).SequenceEqual(new[] { "Open", "Save", "Exit" }),
+                "Session must contain exactly Open, Save and Exit, in English.");
+            foreach (var button in buttons)
+            {
+                menuToggle.IsChecked = true;
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Require(menuToggle.IsChecked == false, "A session action left its popup open.");
+            }
+            Require(actions.SequenceEqual(new[] { "Open", "Save", "Exit" }), "Session actions were not dispatched exactly once.");
+
+            if (Environment.GetEnvironmentVariable("EC_SESSION_PREVIEW") is { Length: > 0 } preview)
+            {
+                var root = (FrameworkElement)owner.Content;
+                root.Measure(new Size(1438, 918));
+                root.Arrange(new Rect(0, 0, 1438, 918));
+                root.UpdateLayout();
+                var sessionPopup = (Popup)session.FindName("MenuPopup");
+                System.Windows.Data.BindingOperations.ClearBinding(sessionPopup, Popup.IsOpenProperty);
+                toggle.IsChecked = true;
+                var dropdown = (FrameworkElement)sessionPopup.Child;
+                dropdown.Measure(new Size(200, double.PositiveInfinity));
+                dropdown.Arrange(new Rect(dropdown.DesiredSize));
+                dropdown.UpdateLayout();
+                var drawing = new DrawingVisual();
+                using (var context = drawing.RenderOpen())
+                {
+                    context.DrawRectangle(new VisualBrush(root), null, new Rect(0, 0, 1438, 918));
+                    var location = session.TranslatePoint(new Point(0, session.ActualHeight), root);
+                    context.DrawRectangle(new VisualBrush(dropdown), null, new Rect(location, dropdown.RenderSize));
+                }
+                var bitmap = new RenderTargetBitmap(1438, 918, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(drawing);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using var stream = System.IO.File.Create(preview);
+                encoder.Save(stream);
+                toggle.IsChecked = false;
+            }
+        }
+        finally { owner.Close(); }
+    }
+
+    private static void CheckSessionRestore()
+    {
+        var original = new MainWindow();
+        var restored = new MainWindow();
+        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".ec");
+        try
+        {
+            void Layout(Window window)
+            {
+                var root = (FrameworkElement)window.Content;
+                root.Measure(new Size(1438, 918));
+                root.Arrange(new Rect(0, 0, 1438, 918));
+                root.UpdateLayout();
+            }
+            Layout(original);
+            original.ViewModel.Equation.Text = "y^2 + x*y + y = x^3 - 1/3*x + 2/7";
+            original.ViewModel.Step.Text = "1/7";
+            original.ViewModel.FlushUpdate();
+            original.ViewModel.ActiveCoefficients[3].SliderOffset = 4;
+            original.ViewModel.ShowGrid = false;
+            original.ViewModel.ShowPoints = false;
+            ((Expander)original.FindName("CoefficientsExpander")).IsExpanded = true;
+            ((ColumnDefinition)original.FindName("EquationColumn")).Width = new GridLength(320);
+            ((ColumnDefinition)original.FindName("ResultsColumn")).Width = new GridLength(410);
+            Layout(original);
+            ((Button)original.FindName("EquationCollapseButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            ((CurvePlot)original.FindName("Plot")).RestoreView(new PlotViewState(2.3, -4.5, 7.8));
+            ((ComplexTorusView)original.FindName("TorusView")).RestoreCamera(new TorusCameraState(-71, 23, 8.9));
+            ((ComboBox)original.FindName("ViewMode")).SelectedIndex = 1;
+            original.Workbench.Jobs.Add(CalculationJobViewModel.FromSession(new CalculationSession(
+                new CalculationRequest("Q.TorsionStructure", "y^2 = x^3 - x", new(), 45, 99),
+                DateTime.Now, "Completed", "Done", TimeSpan.FromSeconds(3), 100, "Saved exact result")));
+            original.Workbench.Selected = original.Workbench.Jobs[0];
+            var saved = original.CaptureSession();
+            SessionFile.Save(path, saved);
+            restored.RestoreSession(SessionFile.Load(path));
+            Layout(restored);
+            Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => Layout(restored)));
+            var actual = restored.CaptureSession();
+            Require(actual.Equation == saved.Equation && actual.SliderStep == saved.SliderStep
+                && actual.SliderOffsets.SequenceEqual(saved.SliderOffsets), "The session lost exact editor state.");
+            Require(actual.Plot == saved.Plot && actual.TorusCamera == saved.TorusCamera && actual.ComplexView,
+                "A queued fit replaced the restored plot or camera.");
+            Require(actual.EquationPanel == saved.EquationPanel && actual.ResultsPanel == saved.ResultsPanel
+                && actual.CoefficientsExpanded && !actual.ShowGrid && !actual.ShowPoints,
+                "The session did not restore sidebar layout and visualization settings.");
+            Require(restored.Workbench.Selected?.Report == original.Workbench.Selected.Report,
+                "The session lost calculation results or repeat parameters.");
+            var before = System.Text.Json.JsonSerializer.Serialize(actual);
+            saved.History.Add(null!);
+            try { restored.RestoreSession(saved); throw new Exception("A malformed session was accepted."); }
+            catch (System.IO.InvalidDataException) { }
+            Require(System.Text.Json.JsonSerializer.Serialize(restored.CaptureSession()) == before,
+                "A malformed session partially replaced the current workspace.");
+            restored.ViewModel.Equation.Text = "y^2 =";
+            try { restored.CaptureSession(); throw new Exception("An incomplete equation was silently saved."); }
+            catch (InvalidOperationException) { }
+        }
+        finally { original.Close(); restored.Close(); System.IO.File.Delete(path); }
+    }
+
+    private static void CheckCaptionDismissal(string menuName)
+    {
+        var owner = new MainWindow();
+        var menu = (UserControl)owner.FindName(menuName);
         var toggle = (ToggleButton)menu.FindName("Toggle");
         var popup = (Popup)menu.FindName("MenuPopup");
         // Keep both windows hidden, but send real native messages through the
@@ -293,9 +434,8 @@ internal static class Program
     [DllImport("user32.dll", EntryPoint = "SendMessageW")]
     private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
 
-    private static void CheckExplorerToggle()
+    private static void CheckTitleBarToggle(UserControl menu)
     {
-        var menu = new ExplorerMenu();
         var toggle = (ToggleButton)menu.FindName("Toggle");
         var popup = (Popup)menu.FindName("MenuPopup");
         Require(popup.StaysOpen, "Automatic popup dismissal must not preempt the Explorer toggle's closing click.");

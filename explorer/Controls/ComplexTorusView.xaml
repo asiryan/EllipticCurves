@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:EllipticCurves.Explorer.Controls">
     <Border Background="#121920">
-    <ScrollViewer Style="{StaticResource WorkbenchScrollViewer}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer x:Name="ContentScroll" Style="{StaticResource WorkbenchScrollViewer}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <Grid x:Name="ContentRoot" Margin="16,0,16,10" Height="380">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

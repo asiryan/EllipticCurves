@@ -95,6 +95,15 @@ public sealed class CoefficientViewModel : ObservableObject, IDataErrorInfo
         OnPropertyChanged(nameof(SliderMaximum));
     }
 
+    internal void RestoreSliderOffset(int offset)
+    {
+        sliderOffset = offset;
+        sliderAnchor = exactValue - offset * (getStep() ?? BigRational.Zero);
+        Notify();
+        OnPropertyChanged(nameof(SliderMinimum));
+        OnPropertyChanged(nameof(SliderMaximum));
+    }
+
     private void Notify()
     {
         OnPropertyChanged(nameof(Text));

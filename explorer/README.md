@@ -32,6 +32,33 @@ folder such as `artifacts/explorer-win-arm64`.
 See [release preparation](../docs/releasing.md) for version settings, packaging
 and the checks to run before publishing a release.
 
+## Sessions
+
+**Session**, immediately before **Explorer** in the title bar, contains **Open**,
+**Save** and **Exit**. Open and Save use `.ec` session files; Exit closes Explorer.
+The menu uses the same header and popup styling as Explorer, with a single vertical
+list. Both menus close on Escape, another menu, an outside click (including the
+title bar), window movement, resizing or deactivation.
+
+A session preserves the exact equation, slider step and positions, selected
+example, grid and sample visibility, active visualization, real plot viewport,
+torus camera and selected point, sidebar widths and collapsed states, Coefficients
+expansion, scroll positions, and up to 50 calculation reports with their original
+inputs, limits, timestamps and selected result. Samples and periods are recomputed
+locally as needed. Open calculation parameter windows are not saved and close when
+another session is opened.
+
+Open is disabled during a calculation; stop it first. Save can capture a running
+calculation, which reopens as **Interrupted**, without automatically starting work
+or network requests. Use **Repeat** to reopen its parameters. Finish an incomplete
+equation or slider step before saving.
+
+Files contain versioned JSON and are validated before replacing the workspace.
+An invalid or unsupported file leaves the current session intact. Saving writes
+a temporary file before replacing the destination. Session files are limited to
+256 MB. Sessions are saved explicitly; there is no automatic saving on exit.
+The Results panel's **Save** still exports an individual text report.
+
 ## Explore
 
 - Type the entire equation in one field, for example
@@ -235,7 +262,8 @@ does not start another calculation until you choose **Run calculation**.
 To remove a result, right-click its entry in the history dropdown and choose
 **Delete**. This deletes that entry,
 even when another result is displayed; stop an active calculation before deleting it. History keeps the last
-50 calculations for the current session; save reports before closing the app.
+50 calculations for the current session; use **Session → Save** to keep the session
+or save individual reports before closing the app.
 **Clear** in the Results header removes the entire session history after
 confirmation in the same dark dialog. **Clear** is disabled while a calculation
 is running or the history is empty. Saved report files are unaffected.

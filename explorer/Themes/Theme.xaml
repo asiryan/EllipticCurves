@@ -474,4 +474,25 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="TitleBarMenuToggle" TargetType="ToggleButton">
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocusVisual}" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton">
+                <Border x:Name="Frame" CornerRadius="5" Background="Transparent" Padding="{TemplateBinding Padding}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <ContentPresenter VerticalAlignment="Center" />
+                        <Path x:Name="Chevron" Style="{StaticResource DisclosureChevron}" Margin="8,0,0,0" />
+                    </StackPanel>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="Background" Value="{StaticResource RaisedBrush}" /></Trigger>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter TargetName="Frame" Property="Background" Value="{StaticResource RaisedBrush}" />
+                        <Setter TargetName="Chevron" Property="Data" Value="{StaticResource ChevronUpGeometry}" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+    </Style>
 </ResourceDictionary>

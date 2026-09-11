@@ -57,6 +57,15 @@ public partial class ComplexTorusView : UserControl, IDisposable
 
     public void Fit() => TorusPlot.Fit();
     public void Zoom(double factor) => TorusPlot.Zoom(factor);
+    internal TorusCameraState CaptureCamera() => TorusPlot.CaptureCamera();
+    internal void RestoreCamera(TorusCameraState state) => TorusPlot.RestoreCamera(state);
+    internal void RestoreSelection(string? point)
+    {
+        Model.RestoreSelection(point);
+        QueueUpdate();
+    }
+    internal double ScrollOffset => ContentScroll.VerticalOffset;
+    internal void RestoreScroll(double offset) => ContentScroll.ScrollToVerticalOffset(offset);
     public void Dispose()
     {
         disposed = true;

@@ -14,6 +14,14 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
     private bool active, disposed, samplesMapped;
     private int version;
     private TorusPoint? selectedPoint;
+    private string? restoredSelection;
+    private bool restoringSelection;
+    public string? SessionSelection => restoredSelection ?? SelectedPoint?.Point.ToString();
+
+    public void RestoreSelection(string? point)
+    {
+        restoredSelection = point;
+    }
     public TorusLattice? Lattice { get; private set; }
     public IReadOnlyList<TorusPoint> Points { get; private set; } = Array.Empty<TorusPoint>();
     public bool IsBusy { get; private set; }
@@ -28,6 +36,7 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
         set
         {
             if (Equals(selectedPoint, value)) return;
+            if (!restoringSelection) restoredSelection = null;
             selectedPoint = value;
             OnPropertyChanged();
         }
@@ -41,7 +50,11 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
         if (disposed) return;
         var curveChanged = !ReferenceEquals(curve, nextCurve);
         var pointsChanged = !samples.SequenceEqual(nextSamples);
-        if (!curveChanged && !pointsChanged && active == isActive) return;
+        if (!curveChanged && !pointsChanged && active == isActive)
+        {
+            if (restoredSelection != null) SetPoints(Points);
+            return;
+        }
         CancelPending();
         curve = nextCurve;
         samples = nextSamples.ToArray();
@@ -141,11 +154,18 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
     private void SetPoints(IReadOnlyList<TorusPoint> points)
     {
         var previousPoint = SelectedPoint?.Point;
-        Points = points;
-        // Update the selector's item source before selecting an item from the new collection.
-        OnPropertyChanged(nameof(Points));
-        SelectedPoint = Points.FirstOrDefault(point => previousPoint.HasValue && point.Point.Equals(previousPoint.Value))
-            ?? Points.FirstOrDefault();
+        restoringSelection = true;
+        try
+        {
+            Points = points;
+            // The saved selection may arrive before background point mapping.
+            OnPropertyChanged(nameof(Points));
+            var restored = Points.FirstOrDefault(point => point.Point.ToString() == restoredSelection);
+            SelectedPoint = restored ?? Points.FirstOrDefault(point => previousPoint.HasValue && point.Point.Equals(previousPoint.Value))
+                ?? Points.FirstOrDefault();
+            if (restored != null) restoredSelection = null;
+        }
+        finally { restoringSelection = false; }
     }
 
     private void NotifyState()

@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using EllipticCurves.Explorer.Computations;
+using EllipticCurves.Explorer.Models;
 
 namespace EllipticCurves.Explorer.ViewModels;
 
@@ -57,6 +58,16 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         if (!CanClearHistory) return;
         Jobs.Clear();
         Selected = null;
+        NotifyState();
+    }
+
+    public void RestoreHistory(IReadOnlyList<CalculationSession> history, int selectedIndex)
+    {
+        if (!CanRun) throw new InvalidOperationException("Stop the active calculation before opening a session.");
+        var restored = history.Select(CalculationJobViewModel.FromSession).ToArray();
+        Jobs.Clear();
+        foreach (var job in restored) Jobs.Add(job);
+        Selected = selectedIndex >= 0 ? Jobs[selectedIndex] : null;
         NotifyState();
     }
 

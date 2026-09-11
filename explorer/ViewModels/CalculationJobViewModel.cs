@@ -1,14 +1,15 @@
 #nullable enable
 using System.Text;
 using EllipticCurves.Explorer.Computations;
+using EllipticCurves.Explorer.Models;
 
 namespace EllipticCurves.Explorer.ViewModels;
 
-public sealed class CalculationJobViewModel(CalculationRequest request, string title) : ObservableObject
+public sealed class CalculationJobViewModel(CalculationRequest request, string title, DateTime? startedAt = null) : ObservableObject
 {
     public CalculationRequest Request { get; } = request;
     public string Title { get; } = title;
-    public DateTime StartedAt { get; } = DateTime.Now;
+    public DateTime StartedAt { get; } = startedAt ?? DateTime.Now;
     public string Equation => Request.Equation;
 
     private string status = "Running", stage = "Starting calculation", result = "Waiting for the calculation to finish…";
@@ -48,6 +49,21 @@ public sealed class CalculationJobViewModel(CalculationRequest request, string t
     }
 
     public string HistoryLabel => StartedAt.ToString("HH:mm:ss") + " · " + Title + " · " + Status;
+
+    public CalculationSession CaptureSession() => new(
+        Request with { Arguments = new Dictionary<string, string>(Request.Arguments) },
+        StartedAt, Status, Stage, Elapsed, Percent, Result);
+
+    public static CalculationJobViewModel FromSession(CalculationSession saved) =>
+        new(saved.Request with { Arguments = new Dictionary<string, string>(saved.Request.Arguments) },
+            CalculationCatalog.Get(saved.Request.OperationId).Title, saved.StartedAt)
+        {
+            Status = saved.Status == "Running" ? "Interrupted" : saved.Status,
+            Stage = saved.Status == "Running" ? "Saved during a calculation. Use Repeat to run it again." : saved.Stage,
+            Elapsed = saved.Elapsed,
+            Percent = saved.Status == "Running" ? null : saved.Percent,
+            Result = saved.Status == "Running" ? "This calculation was still running when the session was saved. Use Repeat to run it again." : saved.Result
+        };
 
     public TimeSpan Elapsed
     {

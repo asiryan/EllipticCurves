@@ -58,6 +58,16 @@ public sealed class CurvePlot : FrameworkElement
 
     public void Zoom(double factor) => ZoomAt(factor, new Point(PlotBounds.Left + PlotBounds.Width / 2, PlotBounds.Top + PlotBounds.Height / 2));
 
+    internal PlotViewState CaptureView() => new(centerX, centerY, verticalSpan);
+    internal void RestoreView(PlotViewState state)
+    {
+        centerX = state.CenterX;
+        centerY = state.CenterY;
+        verticalSpan = state.VerticalSpan;
+        pointer = dragPosition = null;
+        RefreshGeometry();
+    }
+
     public Point ToScreen(double x, double y) => new(PlotBounds.Left + PlotBounds.Width / 2 + (x - centerX) * Scale, PlotBounds.Top + PlotBounds.Height / 2 - (y - centerY) * Scale);
     public Point ToWorld(Point screen) => new(centerX + (screen.X - PlotBounds.Left - PlotBounds.Width / 2) / Scale, centerY - (screen.Y - PlotBounds.Top - PlotBounds.Height / 2) / Scale);
 

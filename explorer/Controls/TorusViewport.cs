@@ -92,6 +92,15 @@ public sealed class TorusViewport : Grid
         camera.Width = span * Math.Max(1, ActualWidth / Math.Max(1, ActualHeight));
     }
 
+    internal TorusCameraState CaptureCamera() => new(azimuth, elevation, span);
+    internal void RestoreCamera(TorusCameraState state)
+    {
+        azimuth = state.Azimuth;
+        elevation = state.Elevation;
+        span = state.Span;
+        UpdateCamera();
+    }
+
     private static void GridChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
     {
         var view = (TorusViewport)sender;

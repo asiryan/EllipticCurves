@@ -47,6 +47,10 @@ public partial class MainWindow : Window
         DataContext = ViewModel;
         Results.DataContext = Workbench;
         ResultsTab.DataContext = Workbench;
+        Session.DataContext = Workbench;
+        Session.OpenRequested += OpenSession;
+        Session.SaveRequested += SaveSession;
+        Session.ExitRequested += Close;
         Explorer.OperationRequested += OpenCalculation;
         Results.HideRequested += () => SetResultsVisible(false);
         Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
@@ -82,7 +86,10 @@ public partial class MainWindow : Window
         EquationColumn.MaxWidth = Math.Max(equationSidebar.MinimumWidth, available - resultsWidth);
     }
 
-    private void WindowLoaded(object sender, RoutedEventArgs e) => ResetCurveViews(sender, e);
+    private void WindowLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sessionRestoreVersion == 0) ResetCurveViews(sender, e);
+    }
 
     private void WindowClosed(object? sender, EventArgs e)
     {

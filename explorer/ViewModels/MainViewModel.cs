@@ -224,6 +224,28 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (!disposed) Recalculate();
     }
 
+    public void RestoreSession(ExplorerSession session)
+    {
+        Step.Text = session.SliderStep;
+        Step.CommitEdit();
+        Equation.Text = session.Equation;
+        Equation.CommitEdit();
+        FlushUpdate();
+        updating = true;
+        try
+        {
+            for (var i = 0; i < session.SliderOffsets.Length; i++)
+                ActiveCoefficients[i].RestoreSliderOffset(session.SliderOffsets[i]);
+        }
+        finally { updating = false; }
+        ShowGrid = session.ShowGrid;
+        ShowPoints = session.ShowPoints;
+        selectedPreset = CurvePreset.All.FirstOrDefault(preset => preset.Name == session.Preset
+            && Snapshot.Curve.Equals(new EllipticCurveQ(preset.A1, preset.A2, preset.A3, preset.A4, preset.A6)));
+        OnPropertyChanged(nameof(SelectedPreset));
+        OnPropertyChanged(nameof(PresetDescription));
+    }
+
     private void CancelUpdate()
     {
         updateCancellation?.Cancel();
