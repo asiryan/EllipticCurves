@@ -137,6 +137,23 @@ public sealed class ExplorerModelTests
     }
 
     [Fact]
+    public void PresetsResetBothViewsWhileFitTargetsOnlyTheCurrentView()
+    {
+        using var model = new MainViewModel();
+        model.ShowPoints = false;
+        var curveResets = 0;
+        var viewResets = 0;
+        model.CurveResetRequested += (_, _) => curveResets++;
+        model.ViewResetRequested += (_, _) => viewResets++;
+        model.ApplyPreset(CurvePreset.All.Single(preset => preset.Name == "48.a3"));
+        Assert.Equal((1, 0), (curveResets, viewResets));
+        model.FitCommand.Execute(null);
+        Assert.Equal((1, 1), (curveResets, viewResets));
+        model.ResetCommand.Execute(null);
+        Assert.Equal((2, 1), (curveResets, viewResets));
+    }
+
+    [Fact]
     public async Task EditingIsDebouncedAndNeverResetsTheView()
     {
         using var model = new MainViewModel();
@@ -146,6 +163,7 @@ public sealed class ExplorerModelTests
         var viewResets = 0;
         model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(model.Snapshot)) updates++; };
         model.ViewResetRequested += (_, _) => viewResets++;
+        model.CurveResetRequested += (_, _) => viewResets++;
         model.SimpleCoefficients[0].Text = "8.3";
         var superseded = model.PendingUpdate;
         model.SimpleCoefficients[0].Text = "8.325";

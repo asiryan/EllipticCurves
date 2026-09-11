@@ -29,6 +29,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public string PresetDescription => selectedPreset?.Description ?? "Your own coefficients";
     public Task PendingSamples { get; private set; } = Task.CompletedTask;
     public Task PendingUpdate { get; private set; } = Task.CompletedTask;
+    public event EventHandler? CurveResetRequested;
     public event EventHandler? ViewResetRequested;
     public RelayCommand ResetCommand { get; }
     public RelayCommand FitCommand { get; }
@@ -167,7 +168,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         selectedPreset = preset;
         OnPropertyChanged(nameof(SelectedPreset));
         OnPropertyChanged(nameof(PresetDescription));
-        ViewResetRequested?.Invoke(this, EventArgs.Empty);
+        CurveResetRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void CoefficientsChanged()

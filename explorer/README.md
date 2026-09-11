@@ -67,6 +67,8 @@ and the checks to run before publishing a release.
   to see an exact rational point.
 - Choose one of four built-in examples, including a singular cubic. Preset names
   such as `37.a1` are static labels and do not trigger database lookups.
+  Choosing an example fits the real plot and resets the torus camera. If the real
+  plot is hidden, it is fitted when you next switch to **Real locus**.
 - **Reset** in the Equation header asks for confirmation before restoring
   `y^2 = x^3 - x` and recentering the plot. The custom dark dialog opens centered
   on the main window with **Cancel** focused; Escape or the close button cancels.
@@ -103,7 +105,9 @@ Drag the torus to rotate it and scroll to zoom. With it focused, arrow keys rota
 the torus, or **Ctrl+F** restores the camera. Arrow keys in the lattice cycle
 through the markers. **Grid** toggles the subdivisions in both panels;
 **Rational samples** hides affine markers while retaining O. The real plot keeps
-its viewport when switching modes. The **−**, **+** and **Reset view** buttons
+its viewport when switching modes unless an example or **Reset** was selected
+while it was hidden. Editing coefficients preserves that viewport in either mode;
+**Reset view** and **Ctrl+F** affect only the active mode. The **−**, **+** and **Reset view** buttons
 remain in the same position in both modes. In a small window the complex view
 scrolls vertically to keep its diagrams readable.
 
@@ -267,7 +271,9 @@ acceptance/rejection of Clear and Reset, the presence of Repeat, both sidebars'
 folding, aligned bounds at different window sizes, animation and PNG rendering.
 PNG checks cover both embedded views, offsets within the window, fractional layout
 sizes, dark backgrounds and preservation of content at the image edges. It also
-checks the complex view's shared point selection and compact layout.
+checks the complex view's shared point selection and compact layout, fitting
+presets selected while the real plot is hidden, and viewport preservation across
+mode changes and coefficient edits.
 It uses an invisible native layout host and shows no application windows:
 
 ```powershell

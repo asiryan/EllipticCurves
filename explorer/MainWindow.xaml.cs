@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly SidebarState equationSidebar = new(238);
     private readonly SidebarState resultsSidebar = new(300);
     private readonly Func<bool> confirmEquationReset;
+    private bool realViewResetPending;
 
     private sealed class SidebarState(double minimumWidth)
     {
@@ -50,6 +51,7 @@ public partial class MainWindow : Window
         Results.HideRequested += () => SetResultsVisible(false);
         Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
         ViewModel.ViewResetRequested += ResetView;
+        ViewModel.CurveResetRequested += ResetCurveViews;
         TorusView.Model.PropertyChanged += TorusStateChanged;
         SourceInitialized += UpdateWindowInsets;
         StateChanged += UpdateWindowInsets;
@@ -80,7 +82,7 @@ public partial class MainWindow : Window
         EquationColumn.MaxWidth = Math.Max(equationSidebar.MinimumWidth, available - resultsWidth);
     }
 
-    private void WindowLoaded(object sender, RoutedEventArgs e) => Plot.Fit();
+    private void WindowLoaded(object sender, RoutedEventArgs e) => ResetCurveViews(sender, e);
 
     private void WindowClosed(object? sender, EventArgs e)
     {
@@ -88,6 +90,7 @@ public partial class MainWindow : Window
         TorusView.Model.PropertyChanged -= TorusStateChanged;
         TorusView.Dispose();
         ViewModel.ViewResetRequested -= ResetView;
+        ViewModel.CurveResetRequested -= ResetCurveViews;
         ViewModel.Dispose();
     }
 
@@ -187,6 +190,7 @@ public partial class MainWindow : Window
         PlotLegend.Visibility = RealPlotHost.Visibility;
         TorusLegend.Visibility = TorusView.Visibility;
         FitViewButton.ToolTip = IsComplexView ? "Reset torus camera (Ctrl+F)" : "Reset real plot view (Ctrl+F)";
+        if (!IsComplexView && realViewResetPending) QueueRealViewReset();
         UpdateExportState();
     }
 
@@ -197,11 +201,32 @@ public partial class MainWindow : Window
 
     private void UpdateExportState() => ExportPlotButton.IsEnabled = !IsComplexView || TorusView.Model.HasLattice;
 
-    private void ResetView(object? sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(FitCurrentView));
+    private void ResetCurveViews(object? sender, EventArgs e)
+    {
+        TorusView.Fit();
+        realViewResetPending = true;
+        QueueRealViewReset();
+    }
+
+    private void QueueRealViewReset() => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+    {
+        // A collapsed plot has no current layout. Keep the request until Real locus is shown.
+        if (!realViewResetPending || IsComplexView) return;
+        Plot.UpdateLayout();
+        if (Plot.ActualWidth <= 0 || Plot.ActualHeight <= 0) return;
+        Plot.Fit();
+        realViewResetPending = false;
+    }));
+
+    private void ResetView(object? sender, EventArgs e) => FitCurrentView();
     private void FitCurrentView()
     {
         if (IsComplexView) TorusView.Fit();
-        else Plot.Fit();
+        else
+        {
+            realViewResetPending = true;
+            QueueRealViewReset();
+        }
     }
     private void ResetEquationClick(object sender, RoutedEventArgs e)
     {

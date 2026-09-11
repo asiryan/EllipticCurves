@@ -73,6 +73,7 @@ internal static class Program
             CheckDockAnimation();
             CheckExportBounds();
             CheckPlotRendering();
+            CheckViewSwitching();
             CheckComplexTorusView();
             Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
@@ -82,6 +83,75 @@ internal static class Program
     }
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+
+    private static void CheckViewSwitching()
+    {
+        var window = new MainWindow();
+        try
+        {
+            window.ViewModel.ShowPoints = false;
+            var root = (FrameworkElement)window.Content;
+            var mode = (ComboBox)window.FindName("ViewMode");
+            var plot = (CurvePlot)window.FindName("Plot");
+            void Layout()
+            {
+                root.Measure(new Size(1438, 918));
+                root.Arrange(new Rect(0, 0, 1438, 918));
+                root.UpdateLayout();
+                Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(root.UpdateLayout));
+            }
+            (Point, Point) Projection() => (plot.ToScreen(0, 0), plot.ToScreen(1, 1));
+            void RequireFitted()
+            {
+                var viewport = new Rect(plot.RenderSize);
+                foreach (var x in plot.Snapshot!.Plot.Roots)
+                    Require(viewport.Contains(plot.ToScreen(x, plot.Snapshot.Plot.CenterY(x))),
+                        "A preset selected in Complex torus left real branch points outside the viewport.");
+                var before = Projection();
+                plot.Fit();
+                Require(Projection() == before, "The deferred real view does not match Reset view at its actual size.");
+            }
+
+            // Select a curve before the real plot has ever been laid out.
+            mode.SelectedIndex = 1;
+            window.ViewModel.ApplyPreset(CurvePreset.All.Single(preset => preset.Name == "48.a3"));
+            Layout();
+            mode.SelectedIndex = 0;
+            Layout();
+            RequireFitted();
+
+            plot.Zoom(0.4);
+            var zoomed = Projection();
+            mode.SelectedIndex = 1;
+            Layout();
+            window.ViewModel.FitCommand.Execute(null); // Ctrl+F resets only the torus camera.
+            Layout();
+            mode.SelectedIndex = 0;
+            Layout();
+            Require(Projection() == zoomed, "Switching modes or resetting the torus discarded the real viewport.");
+
+            mode.SelectedIndex = 1;
+            window.ViewModel.Equation.Text = "y^2 = x^3 - 20*x + 10";
+            window.ViewModel.FlushUpdate();
+            Layout();
+            mode.SelectedIndex = 0;
+            Layout();
+            Require(Projection() == zoomed, "Editing coefficients in Complex torus reset the real viewport.");
+
+            // Cover a return both before and after the queued reset has run while hidden.
+            foreach (var flushWhileHidden in new[] { false, true })
+            {
+                mode.SelectedIndex = 1;
+                window.ViewModel.ResetCommand.Execute(null);
+                if (flushWhileHidden) Layout();
+                mode.SelectedIndex = 0;
+                Layout();
+                RequireFitted();
+                plot.Zoom(0.2);
+            }
+        }
+        finally { window.Close(); }
+    }
 
     private static void CheckComplexTorusView()
     {
@@ -317,7 +387,7 @@ internal static class Program
             window.Workbench.Selected = first;
             var snapshot = window.ViewModel.Snapshot;
             var resets = 0;
-            window.ViewModel.ViewResetRequested += (_, _) => resets++;
+            window.ViewModel.CurveResetRequested += (_, _) => resets++;
             var reset = Descendants(root).OfType<Button>().Single(b => Equals(b.Content, "Reset"));
             Require(reset.Command == null, "Reset must not bypass confirmation through a command binding.");
             reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

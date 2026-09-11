@@ -115,6 +115,7 @@ public sealed class ExplorerEquationTests
         var previous = model.Snapshot;
         var resets = 0;
         model.ViewResetRequested += (_, _) => resets++;
+        model.CurveResetRequested += (_, _) => resets++;
         const string input = "y^2 = x^3 - 106.16x - 0.32";
         model.Equation.Text = input;
         Assert.Same(previous, model.Snapshot);
