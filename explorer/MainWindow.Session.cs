@@ -1,64 +1,149 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using EllipticCurves.Explorer.Models;
 using Microsoft.Win32;
 
 namespace EllipticCurves.Explorer;
 
+internal sealed record SessionDialogs(Func<string, SaveChangesResult> ConfirmUnsaved,
+    Func<string?, string?> ChooseSavePath, Func<string?> ChooseOpenPath, Action<string, string> ShowError);
+
 public partial class MainWindow
 {
     private string? sessionPath;
     private int sessionRestoreVersion;
+    private int cleanSessionVersion;
+    private bool initialSessionRendered;
+    private ExplorerSession? cleanSession;
+    private SessionDialogs sessionDialogs = null!;
 
-    private void OpenSession()
+    private void SessionCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-        if (!Workbench.CanRun) return;
-        var dialog = new OpenFileDialog
+        e.CanExecute = e.Command == ApplicationCommands.Save || Workbench.CanRun;
+        e.Handled = true;
+    }
+
+    private void SessionCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        Session.Close();
+        Explorer.Close();
+        if (e.Command == ApplicationCommands.New) NewSession();
+        else if (e.Command == ApplicationCommands.Open) OpenSession();
+        else if (e.Command == ApplicationCommands.Save) TrySaveSession();
+        e.Handled = true;
+    }
+
+    private void InitializeSession(SessionDialogs? dialogs)
+    {
+        sessionDialogs = dialogs ?? new SessionDialogs(
+            name => ConfirmationWindow.AskToSaveChanges(this, name),
+            path =>
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec", AddExtension = true,
+                    FileName = path ?? "session.ec", Title = "Save session", OverwritePrompt = true
+                };
+                return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+            },
+            () =>
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec",
+                    Title = "Open session", CheckFileExists = true, Multiselect = false
+                };
+                return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+            },
+            (title, message) => ConfirmationWindow.ShowMessage(this, title, message));
+        MarkSessionClean();
+    }
+
+    internal bool HasUnsavedChanges => cleanSession != null &&
+        (Workbench.IsBusy || ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid
+         || !SessionChanges.Equal(cleanSession, ReadSession()));
+
+    private void MarkSessionClean()
+    {
+        cleanSession = ReadSession();
+        cleanSessionVersion++;
+    }
+
+    private bool ConfirmSessionChange()
+    {
+        if (!HasUnsavedChanges) return true;
+        var result = sessionDialogs.ConfirmUnsaved(sessionPath == null ? "session.ec" : Path.GetFileName(sessionPath));
+        return result.Choice switch
         {
-            Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec",
-            Title = "Open session", CheckFileExists = true, Multiselect = false
+            SaveChangesChoice.Save => TrySaveSession(result.FileName),
+            SaveChangesChoice.Discard => true,
+            _ => false
         };
-        if (dialog.ShowDialog(this) != true) return;
+    }
+
+    internal bool NewSession()
+    {
+        if (!Workbench.CanRun || !ConfirmSessionChange()) return false;
+        RestoreSession(ExplorerSession.New());
+        sessionPath = null;
+        return true;
+    }
+
+    internal bool OpenSession()
+    {
+        if (!Workbench.CanRun || !ConfirmSessionChange()) return false;
+        var path = sessionDialogs.ChooseOpenPath();
+        if (path == null) return false;
         try
         {
-            var saved = SessionFile.Load(dialog.FileName);
+            var saved = SessionFile.Load(path);
             RestoreSession(saved);
-            sessionPath = dialog.FileName;
+            sessionPath = Path.GetFullPath(path);
+            return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
-            ConfirmationWindow.ShowMessage(this, "Open session", "The session could not be opened.\n\n" + error.Message);
+            sessionDialogs.ShowError("Open session", "The session could not be opened.\n\n" + error.Message);
+            return false;
         }
     }
 
-    private void SaveSession()
+    internal bool TrySaveSession(string? fileName = null)
     {
         ExplorerSession saved;
         try { saved = CaptureSession(); }
         catch (InvalidOperationException error)
         {
-            ConfirmationWindow.ShowMessage(this, "Save session", error.Message);
-            return;
+            sessionDialogs.ShowError("Save session", error.Message);
+            return false;
         }
-        var dialog = new SaveFileDialog
+        var suggestedPath = sessionPath;
+        if (!string.IsNullOrWhiteSpace(fileName))
         {
-            Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec", AddExtension = true,
-            FileName = sessionPath ?? "session.ec", Title = "Save session", OverwritePrompt = true
-        };
-        if (dialog.ShowDialog(this) != true) return;
+            fileName = fileName.Trim();
+            if (!fileName.EndsWith(".ec", StringComparison.OrdinalIgnoreCase)) fileName += ".ec";
+            suggestedPath = sessionPath == null ? fileName : Path.Combine(Path.GetDirectoryName(sessionPath)!, fileName);
+        }
+        var path = sessionDialogs.ChooseSavePath(suggestedPath);
+        if (path == null) return false;
         try
         {
             // Capture again after the file dialog: an active calculation may have
             // completed while it was open.
             saved = CaptureSession();
-            SessionFile.Save(dialog.FileName, saved);
-            sessionPath = dialog.FileName;
+            SessionFile.Save(path, saved);
+            sessionPath = Path.GetFullPath(path);
+            cleanSession = saved;
+            cleanSessionVersion++;
+            return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
-            ConfirmationWindow.ShowMessage(this, "Save session", "The session could not be saved.\n\n" + error.Message);
+            sessionDialogs.ShowError("Save session", "The session could not be saved.\n\n" + error.Message);
+            return false;
         }
     }
 
@@ -69,6 +154,11 @@ public partial class MainWindow
         ViewModel.FlushUpdate();
         if (ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid)
             throw new InvalidOperationException("Finish the curve equation and enter a valid slider step before saving the session.");
+        return ReadSession();
+    }
+
+    private ExplorerSession ReadSession()
+    {
         return new ExplorerSession
         {
             Equation = ViewModel.Equation.Text,
@@ -114,11 +204,26 @@ public partial class MainWindow
         if (realViewResetPending && !IsComplexView) QueueRealViewReset();
         UpdateSidebarBounds();
         var version = ++sessionRestoreVersion;
+        MarkSessionClean();
+        var baselineVersion = cleanSessionVersion;
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
         {
             if (version != sessionRestoreVersion) return;
+            var equationOffset = EquationScroll.VerticalOffset;
+            var torusOffset = TorusView.ScrollOffset;
             EquationScroll.ScrollToVerticalOffset(saved.EquationScrollOffset);
             TorusView.RestoreScroll(saved.TorusScrollOffset);
+            // Account for layout clamping, without marking unrelated edits clean.
+            EquationScroll.UpdateLayout();
+            TorusView.UpdateLayout();
+            if (cleanSession != null && baselineVersion == cleanSessionVersion)
+                cleanSession = cleanSession with
+                {
+                    EquationScrollOffset = cleanSession.EquationScrollOffset == equationOffset
+                        ? EquationScroll.VerticalOffset : cleanSession.EquationScrollOffset,
+                    TorusScrollOffset = cleanSession.TorusScrollOffset == torusOffset
+                        ? TorusView.ScrollOffset : cleanSession.TorusScrollOffset
+                };
         }));
     }
 

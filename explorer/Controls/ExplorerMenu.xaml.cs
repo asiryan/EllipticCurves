@@ -20,6 +20,8 @@ public partial class ExplorerMenu : UserControl
         DataContext = model;
     }
 
+    internal void Close() => Toggle.IsChecked = false;
+
     private void PopupOpened(object? sender, EventArgs e) =>
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {

@@ -20,7 +20,7 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
 
     public void RestoreSelection(string? point)
     {
-        restoredSelection = point;
+        restoredSelection = point ?? EllipticCurvePoint.Infinity.ToString();
     }
     public TorusLattice? Lattice { get; private set; }
     public IReadOnlyList<TorusPoint> Points { get; private set; } = Array.Empty<TorusPoint>();

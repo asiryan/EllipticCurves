@@ -9,8 +9,16 @@
         Icon="ec_logo.png" UseLayoutRounding="True" Loaded="WindowLoaded" Closed="WindowClosed">
     <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" /></shell:WindowChrome.WindowChrome>
     <Window.InputBindings>
+        <KeyBinding Key="N" Modifiers="Control" Command="{x:Static ApplicationCommands.New}" />
+        <KeyBinding Key="O" Modifiers="Control" Command="{x:Static ApplicationCommands.Open}" />
+        <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}" />
         <KeyBinding Key="F" Modifiers="Control" Command="{Binding FitCommand}" />
     </Window.InputBindings>
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static ApplicationCommands.New}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
+        <CommandBinding Command="{x:Static ApplicationCommands.Open}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
+        <CommandBinding Command="{x:Static ApplicationCommands.Save}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
+    </Window.CommandBindings>
     <Window.Resources>
         <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
             <Setter Property="Width" Value="44" />

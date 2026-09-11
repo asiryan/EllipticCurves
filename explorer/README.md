@@ -34,8 +34,12 @@ and the checks to run before publishing a release.
 
 ## Sessions
 
-**Session**, immediately before **Explorer** in the title bar, contains **Open**,
-**Save** and **Exit**. Open and Save use `.ec` session files; Exit closes Explorer.
+**Session**, immediately before **Explorer** in the title bar, contains **New**,
+**Open**, **Save** and **Exit**. New starts with the classic curve, empty history
+and default visualization and panel settings. Open and Save use `.ec` session files;
+Exit closes Explorer.
+Use **Ctrl+N**, **Ctrl+O** and **Ctrl+S** for New, Open and Save; the shortcuts
+are also displayed beside their menu items and use the same save confirmation.
 The menu uses the same header and popup styling as Explorer, with a single vertical
 list. Both menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
@@ -48,7 +52,7 @@ inputs, limits, timestamps and selected result. Samples and periods are recomput
 locally as needed. Open calculation parameter windows are not saved and close when
 another session is opened.
 
-Open is disabled during a calculation; stop it first. Save can capture a running
+New and Open are disabled during a calculation; stop it first. Save can capture a running
 calculation, which reopens as **Interrupted**, without automatically starting work
 or network requests. Use **Repeat** to reopen its parameters. Finish an incomplete
 equation or slider step before saving.
@@ -56,7 +60,18 @@ equation or slider step before saving.
 Files contain versioned JSON and are validated before replacing the workspace.
 An invalid or unsupported file leaves the current session intact. Saving writes
 a temporary file before replacing the destination. Session files are limited to
-256 MB. Sessions are saved explicitly; there is no automatic saving on exit.
+256 MB. Before New, Open or closing the application (including the window close
+button and Alt+F4), unsaved changes prompt **Save**, **Discard** or **Cancel** in
+the application's dark dialog. Open shows this confirmation before the file picker.
+The file name in this confirmation is editable. Save passes it to the file picker,
+adds `.ec` when needed and preserves the current session's folder. Cancelling does
+not change the session's name or location.
+Enter, Escape and the dialog close button cancel.
+Cancelling the file picker or failing to save also cancels the pending action.
+An untouched session or an unchanged saved/opened session does not prompt.
+Changes to the equation, results, visualization or saved panel settings are tracked;
+background sample generation alone does not count as an edit. Sessions are saved
+explicitly; there is no automatic saving on exit.
 The Results panel's **Save** still exports an individual text report.
 
 ## Explore

@@ -12,7 +12,7 @@ public sealed record SidebarSession(bool Visible, double Width);
 public sealed record CalculationSession(CalculationRequest Request, DateTime StartedAt, string Status,
     string Stage, TimeSpan Elapsed, double? Percent, string Result);
 
-public sealed class ExplorerSession
+public sealed record ExplorerSession
 {
     [JsonRequired] public string Format { get; init; } = "EllipticCurves.Explorer.Session";
     [JsonRequired] public int Version { get; init; } = 1;
@@ -34,6 +34,14 @@ public sealed class ExplorerSession
     public required SidebarSession ResultsPanel { get; init; }
     public required List<CalculationSession> History { get; init; }
     public int SelectedResult { get; init; } = -1;
+
+    public static ExplorerSession New() => new()
+    {
+        Equation = "y^2 = x^3 - x", SliderStep = "0.01", Preset = "The classic", SliderOffsets = new[] { 0, 0 },
+        Plot = new(0.3, 0, 3.4), FitRealViewWhenShown = true, TorusCamera = new(35, 32, 5.8),
+        SelectedTorusPoint = EllipticCurvePoint.Infinity.ToString(),
+        EquationPanel = new(true, 238), ResultsPanel = new(true, 300), History = new()
+    };
 }
 
 public static class SessionFile

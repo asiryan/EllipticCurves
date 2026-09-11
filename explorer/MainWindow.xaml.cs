@@ -38,7 +38,7 @@ public partial class MainWindow : Window
     }
 
     public MainWindow() : this(null) { }
-    internal MainWindow(Func<bool>? confirmation)
+    internal MainWindow(Func<bool>? confirmation, SessionDialogs? sessionDialogs = null)
     {
         confirmEquationReset = confirmation ?? (() => ConfirmationWindow.Confirm(this,
             "Reset equation?", "Restore the classic curve and recenter the plot. Your current equation will be replaced.",
@@ -48,8 +48,9 @@ public partial class MainWindow : Window
         Results.DataContext = Workbench;
         ResultsTab.DataContext = Workbench;
         Session.DataContext = Workbench;
-        Session.OpenRequested += OpenSession;
-        Session.SaveRequested += SaveSession;
+        Session.NewRequested += () => ApplicationCommands.New.Execute(null, this);
+        Session.OpenRequested += () => ApplicationCommands.Open.Execute(null, this);
+        Session.SaveRequested += () => ApplicationCommands.Save.Execute(null, this);
         Session.ExitRequested += Close;
         Explorer.OperationRequested += OpenCalculation;
         Results.HideRequested += () => SetResultsVisible(false);
@@ -66,6 +67,7 @@ public partial class MainWindow : Window
         ResultsHost.SizeChanged += (_, _) => UpdateSidebarBounds();
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
             new Action(() => AppRoot.Margin = WindowWorkArea.GetContentMargin(this)));
+        InitializeSession(sessionDialogs);
     }
 
     private void UpdateWindowInsets(object? sender, EventArgs e)
@@ -89,6 +91,21 @@ public partial class MainWindow : Window
     private void WindowLoaded(object sender, RoutedEventArgs e)
     {
         if (sessionRestoreVersion == 0) ResetCurveViews(sender, e);
+    }
+
+    protected override void OnContentRendered(EventArgs e)
+    {
+        base.OnContentRendered(e);
+        // The initial fit is part of a fresh session, not a user edit.
+        if (!initialSessionRendered && sessionRestoreVersion == 0 && cleanSession != null)
+            cleanSession = cleanSession with { Plot = Plot.CaptureView() };
+        initialSessionRendered = true;
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        base.OnClosing(e);
+        if (!e.Cancel) e.Cancel = !ConfirmSessionChange();
     }
 
     private void WindowClosed(object? sender, EventArgs e)
@@ -223,6 +240,8 @@ public partial class MainWindow : Window
         if (Plot.ActualWidth <= 0 || Plot.ActualHeight <= 0) return;
         Plot.Fit();
         realViewResetPending = false;
+        if (cleanSession?.FitRealViewWhenShown == true)
+            cleanSession = cleanSession with { Plot = Plot.CaptureView(), FitRealViewWhenShown = false };
     }));
 
     private void ResetView(object? sender, EventArgs e) => FitCurrentView();

@@ -35,11 +35,22 @@
                         BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,16,0,0" Visibility="Collapsed">
                     <TextBlock x:Name="Detail" FontFamily="Consolas" FontSize="16" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
                 </Border>
+                <StackPanel x:Name="SessionNamePanel" Margin="0,16,0,0" Visibility="Collapsed">
+                    <Label Content="File name" Target="{Binding ElementName=SessionFileName}" Padding="0,0,0,6"
+                           Foreground="{StaticResource MutedBrush}" />
+                    <TextBox x:Name="SessionFileName" FontSize="16" Padding="12,10"
+                             Background="{StaticResource BackgroundBrush}" TextChanged="SessionFileNameChanged"
+                             AutomationProperties.Name="Session file name" />
+                    <TextBlock x:Name="SessionNameError" Text="Enter a valid file name." Margin="0,6,0,0"
+                               Foreground="{StaticResource WarningBrush}" Visibility="Collapsed" />
+                </StackPanel>
             </StackPanel>
             <Border Grid.Row="2" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="0,1,0,0" CornerRadius="0,0,11,11" Padding="24,14">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="ConfirmButton" Click="ConfirmClick" Style="{StaticResource ConfirmationActionButton}" Margin="0,0,8,0" />
+                    <Button x:Name="DiscardButton" Content="Discard" Click="DiscardClick" Visibility="Collapsed"
+                            Style="{StaticResource ConfirmationActionButton}" Margin="0,0,8,0" />
                     <Button x:Name="CancelButton" Content="Cancel" Click="CancelClick" IsCancel="True" IsDefault="True"
                             Style="{StaticResource ConfirmationActionButton}" />
                 </StackPanel>

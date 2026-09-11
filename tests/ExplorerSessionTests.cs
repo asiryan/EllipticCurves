@@ -10,6 +10,44 @@ namespace EllipticCurves.Tests;
 public sealed class ExplorerSessionTests
 {
     [Fact]
+    public void ChangeComparisonIncludesResultsAndViewsButIgnoresAutomaticOriginSelection()
+    {
+        var baseline = ExplorerSession.New();
+        SessionFile.Validate(baseline);
+        Assert.True(SessionChanges.Equal(baseline, ExplorerSession.New()));
+        Assert.True(SessionChanges.Equal(baseline, baseline with { SelectedTorusPoint = null, FitRealViewWhenShown = false }));
+        var changes = new[]
+        {
+            baseline with { Equation = "y^2 = x^3 + x" },
+            baseline with { SliderStep = "1/7" },
+            baseline with { SliderOffsets = new[] { 1, 0 } },
+            baseline with { ShowGrid = false },
+            baseline with { ShowPoints = false },
+            baseline with { ComplexView = true },
+            baseline with { CoefficientsExpanded = true },
+            baseline with { Plot = new(0, 0, 7) },
+            baseline with { TorusCamera = new(45, 30, 8) },
+            baseline with { EquationPanel = new(false, 238) },
+            baseline with { ResultsPanel = new(true, 400) },
+            baseline with { EquationScrollOffset = 10 },
+            baseline with { TorusScrollOffset = 20 },
+            baseline with { SelectedTorusPoint = "(0, 0)" },
+            baseline with { History = Example().History }
+        };
+        Assert.All(changes, changed => Assert.False(SessionChanges.Equal(baseline, changed)));
+        var history = Example();
+        var updated = history with { History = history.History.ToList() };
+        Assert.True(SessionChanges.Equal(history, updated));
+        updated.History[0] = updated.History[0] with { Result = "A changed result" };
+        Assert.False(SessionChanges.Equal(history, updated));
+        updated.History[0] = history.History[0] with
+        {
+            Request = history.History[0].Request with { Arguments = new() { ["example"] = "Different input" } }
+        };
+        Assert.False(SessionChanges.Equal(history, updated));
+    }
+
+    [Fact]
     public async Task SavedTorusSelectionSurvivesDeferredMappingAndACachedView()
     {
         var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
@@ -52,6 +90,7 @@ public sealed class ExplorerSessionTests
             SessionFile.Save(path, original);
             var loaded = SessionFile.Load(path);
             Assert.Equal(JsonSerializer.Serialize(original), JsonSerializer.Serialize(loaded));
+            Assert.True(SessionChanges.Equal(original, loaded));
             using var model = new MainViewModel();
             model.RestoreSession(loaded);
             Assert.Equal(original.Equation, model.Equation.Text);

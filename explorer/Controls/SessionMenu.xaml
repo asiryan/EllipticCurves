@@ -3,8 +3,20 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <UserControl.Resources>
         <Style x:Key="SessionAction" TargetType="Button" BasedOn="{StaticResource QuietButton}">
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Padding" Value="12,9" />
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       Foreground="{StaticResource MutedBrush}" Margin="24,0,0,0" />
+                        </Grid>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource RaisedBrush}" /></Trigger>
             </Style.Triggers>
@@ -18,11 +30,18 @@
                AllowsTransparency="True" PopupAnimation="Fade" Opened="PopupOpened">
             <Border Style="{StaticResource Card}" Width="200" Padding="8" Margin="0,6,0,0">
                 <StackPanel KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle">
+                    <Button x:Name="NewButton" Content="New" Click="NewClick" IsEnabled="{Binding CanRun}"
+                            Tag="Ctrl+N" AutomationProperties.AcceleratorKey="Ctrl+N"
+                            Style="{StaticResource SessionAction}"
+                            ToolTip="Start a new session. Stop the active calculation first."
+                            ToolTipService.ShowOnDisabled="True" />
                     <Button x:Name="OpenButton" Content="Open" Click="OpenClick" IsEnabled="{Binding CanRun}"
+                            Tag="Ctrl+O" AutomationProperties.AcceleratorKey="Ctrl+O"
                             Style="{StaticResource SessionAction}"
                             ToolTip="Open a session (.ec). Stop the active calculation before opening."
                             ToolTipService.ShowOnDisabled="True" />
                     <Button x:Name="SaveButton" Content="Save" Click="SaveClick"
+                            Tag="Ctrl+S" AutomationProperties.AcceleratorKey="Ctrl+S"
                             Style="{StaticResource SessionAction}" />
                     <Button x:Name="ExitButton" Content="Exit" Click="ExitClick"
                             Style="{StaticResource SessionAction}" />

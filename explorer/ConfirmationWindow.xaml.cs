@@ -1,12 +1,20 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace EllipticCurves.Explorer;
 
+internal enum SaveChangesChoice { Cancel, Save, Discard }
+internal sealed record SaveChangesResult(SaveChangesChoice Choice, string? FileName = null);
+
 public partial class ConfirmationWindow : Window
 {
     internal bool Confirmed { get; private set; }
+    internal SaveChangesChoice SaveChoice { get; private set; }
+    internal SaveChangesResult SaveResult => new(SaveChoice,
+        SaveChoice == SaveChangesChoice.Save ? SessionFileName.Text.Trim() : null);
 
     internal ConfirmationWindow(string title, string message, string confirmText, string? detail = null)
     {
@@ -37,6 +45,33 @@ public partial class ConfirmationWindow : Window
         dialog.ShowForOwner(owner);
     }
 
+    internal static ConfirmationWindow CreateSaveChangesDialog(string sessionName)
+    {
+        var dialog = new ConfirmationWindow("Unsaved changes",
+            "Save changes to this session before continuing? Choosing Discard will lose the unsaved changes.", "Save")
+            { Width = 520 };
+        dialog.DiscardButton.Visibility = Visibility.Visible;
+        dialog.SessionNamePanel.Visibility = Visibility.Visible;
+        dialog.SessionFileName.Text = sessionName;
+        return dialog;
+    }
+
+    internal static SaveChangesResult AskToSaveChanges(Window owner, string sessionName)
+    {
+        var dialog = CreateSaveChangesDialog(sessionName);
+        dialog.ShowForOwner(owner);
+        return dialog.SaveResult;
+    }
+
+    private void SessionFileNameChanged(object sender, TextChangedEventArgs e)
+    {
+        if (SessionNamePanel.Visibility != Visibility.Visible) return;
+        var name = SessionFileName.Text.Trim();
+        var valid = name.Length > 0 && !name.EndsWith('.') && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+        ConfirmButton.IsEnabled = valid;
+        SessionNameError.Visibility = valid ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private void ShowForOwner(Window? owner)
     {
         Owner = owner;
@@ -48,6 +83,13 @@ public partial class ConfirmationWindow : Window
     private void ConfirmClick(object sender, RoutedEventArgs e)
     {
         Confirmed = true;
+        SaveChoice = SaveChangesChoice.Save;
+        Close();
+    }
+
+    private void DiscardClick(object sender, RoutedEventArgs e)
+    {
+        SaveChoice = SaveChangesChoice.Discard;
         Close();
     }
 

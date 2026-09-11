@@ -18,7 +18,7 @@ using EllipticCurves.Explorer.Computations;
 using EllipticCurves.Explorer.Controls;
 using EllipticCurves.Explorer.ViewModels;
 
-internal static class Program
+internal static partial class Program
 {
     [STAThread]
     private static int Main()
@@ -37,6 +37,10 @@ internal static class Program
             CheckCaptionDismissal("Session");
             CheckSessionMenu();
             CheckSessionRestore();
+            CheckSessionLifecycle();
+            CheckSessionSaveName();
+            CheckSessionShortcuts();
+            CheckSaveChangesDialog();
             CheckExplorerSelection();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();
@@ -92,9 +96,13 @@ internal static class Program
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
 
+    private static MainWindow CreateMainWindow(Func<bool>? confirmation = null) => new(confirmation,
+        new SessionDialogs(_ => new(SaveChangesChoice.Discard), _ => throw new Exception("Unexpected save dialog."),
+            () => throw new Exception("Unexpected open dialog."), (title, message) => throw new Exception(title + ": " + message)));
+
     private static void CheckViewSwitching()
     {
-        var window = new MainWindow();
+        var window = CreateMainWindow();
         try
         {
             window.ViewModel.ShowPoints = false;
@@ -241,7 +249,7 @@ internal static class Program
 
     private static void CheckSessionMenu()
     {
-        var owner = new MainWindow();
+        var owner = CreateMainWindow();
         try
         {
             var session = (SessionMenu)owner.FindName("Session");
@@ -269,19 +277,37 @@ internal static class Program
             var menuToggle = (ToggleButton)menu.FindName("Toggle");
             System.Windows.Data.BindingOperations.ClearBinding(popup, Popup.IsOpenProperty);
             var actions = new List<string>();
+            menu.NewRequested += () => actions.Add("New");
             menu.OpenRequested += () => actions.Add("Open");
             menu.SaveRequested += () => actions.Add("Save");
             menu.ExitRequested += () => actions.Add("Exit");
             var buttons = Descendants(popup.Child).OfType<Button>().ToArray();
-            Require(buttons.Select(button => button.Content).SequenceEqual(new[] { "Open", "Save", "Exit" }),
-                "Session must contain exactly Open, Save and Exit, in English.");
+            Require(buttons.Select(button => button.Content).SequenceEqual(new[] { "New", "Open", "Save", "Exit" }),
+                "Session must contain exactly New, Open, Save and Exit, in English.");
+            var menuRoot = (FrameworkElement)popup.Child;
+            menuRoot.Measure(new Size(200, double.PositiveInfinity));
+            menuRoot.Arrange(new Rect(menuRoot.DesiredSize));
+            menuRoot.UpdateLayout();
+            var shortcutRights = new List<double>();
+            foreach (var (button, shortcut) in buttons.Take(3).Zip(new[] { "Ctrl+N", "Ctrl+O", "Ctrl+S" }))
+            {
+                var texts = Descendants(button).OfType<TextBlock>().ToArray();
+                var label = texts.Single(text => text.Text == (string)button.Content);
+                var hint = texts.Single(text => text.Text == shortcut);
+                Rect Bounds(FrameworkElement element) => element.TransformToAncestor(menuRoot).TransformBounds(new Rect(element.RenderSize));
+                Require(Bounds(hint).Left > Bounds(label).Right && new Rect(menuRoot.RenderSize).Contains(Bounds(hint)),
+                    "A session shortcut overlaps its label or extends outside the menu.");
+                Require(AutomationProperties.GetAcceleratorKey(button) == shortcut, "The session shortcut is missing from accessibility information.");
+                shortcutRights.Add(Bounds(hint).Right);
+            }
+            Require(shortcutRights.Max() - shortcutRights.Min() < 1, "Session shortcuts must align at the right edge.");
             foreach (var button in buttons)
             {
                 menuToggle.IsChecked = true;
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Require(menuToggle.IsChecked == false, "A session action left its popup open.");
             }
-            Require(actions.SequenceEqual(new[] { "Open", "Save", "Exit" }), "Session actions were not dispatched exactly once.");
+            Require(actions.SequenceEqual(new[] { "New", "Open", "Save", "Exit" }), "Session actions were not dispatched exactly once.");
 
             if (Environment.GetEnvironmentVariable("EC_SESSION_PREVIEW") is { Length: > 0 } preview)
             {
@@ -317,8 +343,8 @@ internal static class Program
 
     private static void CheckSessionRestore()
     {
-        var original = new MainWindow();
-        var restored = new MainWindow();
+        var original = CreateMainWindow();
+        var restored = CreateMainWindow();
         var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".ec");
         try
         {
@@ -378,7 +404,7 @@ internal static class Program
 
     private static void CheckCaptionDismissal(string menuName)
     {
-        var owner = new MainWindow();
+        var owner = CreateMainWindow();
         var menu = (UserControl)owner.FindName(menuName);
         var toggle = (ToggleButton)menu.FindName("Toggle");
         var popup = (Popup)menu.FindName("MenuPopup");
@@ -688,7 +714,7 @@ internal static class Program
 
         var resetAnswer = false;
         var resetConfirmations = 0;
-        var window = new MainWindow(() => { resetConfirmations++; return resetAnswer; });
+        var window = CreateMainWindow(() => { resetConfirmations++; return resetAnswer; });
         try
         {
             var root = (FrameworkElement)window.Content;
@@ -809,7 +835,7 @@ internal static class Program
     }
     private static void CheckWorkspaceLayout(CalculationRequest request)
     {
-        var window = new MainWindow();
+        var window = CreateMainWindow();
         try
         {
             var root = (FrameworkElement)window.Content;
