@@ -10,12 +10,13 @@ namespace EllipticCurves.Tests;
 public sealed class ExplorerSessionTests
 {
     [Fact]
-    public void ChangeComparisonIncludesResultsAndViewsButIgnoresAutomaticOriginSelection()
+    public void ChangeComparisonIncludesResultsAndOptionsButIgnoresGraphNavigationAndAutomaticOriginSelection()
     {
         var baseline = ExplorerSession.New();
         SessionFile.Validate(baseline);
         Assert.True(SessionChanges.Equal(baseline, ExplorerSession.New()));
         Assert.True(SessionChanges.Equal(baseline, baseline with { SelectedTorusPoint = null, FitRealViewWhenShown = false }));
+        Assert.True(SessionChanges.Equal(baseline, baseline with { Plot = new(200, -300, 70), TorusCamera = new(45, 30, 8) }));
         var changes = new[]
         {
             baseline with { Equation = "y^2 = x^3 + x" },
@@ -25,8 +26,6 @@ public sealed class ExplorerSessionTests
             baseline with { ShowPoints = false },
             baseline with { ComplexView = true },
             baseline with { CoefficientsExpanded = true },
-            baseline with { Plot = new(0, 0, 7) },
-            baseline with { TorusCamera = new(45, 30, 8) },
             baseline with { EquationPanel = new(false, 238) },
             baseline with { ResultsPanel = new(true, 400) },
             baseline with { EquationScrollOffset = 10 },

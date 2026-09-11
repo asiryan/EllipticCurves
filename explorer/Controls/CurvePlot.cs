@@ -19,7 +19,8 @@ public sealed class CurvePlot : FrameworkElement
     private static readonly Typeface LabelTypeface = new("Consolas");
     private readonly List<(StreamGeometry Upper, StreamGeometry Lower, StreamGeometry Fill)> geometry = new();
     private bool geometryDirty = true;
-    private double centerX = 0.3, centerY, verticalSpan = 3.4;
+    private double centerX = PlotViewState.Default.CenterX, centerY = PlotViewState.Default.CenterY,
+        verticalSpan = PlotViewState.Default.VerticalSpan;
     private Point? dragPosition, pointer;
 
     public CurveSnapshot? Snapshot { get => (CurveSnapshot?)GetValue(SnapshotProperty); set => SetValue(SnapshotProperty, value); }
@@ -39,21 +40,26 @@ public sealed class CurvePlot : FrameworkElement
 
     public void Fit()
     {
+        if (Snapshot?.Plot.IsDrawable != true) return;
+        RestoreView(GetResetView());
+    }
+
+    internal PlotViewState GetResetView()
+    {
         var data = Snapshot?.Plot;
-        if (data is null || !data.IsDrawable) return;
+        if (data is null || !data.IsDrawable) return PlotViewState.Default;
         var left = data.Roots[0];
         var right = data.Roots[^1];
         // Include part of the unbounded branch even when there is only one real root.
         right += Math.Max(0.5, 0.25 * Math.Max(right - left, data.CharacteristicScale));
-        centerX = left / 2 + right / 2;
+        var fittedCenterX = left / 2 + right / 2;
         var ys = new List<double> { data.CenterY(left), data.CenterY(right) };
         for (var i = 0; i <= 100; i++)
             if (data.TryEvaluate(left + (right - left) * i / 100, out var upper, out var lower)) { ys.Add(upper); ys.Add(lower); }
-        centerY = ys.Min() / 2 + ys.Max() / 2;
+        var fittedCenterY = ys.Min() / 2 + ys.Max() / 2;
         var horizontalSpan = Math.Max(5, (right - left) * 1.8);
-        verticalSpan = Math.Clamp(Math.Max(Math.Max(3.4, (ys.Max() - ys.Min()) * 1.35), horizontalSpan * (PlotBounds.Height / PlotBounds.Width)), MinimumSpan, 1e300);
-        pointer = null;
-        RefreshGeometry();
+        var fittedSpan = Math.Clamp(Math.Max(Math.Max(3.4, (ys.Max() - ys.Min()) * 1.35), horizontalSpan * (PlotBounds.Height / PlotBounds.Width)), MinimumSpan(fittedCenterX, fittedCenterY), 1e300);
+        return new(fittedCenterX, fittedCenterY, fittedSpan);
     }
 
     public void Zoom(double factor) => ZoomAt(factor, new Point(PlotBounds.Left + PlotBounds.Width / 2, PlotBounds.Top + PlotBounds.Height / 2));
@@ -263,7 +269,7 @@ public sealed class CurvePlot : FrameworkElement
     {
         if (!double.IsFinite(factor) || factor <= 0) return;
         var before = ToWorld(anchor);
-        verticalSpan = Math.Clamp(verticalSpan * factor, MinimumSpan, 1e300);
+        verticalSpan = Math.Clamp(verticalSpan * factor, MinimumSpan(centerX, centerY), 1e300);
         var after = ToWorld(anchor);
         centerX += before.X - after.X;
         centerY += before.Y - after.Y;
@@ -271,7 +277,7 @@ public sealed class CurvePlot : FrameworkElement
     }
 
     private Point BoundedScreen(double x, double y) { var p = ToScreen(x, y); return new Point(Math.Clamp(p.X, -1e7, 1e7), Math.Clamp(p.Y, -1e7, 1e7)); }
-    private double MinimumSpan => Math.Max(1e-12, Math.Max(Math.Abs(centerX), Math.Abs(centerY)) * 1e-12);
+    private static double MinimumSpan(double x, double y) => Math.Max(1e-12, Math.Max(Math.Abs(x), Math.Abs(y)) * 1e-12);
     private void RefreshGeometry() { geometryDirty = true; InvalidateVisual(); }
     private static void InvalidateGeometry(DependencyObject source, DependencyPropertyChangedEventArgs args) => ((CurvePlot)source).RefreshGeometry();
     private FormattedText Label(string text, double size, Brush? brush = null) => new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, LabelTypeface, size, brush ?? LabelBrush, VisualTreeHelper.GetDpi(this).PixelsPerDip);

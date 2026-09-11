@@ -6,8 +6,14 @@ using EllipticCurves.Explorer.Computations;
 
 namespace EllipticCurves.Explorer.Models;
 
-public sealed record PlotViewState(double CenterX, double CenterY, double VerticalSpan);
-public sealed record TorusCameraState(double Azimuth, double Elevation, double Span);
+public sealed record PlotViewState(double CenterX, double CenterY, double VerticalSpan)
+{
+    public static PlotViewState Default { get; } = new(0.3, 0, 3.4);
+}
+public sealed record TorusCameraState(double Azimuth, double Elevation, double Span)
+{
+    public static TorusCameraState Default { get; } = new(35, 32, 5.8);
+}
 public sealed record SidebarSession(bool Visible, double Width);
 public sealed record CalculationSession(CalculationRequest Request, DateTime StartedAt, string Status,
     string Stage, TimeSpan Elapsed, double? Percent, string Result);
@@ -38,7 +44,7 @@ public sealed record ExplorerSession
     public static ExplorerSession New() => new()
     {
         Equation = "y^2 = x^3 - x", SliderStep = "0.01", Preset = "The classic", SliderOffsets = new[] { 0, 0 },
-        Plot = new(0.3, 0, 3.4), FitRealViewWhenShown = true, TorusCamera = new(35, 32, 5.8),
+        Plot = PlotViewState.Default, FitRealViewWhenShown = true, TorusCamera = TorusCameraState.Default,
         SelectedTorusPoint = EllipticCurvePoint.Infinity.ToString(),
         EquationPanel = new(true, 238), ResultsPanel = new(true, 300), History = new()
     };

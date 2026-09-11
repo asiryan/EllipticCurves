@@ -16,7 +16,6 @@ public partial class MainWindow
     private string? sessionPath;
     private int sessionRestoreVersion;
     private int cleanSessionVersion;
-    private bool initialSessionRendered;
     private ExplorerSession? cleanSession;
     private SessionDialogs sessionDialogs = null!;
 
@@ -154,7 +153,11 @@ public partial class MainWindow
         ViewModel.FlushUpdate();
         if (ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid)
             throw new InvalidOperationException("Finish the curve equation and enter a valid slider step before saving the session.");
-        return ReadSession();
+        // Save the reset view without changing the graph the user is exploring.
+        return ReadSession() with
+        {
+            Plot = Plot.GetResetView(), TorusCamera = TorusCameraState.Default, FitRealViewWhenShown = true
+        };
     }
 
     private ExplorerSession ReadSession()
@@ -192,13 +195,14 @@ public partial class MainWindow
         foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
         ViewModel.RestoreSession(saved);
         Workbench.RestoreHistory(saved.History, saved.SelectedResult);
-        // Supersede pending fits and animations; they must not overwrite the saved view.
-        realViewResetPending = saved.FitRealViewWhenShown;
+        // Older files may contain a panned/zoomed view. Refit at the current layout
+        // when the real plot becomes visible, including after opening in torus mode.
+        realViewResetPending = true;
         RestoreSidebar(equationSidebar, saved.EquationPanel, EquationColumn, EquationPanel, EquationTab, EquationSplitter);
         RestoreSidebar(resultsSidebar, saved.ResultsPanel, ResultsColumn, Results, ResultsTab, ResultsSplitter);
         CoefficientsExpander.IsExpanded = saved.CoefficientsExpanded;
-        Plot.RestoreView(saved.Plot);
-        TorusView.RestoreCamera(saved.TorusCamera);
+        Plot.RestoreView(Plot.GetResetView());
+        TorusView.Fit();
         TorusView.RestoreSelection(saved.SelectedTorusPoint);
         ViewMode.SelectedIndex = saved.ComplexView ? 1 : 0;
         if (realViewResetPending && !IsComplexView) QueueRealViewReset();

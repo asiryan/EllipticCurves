@@ -45,12 +45,16 @@ list. Both menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
 
 A session preserves the exact equation, slider step and positions, selected
-example, grid and sample visibility, active visualization, real plot viewport,
-torus camera and selected point, sidebar widths and collapsed states, Coefficients
+example, grid and sample visibility, active visualization, selected torus point,
+sidebar widths and collapsed states, Coefficients
 expansion, scroll positions, and up to 50 calculation reports with their original
 inputs, limits, timestamps and selected result. Samples and periods are recomputed
 locally as needed. Open calculation parameter windows are not saved and close when
 another session is opened.
+The real plot and torus camera are saved at **Reset view**. Opening a session,
+including an older file, fits the curve to the current plot size. Panning, zooming,
+rotating the torus and resetting the view do not trigger an unsaved-changes warning.
+Saving does not move or reset the graph currently on screen.
 
 New and Open are disabled during a calculation; stop it first. Save can capture a running
 calculation, which reopens as **Interrupted**, without automatically starting work
@@ -69,7 +73,7 @@ not change the session's name or location.
 Enter, Escape and the dialog close button cancel.
 Cancelling the file picker or failing to save also cancels the pending action.
 An untouched session or an unchanged saved/opened session does not prompt.
-Changes to the equation, results, visualization or saved panel settings are tracked;
+Changes to the equation, results, visualization options or saved panel settings are tracked;
 background sample generation alone does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
 The Results panel's **Save** still exports an individual text report.

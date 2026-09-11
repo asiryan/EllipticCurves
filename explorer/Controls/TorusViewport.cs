@@ -22,7 +22,8 @@ public sealed class TorusViewport : Grid
     private readonly Model3DGroup markers = new();
     private readonly ModelVisual3D gridVisual = new();
     private readonly Dictionary<GeometryModel3D, (TorusPoint Point, ScaleTransform3D Scale)> markerPoints = new();
-    private double azimuth = 35, elevation = 32, span = 5.8;
+    private double azimuth = TorusCameraState.Default.Azimuth, elevation = TorusCameraState.Default.Elevation,
+        span = TorusCameraState.Default.Span;
     private Point? pressedAt, previousMouse;
     private bool dragged;
 
@@ -67,13 +68,7 @@ public sealed class TorusViewport : Grid
         UpdateCamera();
     }
 
-    public void Fit()
-    {
-        azimuth = 35;
-        elevation = 32;
-        span = 5.8;
-        UpdateCamera();
-    }
+    public void Fit() => RestoreCamera(TorusCameraState.Default);
 
     public void Zoom(double factor)
     {

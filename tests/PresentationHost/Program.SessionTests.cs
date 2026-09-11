@@ -14,11 +14,11 @@ using EllipticCurves.Explorer.ViewModels;
 
 internal static partial class Program
 {
-    private static void SettleSession(MainWindow window)
+    private static void SettleSession(MainWindow window, double width = 1438, double height = 918)
     {
         var root = (FrameworkElement)window.Content;
-        root.Measure(new Size(1438, 918));
-        root.Arrange(new Rect(0, 0, 1438, 918));
+        root.Measure(new Size(width, height));
+        root.Arrange(new Rect(0, 0, width, height));
         root.UpdateLayout();
         Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(root.UpdateLayout));
     }
@@ -111,13 +111,93 @@ internal static partial class Program
                 Require(sameFile.ViewModel.Equation.Text == edited && !sameFile.HasUnsavedChanges,
                     "Opening the same file restored the stale copy from before Save.");
                 ((CurvePlot)sameFile.FindName("Plot")).Zoom(0.8);
-                Require(sameFile.HasUnsavedChanges && sameFile.TrySaveSession() && !sameFile.HasUnsavedChanges,
-                    "Viewport changes or successful saves did not update the dirty state.");
+                Require(!sameFile.HasUnsavedChanges && sameFile.TrySaveSession() && !sameFile.HasUnsavedChanges,
+                    "Graph navigation must not dirty the session, and an explicit save must still work.");
                 sameFile.ViewModel.Equation.Text = "y^2 =";
                 Require(sameFile.HasUnsavedChanges && sameFile.ViewModel.Equation.Error == "",
                     "Checking unsaved edits must not commit or silently ignore incomplete input.");
             }
             finally { answer = SaveChangesChoice.Discard; sameFile.Close(); }
+        }
+        finally { File.Delete(input); File.Delete(output); }
+    }
+
+    private static void CheckSessionGraphNavigation()
+    {
+        var input = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ec");
+        var output = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ec");
+        try
+        {
+            foreach (var complex in new[] { false, true })
+            foreach (var action in new[] { "New", "Open", "Close" })
+            {
+                // Legacy files containing camera positions must also reopen fitted.
+                var legacy = ExplorerSession.New() with
+                {
+                    Equation = "y^2 + x*y + y = x^3 - 5*x + 3", Preset = null, SliderOffsets = Array.Empty<int>(),
+                    ComplexView = complex, Plot = new(1e18, -1e18, 1e8), FitRealViewWhenShown = false,
+                    TorusCamera = new(-71, 23, 8.9)
+                };
+                SessionFile.Save(input, legacy);
+                var prompts = 0;
+                var window = new MainWindow(null, new SessionDialogs(_ => { prompts++; return new(SaveChangesChoice.Cancel); },
+                    _ => output, () => input, (title, message) => throw new Exception(title + ": " + message)));
+                var closed = false;
+                window.Closed += (_, _) => closed = true;
+                try
+                {
+                    Require(window.OpenSession(), "Could not open the legacy graph session.");
+                    SettleSession(window);
+                    var plot = (CurvePlot)window.FindName("Plot");
+                    var torus = (ComplexTorusView)window.FindName("TorusView");
+                    if (!complex)
+                    {
+                        var opened = plot.CaptureView();
+                        plot.Fit();
+                        Require(opened == plot.CaptureView() && opened != legacy.Plot,
+                            "An old file must open at Reset view, not at its stored pan and zoom.");
+                    }
+                    Require(torus.CaptureCamera() == TorusCameraState.Default && !window.HasUnsavedChanges,
+                        "Opening/resetting a graph must leave a clean session and a default torus camera.");
+                    var fitted = plot.GetResetView();
+                    plot.RestoreView(new(1e18, -1e18, 1e8));
+                    plot.Zoom(0.7);
+                    torus.RestoreCamera(legacy.TorusCamera);
+                    torus.Zoom(0.8);
+                    var navigatedPlot = plot.CaptureView();
+                    var navigatedTorus = torus.CaptureCamera();
+                    Require(!window.HasUnsavedChanges, "Panning, zooming or rotating a graph triggered unsaved changes.");
+                    Require(window.TrySaveSession(), "An explicit save after graph navigation failed.");
+                    var saved = SessionFile.Load(output);
+                    Require(saved.Plot == fitted && saved.FitRealViewWhenShown && saved.TorusCamera == TorusCameraState.Default,
+                        "The file must contain Reset view regardless of the user's current graph navigation.");
+                    Require(plot.CaptureView() == navigatedPlot && torus.CaptureCamera() == navigatedTorus && !window.HasUnsavedChanges,
+                        "Saving must not move the visible graph or leave the session dirty.");
+
+                    var restored = CreateMainWindow();
+                    try
+                    {
+                        restored.RestoreSession(saved);
+                        SettleSession(restored, 1120, 760);
+                        var restoredPlot = (CurvePlot)restored.FindName("Plot");
+                        // A file saved with the real plot hidden must fit it on first display.
+                        ((ComboBox)restored.FindName("ViewMode")).SelectedIndex = 0;
+                        SettleSession(restored, 1120, 760);
+                        var opened = restoredPlot.CaptureView();
+                        restoredPlot.Fit();
+                        Require(opened == restoredPlot.CaptureView(), "Opening must fit the curve to the new window size, including a deferred real view.");
+                        Require(((ComplexTorusView)restored.FindName("TorusView")).CaptureCamera() == TorusCameraState.Default,
+                            "The saved session restored a navigated torus camera.");
+                    }
+                    finally { restored.Close(); }
+
+                    bool CloseWindow() { window.Close(); return closed; }
+                    Require(action == "New" ? window.NewSession() : action == "Open" ? window.OpenSession() : CloseWindow(),
+                        $"{action} was blocked after graph navigation only.");
+                    Require(prompts == 0, $"{action} asked to save temporary graph navigation.");
+                }
+                finally { if (!closed) window.Close(); }
+            }
         }
         finally { File.Delete(input); File.Delete(output); }
     }

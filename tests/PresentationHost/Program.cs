@@ -38,6 +38,7 @@ internal static partial class Program
             CheckSessionMenu();
             CheckSessionRestore();
             CheckSessionLifecycle();
+            CheckSessionGraphNavigation();
             CheckSessionSaveName();
             CheckSessionShortcuts();
             CheckSaveChangesDialog();
@@ -382,8 +383,8 @@ internal static partial class Program
             var actual = restored.CaptureSession();
             Require(actual.Equation == saved.Equation && actual.SliderStep == saved.SliderStep
                 && actual.SliderOffsets.SequenceEqual(saved.SliderOffsets), "The session lost exact editor state.");
-            Require(actual.Plot == saved.Plot && actual.TorusCamera == saved.TorusCamera && actual.ComplexView,
-                "A queued fit replaced the restored plot or camera.");
+            Require(actual.FitRealViewWhenShown && actual.TorusCamera == TorusCameraState.Default && actual.ComplexView,
+                "The session must reopen at Reset view while preserving the active visualization.");
             Require(actual.EquationPanel == saved.EquationPanel && actual.ResultsPanel == saved.ResultsPanel
                 && actual.CoefficientsExpanded && !actual.ShowGrid && !actual.ShowPoints,
                 "The session did not restore sidebar layout and visualization settings.");

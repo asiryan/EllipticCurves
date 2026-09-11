@@ -1,8 +1,8 @@
 #nullable enable
 namespace EllipticCurves.Explorer.Models;
 
-// Compare persisted state without serializing potentially large text reports or
-// committing an incomplete edit just to decide whether it is safe to leave.
+// Graph navigation is temporary; files reopen at Reset view. Compare the other
+// session state without serializing large reports or committing incomplete edits.
 public static class SessionChanges
 {
     public static bool Equal(ExplorerSession left, ExplorerSession right) =>
@@ -13,7 +13,6 @@ public static class SessionChanges
         && left.EquationScrollOffset == right.EquationScrollOffset && left.TorusScrollOffset == right.TorusScrollOffset
         // Background period mapping supplies O when no point has been selected.
         && PointKey(left.SelectedTorusPoint) == PointKey(right.SelectedTorusPoint)
-        && left.Plot == right.Plot && left.TorusCamera == right.TorusCamera
         && left.EquationPanel == right.EquationPanel && left.ResultsPanel == right.ResultsPanel
         && left.SelectedResult == right.SelectedResult && left.History.Count == right.History.Count
         && left.History.Zip(right.History).All(pair => SameCalculation(pair.First, pair.Second));
