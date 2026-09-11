@@ -52,6 +52,25 @@ public class ArithmeticRegressionTests
     }
 
     [Fact]
+    public void IntegerSquareRootsRoundDownOnSmallValuesAndLargeSquareBoundaries()
+    {
+        for (int n = 0; n <= 4096; n++)
+        {
+            var root = InternalMath.IntegerSqrt(n);
+            Assert.True(root * root <= n, $"sqrt({n}) rounded up to {root}.");
+            Assert.True((root + 1) * (root + 1) > n, $"sqrt({n}) rounded down too far to {root}.");
+        }
+
+        var large = BigInteger.Pow(10, 100) + 1;
+        var square = large * large;
+        Assert.Equal(large - 1, InternalMath.IntegerSqrt(square - 1));
+        Assert.Equal(large, InternalMath.IntegerSqrt(square));
+        Assert.Equal(large, InternalMath.IntegerSqrt(square + 1));
+        Assert.Equal(large, InternalMath.IntegerSqrt(square + 2 * large));
+        Assert.Equal(large + 1, InternalMath.IntegerSqrt(square + 2 * large + 1));
+    }
+
+    [Fact]
     public void SixthRootsDoNotStartNewtonIterationBelowTheRoot()
     {
         var power = BigInteger.Pow(5, 6);

@@ -55,6 +55,20 @@ public class TorsionRegressionTests
     }
 
     [Fact]
+    public void NearbyIntegerRootsAllContributeTwoTorsionPoints()
+    {
+        // x^3 - 7x - 6 = (x+2)(x+1)(x-3). Splitting at ceil(sqrt(2))
+        // incorrectly puts both negative roots on the same search interval.
+        var curve = new EllipticCurveQ(0, 0, 0, -7, -6);
+        var expected = new HashSet<EllipticCurvePoint>
+        {
+            EllipticCurvePoint.Infinity, new(-2, 0), new(-1, 0), new(3, 0)
+        };
+        Assert.True(expected.SetEquals(curve.TorsionPoints));
+        Assert.Equal("Z/2Z x Z/2Z", curve.TorsionStructure);
+    }
+
+    [Fact]
     public void IntegerCubicRootSearchHandlesHugeAndCloselySpacedRoots()
     {
         var n = BigInteger.Pow(10, 100);

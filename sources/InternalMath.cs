@@ -261,7 +261,8 @@ namespace EllipticCurves
         public static BigInteger IntegerSqrt(BigInteger n)
         {
             if (n <= 1) return n;
-            BigInteger x0 = n, x1 = (n >> 1) + 1;
+            // The first Newton step must decrease for n=2 as well.
+            BigInteger x0 = n, x1 = (n + 1) >> 1;
             while (x1 < x0) { x0 = x1; x1 = (x1 + n / x1) >> 1; }
             return x0;
         }
