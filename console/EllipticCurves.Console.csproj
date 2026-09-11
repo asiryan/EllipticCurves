@@ -5,9 +5,15 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <ApplicationIcon>..\explorer\ec_logo.ico</ApplicationIcon>
+    <PublishSelfContained>true</PublishSelfContained>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Reuse Explorer's exact equation parser without a WPF dependency. -->
+    <Compile Include="../explorer/Models/CurveEquationText.cs" Link="Parsing/CurveEquationText.cs" />
+    <Compile Include="../explorer/Models/RationalText.cs" Link="Parsing/RationalText.cs" />
     <ProjectReference Include="..\sources\EllipticCurves.csproj" />
   </ItemGroup>
 

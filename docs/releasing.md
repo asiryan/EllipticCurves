@@ -10,20 +10,20 @@ run on Windows.
 ## Build script
 
 On Windows, run [build.bat](../build.bat) to build the solution in Release, run
-the arithmetic/portable tests and the WPF presentation check, pack the library,
-and publish Explorer and the console application:
+the arithmetic, Console and portable Explorer tests and the WPF presentation
+check, pack the library, and publish Explorer and the console application:
 
 ```powershell
 .\build.bat
-# Optional Explorer target:
+# Optional target for both applications:
 .\build.bat win-arm64
 ```
 
-The default Explorer target is `win-x64`. Each invocation creates a fresh
+The default target for both applications is `win-x64`. Each invocation creates a fresh
 `artifacts/release/TIMESTAMP-RUNTIME` directory containing `nuget/`,
-`explorer-RUNTIME/`, `console/`, `EllipticCurves.Explorer-RUNTIME.zip` and
-`EllipticCurves.Console.zip`. Both application archives include the license.
-Explorer includes its runtime; the console application requires .NET 8.
+`explorer-RUNTIME/`, `console-RUNTIME/`, `EllipticCurves.Explorer-RUNTIME.zip` and
+`EllipticCurves.Console-RUNTIME.zip`. Both application archives include the license
+and their .NET runtimes; neither requires a separate .NET installation to run.
 Versions come from the project files described below.
 
 The script works from any current directory, stops on the first failed command
@@ -38,7 +38,7 @@ Run `build.bat --help` for usage. The individual commands follow below.
 | Component | Project | Target | Distribution |
 | --- | --- | --- | --- |
 | Library | [sources/EllipticCurves.csproj](../sources/EllipticCurves.csproj) | .NET Standard 2.0 | NuGet package |
-| Console example | [console/EllipticCurves.Console.csproj](../console/EllipticCurves.Console.csproj) | .NET 8 | Source or published application |
+| Console | [console/EllipticCurves.Console.csproj](../console/EllipticCurves.Console.csproj) | .NET 8 | Complete self-contained publish folder in a ZIP |
 | Desktop Explorer | [explorer/EllipticCurves.Explorer.csproj](../explorer/EllipticCurves.Explorer.csproj) | .NET 8, Windows | Complete publish folder in a ZIP |
 
 The library currently sets `Version`, `AssemblyVersion` and `FileVersion` to
@@ -51,12 +51,12 @@ set the applications' version properties explicitly before packaging them.
 The NuGet README is [docs/nuget-readme.md](nuget-readme.md), not the root README.
 The library project packs it as `README.md`, together with `LICENSE.md`,
 `ec_logo.png`, the library and its generated XML API documentation.
-Explorer is excluded from NuGet packaging. Pack the library project explicitly
+Console and Explorer are excluded from NuGet packaging. Pack the library project explicitly
 rather than packing the entire solution.
 
 ## Validation
 
-Run all arithmetic and portable Explorer tests:
+Run all arithmetic, Console command-line and portable Explorer tests:
 
 ```powershell
 dotnet test tests/EllipticCurves.Tests.csproj -c Release
@@ -72,7 +72,7 @@ The second command checks compiled XAML, layout and selected interaction paths;
 it is not part of the solution's `dotnet test` run and does not show application
 windows. Tests use committed fixtures and simulated HTTP responses. Restoring
 SDK/NuGet dependencies can require internet access; the arithmetic tests do not
-call LMFDB. The console example, by contrast, performs a live LMFDB lookup.
+call LMFDB. Console only performs a live LMFDB lookup when `--lmfdb` is enabled.
 
 ## NuGet package
 
@@ -121,17 +121,27 @@ Exercise live LMFDB fetching separately when internet access is available.
 Testing the packaged executable verifies the calculation worker's startup and
 published dependencies as well as the UI.
 
-## Optional console distribution
+## Console archive
 
 ```powershell
-dotnet publish console/EllipticCurves.Console.csproj -c Release --self-contained false -o artifacts/console
-Copy-Item -LiteralPath LICENSE -Destination artifacts/console/EllipticCurves.LICENSE.txt
+dotnet publish console/EllipticCurves.Console.csproj -c Release -r win-x64 --self-contained true -o artifacts/console-win-x64
+Copy-Item -LiteralPath LICENSE -Destination artifacts/console-win-x64/EllipticCurves.LICENSE.txt
+Compress-Archive -Path artifacts/console-win-x64/* -DestinationPath artifacts/EllipticCurves.Console-win-x64.zip
 ```
 
-Keep the entire output folder. With the .NET 8 runtime installed, run
-`dotnet EllipticCurves.Console.dll` from that folder. The example prints native
-arithmetic results and compares them with live LMFDB metadata, so it requires
-internet access. It is not the Explorer UI.
+Use a fresh output directory and keep the entire publish folder, including the
+runtime and library files. From a terminal in the extracted folder, run
+`EllipticCurves.Console.exe`; a separate .NET installation is not required.
+The executable uses Explorer's icon. For ARM64, replace `win-x64` with
+`win-arm64` in the runtime, output directory and archive name.
+
+The default equation is `Y^2 = X^3 - 17 X^2 + 72 X`, and LMFDB lookup defaults to
+`false`. Check the packaged application with no arguments, a custom
+`--curve "y^2 + y = x^3 - x"`, `--lmfdb false` and `--help`. Test an invalid
+equation and confirm exit code `2`, with a message on standard error and no
+calculation started. Test `--lmfdb` separately with internet access: the local
+report precedes the lookup, and lookup failure returns exit code `1`.
+The [Console README](../console/README.md) documents all argument forms and output.
 
 ## Publication order
 

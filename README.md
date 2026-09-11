@@ -31,9 +31,10 @@ Build **EllipticCurves** from source or install the NuGet package in your projec
 |-------------|:-------------:|:-------------:|:--------------:|:--------------:|
 | [EllipticCurves](sources) | .NET Standard 2.0 | Cross-platform | [Release](https://github.com/asiryan/EllipticCurves/releases/) | [NuGet](https://www.nuget.org/packages/EllipticCurves/) | 
 
-The NuGet package contains the library. The [console example](console/README.md) targets
-.NET 8; the [desktop Explorer](explorer/README.md) targets .NET 8 on Windows and is
-distributed separately. See [release preparation](docs/releasing.md) for version
+The NuGet package contains the library. The [Console application](console/README.md)
+and [desktop Explorer](explorer/README.md) are distributed separately. Their Windows
+release archives include .NET and run without a separate runtime installation.
+See [release preparation](docs/releasing.md) for version
 settings, validation and packaging commands.
 
 # Installation
@@ -51,7 +52,7 @@ Import the namespace in your C# code:
 using EllipticCurves;
 ```
 
-See the [console example](console/README.md) for a complete program, run instructions
+See the [Console application](console/README.md) for command-line arguments, run instructions
 and sample output.
 
 ## Rank bounds and conductor

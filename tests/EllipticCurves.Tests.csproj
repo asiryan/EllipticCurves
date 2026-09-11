@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Remove="WorkerHost/**/*.cs" />
     <Compile Remove="PresentationHost/**/*.cs" />
+    <Compile Include="../console/*.cs" Exclude="../console/Program.cs" Link="Console/%(Filename)%(Extension)" />
     <Compile Include="../explorer/Models/*.cs" Link="Explorer/Models/%(Filename)%(Extension)" />
     <Compile Include="../explorer/Computations/*.cs" Link="Explorer/Computations/%(Filename)%(Extension)" />
     <Compile Include="../explorer/ViewModels/*.cs" Link="Explorer/ViewModels/%(Filename)%(Extension)" />
