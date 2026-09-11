@@ -110,8 +110,9 @@ when the window opens, so editing the plot later does not silently change a pend
 calculation. Finite-extension curves and rational-number tools have independent
 inputs. **Run calculation** opens the results panel on the right.
 
-The title bar contains Explorer and the native/local status indicator. **Export
-plot** is in the plot panel's own toolbar.
+The title bar contains **Explorer**. Clicking the logo or **ELLIPTIC CURVES** opens
+the project's GitHub repository in the default browser. **Export plot** is in the
+plot panel's own toolbar.
 
 | Category | Available calculations |
 | --- | --- |
