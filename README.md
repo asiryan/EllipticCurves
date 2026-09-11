@@ -40,7 +40,8 @@ Import the namespace in your C# code:
 ```csharp
 using EllipticCurves;
 ```
-To get started with **EllipticCurves** it is recommended to take a look at the [example project](examples).  
+To get started with **EllipticCurves** it is recommended to take a look at the [console example](console).
+
 Here are some results for the [elliptic curve](https://arxiv.org/abs/2510.11768): **Y^2 = X^3 - 17X^2 + 72X**.
 ```
 E: y^2 = x^3 - 17*x^2 + 72*x
@@ -304,7 +305,7 @@ See [Faltings-height conventions and finite-extension limits](docs/faltings-and-
 Run the example and regression tests with:
 
 ```sh
-dotnet run --project examples/EllipticCurves.Example.csproj
+dotnet run --project console/EllipticCurves.Console.csproj
 dotnet test EllipticCurves.sln
 ```
 
@@ -312,9 +313,9 @@ The example retains its LMFDB lookup and checks the native results against it,
 so running the example requires internet access. The native API and regression
 tests work offline.
 
-## Desktop visualizer (Windows)
+## Desktop Explorer (Windows)
 
-The [WPF Explorer](visualizer/README.md) provides a modern desktop interface on
+The [WPF Explorer](explorer/README.md) provides a modern desktop interface on
 .NET 8: full formula input for simple and general Weierstrass equations, optional
 exploration sliders, an interactive real-locus plot, exact invariants and bounded
 rational-point samples. The Explorer menu exposes the library's computations,
@@ -326,7 +327,7 @@ commands require internet access.
 ![Elliptic Curves Explorer](docs/png/visualizer.png)
 
 ```powershell
-dotnet run --project visualizer/EllipticCurves.Visualizer.csproj -c Release
+dotnet run --project explorer/EllipticCurves.Explorer.csproj -c Release
 ```
 
 # License

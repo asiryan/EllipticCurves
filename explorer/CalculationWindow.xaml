@@ -1,0 +1,73 @@
+<Window x:Class="EllipticCurves.Explorer.CalculationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="{Binding Operation.Title}" Width="630" Height="730" MinWidth="500" MinHeight="480"
+        Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI" FontSize="13" ShowInTaskbar="False" WindowStartupLocation="CenterOwner" UseLayoutRounding="True">
+    <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" /></shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <DataTemplate x:Key="ParameterTemplate">
+            <StackPanel Margin="0,0,0,16">
+                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap" />
+                <CheckBox Content="Enabled" IsChecked="{Binding Checked}" Visibility="{Binding IsBoolean, Converter={StaticResource BooleanVisibility}}" />
+                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsRelevant}" MaxLength="100000"
+                         Visibility="{Binding IsText, Converter={StaticResource BooleanVisibility}}" AutomationProperties.Name="{Binding Label}" ToolTip="{Binding Help}">
+                    <TextBox.Style><Style TargetType="TextBox" BasedOn="{StaticResource WorkbenchText}">
+                        <Setter Property="MinHeight" Value="34" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsMultiline}" Value="True"><Setter Property="Height" Value="115" /><Setter Property="AcceptsReturn" Value="True" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="VerticalContentAlignment" Value="Top" /></DataTrigger>
+                            <DataTrigger Binding="{Binding IsRelevant}" Value="False"><Setter Property="Opacity" Value="0.4" /></DataTrigger>
+                        </Style.Triggers>
+                    </Style></TextBox.Style>
+                </TextBox>
+                <TextBlock Text="{Binding Help}" Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0" />
+                <TextBlock Text="{Binding Error}" Foreground="{StaticResource WarningBrush}" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+    <Grid Margin="1">
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,0">
+            <Grid><TextBlock Text="EXPLORER · CALCULATION" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" />
+                <Button Content="✕" Click="CloseClick" Style="{StaticResource QuietButton}" Width="40" HorizontalAlignment="Right" Margin="0,0,-12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" AutomationProperties.Name="Close calculation window" />
+            </Grid>
+        </Border>
+        <StackPanel Grid.Row="1" Margin="24,20,24,16">
+            <TextBlock Text="{Binding Operation.Title}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding Operation.Description}" Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" Margin="0,9,0,12" />
+            <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10" Visibility="{Binding Operation.UsesPlot, Converter={StaticResource BooleanVisibility}}">
+                <StackPanel><TextBlock Text="CAPTURED PLOT" Style="{StaticResource Eyebrow}" FontSize="9" />
+                    <TextBlock Text="{Binding Equation}" FontFamily="Consolas" Foreground="{StaticResource TextBrush}" Margin="0,5,0,0" MaxHeight="50" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Equation}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24,0,24,8">
+            <StackPanel>
+                <ItemsControl ItemsSource="{Binding BasicFields}" ItemTemplate="{StaticResource ParameterTemplate}" />
+                <Expander Header="Precision and work limits" Foreground="{StaticResource TextBrush}" Margin="0,0,0,18"
+                          Visibility="{Binding HasAdvancedFields, Converter={StaticResource BooleanVisibility}}">
+                    <ItemsControl ItemsSource="{Binding AdvancedFields}" ItemTemplate="{StaticResource ParameterTemplate}" Margin="0,16,0,0" />
+                </Expander>
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0">
+                    <StackPanel>
+                        <TextBlock Text="RUN CONTROLS" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <StackPanel><TextBlock Text="Time limit · seconds" Margin="0,0,0,7" /><TextBox Text="{Binding Timeout, UpdateSourceTrigger=PropertyChanged}" MinHeight="34" AutomationProperties.Name="Time limit in seconds" /><TextBlock Text="0 = unlimited" Style="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0" /></StackPanel>
+                            <StackPanel Grid.Column="2"><TextBlock Text="Result item limit" Margin="0,0,0,7" /><TextBox Text="{Binding MaxItems, UpdateSourceTrigger=PropertyChanged}" MinHeight="34" AutomationProperties.Name="Result item limit" /><TextBlock Text="Large lists are marked if truncated." Style="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap" /></StackPanel>
+                        </Grid>
+                        <TextBlock Text="{Binding LimitError}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+        <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,16">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding RunHint}" Style="{StaticResource Muted}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,20,0" />
+                <Button Grid.Column="1" Content="Run calculation  →" Click="RunClick" IsEnabled="{Binding CanRun}" Foreground="{StaticResource AccentBrush}" IsDefault="True" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

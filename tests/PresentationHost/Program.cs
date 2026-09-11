@@ -9,12 +9,12 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Interop;
-using EllipticCurves.Visualizer.Models;
-using EllipticCurves.Visualizer.Windowing;
-using EllipticCurves.Visualizer;
-using EllipticCurves.Visualizer.Computations;
-using EllipticCurves.Visualizer.Controls;
-using EllipticCurves.Visualizer.ViewModels;
+using EllipticCurves.Explorer.Models;
+using EllipticCurves.Explorer.Windowing;
+using EllipticCurves.Explorer;
+using EllipticCurves.Explorer.Computations;
+using EllipticCurves.Explorer.Controls;
+using EllipticCurves.Explorer.ViewModels;
 
 internal static class Program
 {
@@ -28,7 +28,7 @@ internal static class Program
             // that pump the dispatcher, including its queued Startup event.
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
-                { Source = new Uri("/EllipticCurves.Visualizer;component/Themes/Theme.xaml", UriKind.Relative) });
+                { Source = new Uri("/EllipticCurves.Explorer;component/Themes/Theme.xaml", UriKind.Relative) });
             CheckExplorerSelection();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();

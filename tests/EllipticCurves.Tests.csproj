@@ -8,9 +8,9 @@
   <ItemGroup>
     <Compile Remove="WorkerHost/**/*.cs" />
     <Compile Remove="PresentationHost/**/*.cs" />
-    <Compile Include="../visualizer/Models/*.cs" Link="Visualizer/Models/%(Filename)%(Extension)" />
-    <Compile Include="../visualizer/Computations/*.cs" Link="Visualizer/Computations/%(Filename)%(Extension)" />
-    <Compile Include="../visualizer/ViewModels/*.cs" Link="Visualizer/ViewModels/%(Filename)%(Extension)" />
+    <Compile Include="../explorer/Models/*.cs" Link="Explorer/Models/%(Filename)%(Extension)" />
+    <Compile Include="../explorer/Computations/*.cs" Link="Explorer/Computations/%(Filename)%(Extension)" />
+    <Compile Include="../explorer/ViewModels/*.cs" Link="Explorer/ViewModels/%(Filename)%(Extension)" />
     <None Update="Fixtures/*.csv" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

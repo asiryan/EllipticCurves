@@ -10,6 +10,6 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../visualizer/EllipticCurves.Visualizer.csproj" />
+    <ProjectReference Include="../../explorer/EllipticCurves.Explorer.csproj" />
   </ItemGroup>
 </Project>

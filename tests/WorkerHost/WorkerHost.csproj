@@ -7,8 +7,8 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../visualizer/Models/*.cs" Link="Models/%(Filename)%(Extension)" />
-    <Compile Include="../../visualizer/Computations/*.cs" Link="Computations/%(Filename)%(Extension)" />
+    <Compile Include="../../explorer/Models/*.cs" Link="Models/%(Filename)%(Extension)" />
+    <Compile Include="../../explorer/Computations/*.cs" Link="Computations/%(Filename)%(Extension)" />
     <ProjectReference Include="../../sources/EllipticCurves.csproj" />
   </ItemGroup>
 </Project>

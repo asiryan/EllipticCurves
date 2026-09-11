@@ -1,4 +1,4 @@
-using EllipticCurves.Visualizer.Computations;
+using EllipticCurves.Explorer.Computations;
 
 if (args.Contains("--unresponsive"))
 {

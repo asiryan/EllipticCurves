@@ -7,9 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves", "sources\E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EllipticCurves.Tests", "tests\EllipticCurves.Tests.csproj", "{05B8EBE6-D776-4AB7-A7DF-0091AC5EA4E5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves.Example", "examples\EllipticCurves.Example.csproj", "{44186ABD-0345-4888-B3B4-949D4F24A899}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves.Console", "console\EllipticCurves.Console.csproj", "{44186ABD-0345-4888-B3B4-949D4F24A899}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves.Visualizer", "visualizer\EllipticCurves.Visualizer.csproj", "{36DBA0FA-EAD5-4A3D-84E2-8039148769A2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EllipticCurves.Explorer", "explorer\EllipticCurves.Explorer.csproj", "{36DBA0FA-EAD5-4A3D-84E2-8039148769A2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkerHost", "tests\WorkerHost\WorkerHost.csproj", "{2B19F376-A30C-49CF-A7E5-B4AA6330C979}"
 EndProject
