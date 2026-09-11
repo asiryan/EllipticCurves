@@ -64,20 +64,20 @@ internal static partial class Program
                 }
             }
 
-            CheckStatus("New session", "untitled.ec");
+            CheckStatus("New", "untitled.ec");
             CheckSaveAvailability(false);
             ApplicationCommands.Save.Execute(null, window);
             Require(!CompleteSession(() => window.TrySaveSessionAsync()) && pickers == 0 && !File.Exists(first),
                 "Save without an existing file must not open a picker or write a file.");
             window.ViewModel.ShowGrid = false;
-            CheckStatus("New session", "untitled.ec");
+            CheckStatus("New", "untitled.ec");
             window.ViewModel.ShowGrid = true;
-            CheckStatus("New session", "untitled.ec");
+            CheckStatus("New", "untitled.ec");
             window.ViewModel.Equation.Text = "y^2 = x^3 + 7";
-            CheckStatus("Unsaved changes", "untitled.ec *");
+            CheckStatus("Unsaved", "untitled.ec *");
             ((ComboBox)window.FindName("ViewMode")).SelectedIndex = 1;
             window.ViewModel.ShowPoints = false;
-            CheckStatus("Unsaved changes", "untitled.ec *");
+            CheckStatus("Unsaved", "untitled.ec *");
             CheckSaveAvailability(false);
             Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs) && pickers == 1,
                 "The first save must choose a file through Ctrl+Shift+S.");
@@ -95,7 +95,7 @@ internal static partial class Program
             CheckStatus("Saved", "curve-study.ec");
             CheckSaveAvailability(false);
             window.ViewModel.Equation.Text = "y^2 = x^3 + 9";
-            CheckStatus("Unsaved changes", "curve-study.ec *");
+            CheckStatus("Unsaved", "curve-study.ec *");
             CheckSaveAvailability(true);
             Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 1
                 && SessionFile.Load(first).Equation == "y^2 = x^3 + 9" && window.ViewModel.Step.Text == "invalid step",
@@ -142,11 +142,11 @@ internal static partial class Program
             RenderSessionHeader(window, "session-saved.png");
 
             Require(CompleteSession(window.NewSessionAsync), "New failed after saving.");
-            CheckStatus("New session", "untitled.ec");
+            CheckStatus("New", "untitled.ec");
             CheckSaveAvailability(false);
             choosePath = null;
             Require(!ExecuteSessionCommand(window, ApplicationCommands.SaveAs), "Cancelling the initial Save as must not create a session file.");
-            CheckStatus("New session", "untitled.ec");
+            CheckStatus("New", "untitled.ec");
             CheckSaveAvailability(false);
             Require(CompleteSession(window.OpenSessionAsync), "Opening an existing file failed.");
             CheckStatus("Saved", "curve-study.ec");
@@ -312,7 +312,7 @@ internal static partial class Program
                 Require(WaitForSession(saving) == (action == "Save"), "Edits during Save must cancel a pending New/Open/Close.");
                 SettleSession(window);
                 Require(!closed && window.ViewModel.Equation.Text == "y^2 = x^3 - 5*x + 3" && window.HasUnsavedChanges
-                    && window.SessionStatus.Status == "Unsaved changes" && window.SessionStatus.DisplayName.EndsWith(" *")
+                    && window.SessionStatus.Status == "Unsaved" && window.SessionStatus.DisplayName.EndsWith(" *")
                     && SessionFile.Load(path).Equation == "y^2 = x^3 + 7", "Saving marked later edits clean or discarded them.");
                 if (action == "Save") RenderSessionHeader(window, "session-unsaved.png");
             }

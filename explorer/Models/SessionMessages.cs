@@ -2,8 +2,8 @@ namespace EllipticCurves.Explorer.Models;
 
 public static class SessionMessages
 {
-    public const string NewSession = "New session";
-    public const string UnsavedChanges = "Unsaved changes";
+    public const string NewSession = "New";
+    public const string UnsavedChanges = "Unsaved";
     public const string Saving = "Saving…";
     public const string Saved = "Saved";
     public const string SaveFailed = "Save failed";

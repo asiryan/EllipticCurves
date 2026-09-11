@@ -51,7 +51,7 @@ automatically. To keep a separate copy, choose a different name. The title bar a
 subsequent Save commands use the exact path selected in the picker. This also applies
 to the first save and to a renamed session from the unsaved-changes dialog.
 The title bar shows its file name (the full path appears on hover), an asterisk for
-unsaved changes, and **New session**, **Unsaved changes**, **Saving…**, **Saved** or
+unsaved changes, and **New**, **Unsaved**, **Saving…**, **Saved** or
 **Save failed**. File writing runs in the background; edits made during a save remain
 unsaved. Other session commands are disabled while writing.
 The menu uses the same header and popup styling as Explorer, with a single vertical
