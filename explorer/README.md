@@ -5,7 +5,7 @@ the full computational API of the EllipticCurves library. Native calculations ru
 locally. The explicit LMFDB fetch commands are the only operations that use the
 network; plotting and editing do not make network requests.
 
-![Elliptic Curves Explorer](../docs/png/visualizer.png)
+![Elliptic Curves Explorer](../docs/png/explorer.png)
 
 ## Run
 
