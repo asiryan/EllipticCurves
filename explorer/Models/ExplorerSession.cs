@@ -72,7 +72,7 @@ public static class SessionFile
     {
         Validate(session);
         var destination = Path.GetFullPath(path);
-        var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        var temporary = Path.Combine(Path.GetDirectoryName(destination)!, ".ec-session-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
             using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))

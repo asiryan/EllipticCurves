@@ -234,8 +234,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         updating = true;
         try
         {
-            for (var i = 0; i < session.SliderOffsets.Length; i++)
-                ActiveCoefficients[i].RestoreSliderOffset(session.SliderOffsets[i]);
+            for (var i = 0; i < ActiveCoefficients.Count; i++)
+                ActiveCoefficients[i].RestoreSliderOffset(session.SliderOffsets.Length == 0 ? 0 : session.SliderOffsets[i]);
         }
         finally { updating = false; }
         ShowGrid = session.ShowGrid;

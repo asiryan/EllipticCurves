@@ -24,13 +24,7 @@ internal sealed class TitleBarPopup
         toggle.Checked += ToggleChanged;
         toggle.Unchecked += ToggleChanged;
         host.Unloaded += (_, _) => { Close(); Detach(); };
-        popup.Child.PreviewKeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Escape) return;
-            Close();
-            toggle.Focus();
-            e.Handled = true;
-        };
+        popup.Child.PreviewKeyDown += MenuKeyDown;
     }
 
     public void Close() => toggle.IsChecked = false;
@@ -41,6 +35,7 @@ internal sealed class TitleBarPopup
         if (toggle.IsChecked != true || Window.GetWindow(host) is not { } window) return;
         owner = window;
         owner.PreviewMouseDown += OwnerMouseDown;
+        owner.PreviewKeyDown += MenuKeyDown;
         owner.Deactivated += CloseFromOwner;
         owner.LocationChanged += CloseFromOwner;
         owner.SizeChanged += CloseFromOwner;
@@ -55,6 +50,7 @@ internal sealed class TitleBarPopup
         source = null;
         if (owner == null) return;
         owner.PreviewMouseDown -= OwnerMouseDown;
+        owner.PreviewKeyDown -= MenuKeyDown;
         owner.Deactivated -= CloseFromOwner;
         owner.LocationChanged -= CloseFromOwner;
         owner.SizeChanged -= CloseFromOwner;
@@ -67,6 +63,14 @@ internal sealed class TitleBarPopup
             (visual == toggle || toggle.IsAncestorOf(visual) ||
              visual == popup.Child || popup.Child.IsAncestorOf(visual))) return;
         Close();
+    }
+
+    private void MenuKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || toggle.IsChecked != true) return;
+        Close();
+        toggle.Focus();
+        e.Handled = true;
     }
 
     private IntPtr OwnerMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)

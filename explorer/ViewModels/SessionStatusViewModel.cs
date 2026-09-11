@@ -9,7 +9,7 @@ public sealed class SessionStatusViewModel : ObservableObject
 
     public string FileName => state.Path == null ? "session.ec" : Path.GetFileName(state.Path);
     public string DisplayName => FileName + (state.Modified ? " *" : "");
-    public string FileLocation => state.Path ?? "New session — not saved to a file yet.";
+    public string FileLocation => state.Path ?? "New session: not saved to a file yet.";
     public bool IsSaving => state.Saving;
     public bool NeedsSave => state.Path == null || state.Modified || state.Failed;
     public bool CanSave => !state.Busy && state.Path != null;

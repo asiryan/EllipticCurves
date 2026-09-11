@@ -65,6 +65,53 @@ public sealed class ExplorerSessionTests
         Assert.Equal(points[0], model.SelectedPoint.Point);
     }
 
+    [Fact]
+    public async Task ChoosingOriginCancelsDeferredSessionSelection()
+    {
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        var savedPoint = new EllipticCurvePoint(0, 0);
+        using var model = new ComplexTorusViewModel();
+        model.RestoreSelection(savedPoint.ToString());
+        model.Update(curve, Array.Empty<EllipticCurvePoint>(), true);
+        await model.PendingUpdate;
+        Assert.True(model.SelectedPoint.Point.IsInfinity);
+
+        model.SelectedPoint = model.Points[0];
+        Assert.Equal(EllipticCurvePoint.Infinity.ToString(), model.SessionSelection);
+        model.Update(curve, new[] { savedPoint }, true);
+        await model.PendingUpdate;
+        Assert.True(model.SelectedPoint.Point.IsInfinity);
+    }
+
+    [Fact]
+    public void RestoringSessionWithoutSliderOffsetsRecentersTheSliders()
+    {
+        using var model = new MainViewModel();
+        model.ActiveCoefficients[0].SliderOffset = 7;
+        model.FlushUpdate();
+        var saved = ExplorerSession.New() with { Equation = model.Equation.Text, SliderOffsets = Array.Empty<int>() };
+        SessionFile.Validate(saved);
+        model.RestoreSession(saved);
+        Assert.All(model.ActiveCoefficients, coefficient => Assert.Equal(0, coefficient.SliderOffset));
+    }
+
+    [Fact]
+    public void SavingAnExistingLongFileNameDoesNotExceedTheFileSystemNameLimit()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ec-long-name-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, new string('s', 220) + ".ec");
+        try
+        {
+            File.WriteAllText(path, JsonSerializer.Serialize(ExplorerSession.New()));
+            var saved = ExplorerSession.New() with { Equation = "y^2 = x^3 + 7", Preset = null };
+            SessionFile.Save(path, saved);
+            Assert.Equal(saved.Equation, SessionFile.Load(path).Equation);
+            Assert.Equal(new[] { path }, Directory.GetFiles(directory));
+        }
+        finally { File.Delete(path); Directory.Delete(directory); }
+    }
+
     private static ExplorerSession Example() => new()
     {
         Equation = "y^2 + x*y + y = x^3 + 1/3*x^2 - 7/11*x + 2/5",
@@ -174,5 +221,27 @@ public sealed class ExplorerSessionTests
             Assert.Equal(original, File.ReadAllBytes(path));
         }
         finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void LockedDestinationPreservesTheFileAndCleansTheTemporarySnapshot()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var directory = Path.Combine(Path.GetTempPath(), "ec-locked-save-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "session.ec");
+        try
+        {
+            SessionFile.Save(path, ExplorerSession.New());
+            var original = File.ReadAllBytes(path);
+            using (var locked = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                var error = Record.Exception(() => SessionFile.Save(path, Example()));
+                Assert.True(error is IOException or UnauthorizedAccessException, "A locked session file must reject replacement.");
+            }
+            Assert.Equal(original, File.ReadAllBytes(path));
+            Assert.Equal(new[] { path }, Directory.GetFiles(directory));
+        }
+        finally { File.Delete(path); Directory.Delete(directory); }
     }
 }

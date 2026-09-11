@@ -233,6 +233,14 @@ internal static partial class Program
         dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(view.UpdateLayout));
         Require(Equals(picker.SelectedItem, view.Model.Points[3]) && Equals(lattice.SelectedPoint, picker.SelectedItem),
             "Selecting a torus marker did not update the other views.");
+        picker.SelectedIndex = 0;
+        dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(view.UpdateLayout));
+        view.Model.RestoreSelection(view.Model.Points[2].Point.ToString());
+        using (var source = new HwndSource(new HwndSourceParameters("Session selection check") { ParentWindow = new IntPtr(-3) }))
+            lattice.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, Key.Home)
+                { RoutedEvent = Keyboard.KeyDownEvent });
+        Require(view.Model.SessionSelection == EllipticCurvePoint.Infinity.ToString(),
+            "Home on an already selected origin must cancel the deferred saved selection through the WPF binding.");
         view.ShowGrid = false;
         Require(!lattice.ShowGrid && !torus.ShowGrid, "Complex grid visibility is not shared.");
         view.Zoom(0.8);
@@ -530,6 +538,12 @@ internal static partial class Program
             popup.Child.RaiseEvent(escape);
             Require(escape.Handled && toggle.IsChecked == false && toggle.IsHitTestVisible,
                 "Escape must close Explorer and restore its opening button.");
+            toggle.IsChecked = true;
+            var toggleEscape = new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, Key.Escape)
+                { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+            toggle.RaiseEvent(toggleEscape);
+            Require(toggleEscape.Handled && toggle.IsChecked == false,
+                "Escape must also close the menu when focus remains on its toggle, including during a save.");
             toggle.IsChecked = true;
             menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
             Require(toggle.IsChecked == false, "Unloading Explorer must close the popup.");

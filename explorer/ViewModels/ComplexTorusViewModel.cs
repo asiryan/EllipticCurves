@@ -35,10 +35,16 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
         get => selectedPoint;
         set
         {
-            if (Equals(selectedPoint, value)) return;
-            if (!restoringSelection) restoredSelection = null;
+            var cancelledRestore = !restoringSelection && restoredSelection != null;
+            if (cancelledRestore) restoredSelection = null;
+            if (Equals(selectedPoint, value))
+            {
+                if (cancelledRestore) OnPropertyChanged(nameof(SessionSelection));
+                return;
+            }
             selectedPoint = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SessionSelection));
         }
     }
 
