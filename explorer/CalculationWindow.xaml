@@ -30,7 +30,9 @@
         <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,0">
             <Grid><TextBlock Text="EXPLORER · CALCULATION" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" />
-                <Button Content="✕" Click="CloseClick" Style="{StaticResource QuietButton}" Width="40" HorizontalAlignment="Right" Margin="0,0,-12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" AutomationProperties.Name="Close calculation window" />
+                <Button Click="CloseClick" Style="{StaticResource QuietButton}" Width="40" Padding="0" HorizontalAlignment="Right" Margin="0,0,-12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" AutomationProperties.Name="Close calculation window">
+                    <Path Style="{StaticResource CaptionIcon}" Data="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
+                </Button>
             </Grid>
         </Border>
         <StackPanel Grid.Row="1" Margin="24,20,24,16">
@@ -45,9 +47,9 @@
         <ScrollViewer Grid.Row="2" Style="{StaticResource PanelScrollViewer}" Padding="24,0,24,8">
             <StackPanel>
                 <ItemsControl ItemsSource="{Binding BasicFields}" ItemTemplate="{StaticResource ParameterTemplate}" />
-                <Expander Header="Precision and work limits" Foreground="{StaticResource TextBrush}" Margin="0,0,0,18"
+                <Expander Header="Precision and work limits" Foreground="{StaticResource TextBrush}" Margin="0,0,0,18" Cursor="Hand"
                           Visibility="{Binding HasAdvancedFields, Converter={StaticResource BooleanVisibility}}">
-                    <ItemsControl ItemsSource="{Binding AdvancedFields}" ItemTemplate="{StaticResource ParameterTemplate}" Margin="0,16,0,0" />
+                    <ItemsControl ItemsSource="{Binding AdvancedFields}" ItemTemplate="{StaticResource ParameterTemplate}" Margin="0,16,0,0" Cursor="Arrow" />
                 </Expander>
                 <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0">
                     <StackPanel>

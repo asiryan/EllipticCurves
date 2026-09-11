@@ -50,7 +50,7 @@ public partial class ResultsPanel : UserControl
     {
         if (Selected == null) return;
         try { Clipboard.SetText(Selected.Report); }
-        catch (ExternalException) { MessageBox.Show(Window.GetWindow(this), "The clipboard is busy. Please try again.", "Copy result"); }
+        catch (ExternalException) { ConfirmationWindow.ShowMessage(Window.GetWindow(this), "Copy result", "The clipboard is busy. Please try again."); }
     }
     private void SaveClick(object sender, RoutedEventArgs e)
     {
@@ -59,6 +59,6 @@ public partial class ResultsPanel : UserControl
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { File.WriteAllText(dialog.FileName, Selected.Report); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        { MessageBox.Show(Window.GetWindow(this), "Could not save the report. Check the destination and try again.", "Save result"); }
+        { ConfirmationWindow.ShowMessage(Window.GetWindow(this), "Save result", "Could not save the report. Check the destination and try again."); }
     }
 }

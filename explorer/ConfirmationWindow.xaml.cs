@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Input;
 
 namespace EllipticCurves.Explorer;
@@ -26,6 +27,16 @@ public partial class ConfirmationWindow : Window
         if (owner == null) dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         dialog.ShowDialog();
         return dialog.Confirmed;
+    }
+
+    internal static void ShowMessage(Window? owner, string title, string message)
+    {
+        var dialog = new ConfirmationWindow(title, message, string.Empty) { Owner = owner };
+        dialog.ConfirmButton.Visibility = Visibility.Collapsed;
+        dialog.CancelButton.Content = "OK";
+        AutomationProperties.SetName(dialog.CloseButton, "Close message");
+        if (owner == null) dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        dialog.ShowDialog();
     }
 
     private void WindowContentRendered(object? sender, EventArgs e) => CancelButton.Focus();

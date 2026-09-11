@@ -36,7 +36,7 @@
                             <ListBox.ItemTemplate><DataTemplate>
                                 <Button Click="OperationClick" Tag="{Binding}" Style="{StaticResource QuietButton}" HorizontalContentAlignment="Stretch" Padding="8,8"
                                         ToolTip="{Binding Description}">
-                                    <StackPanel Width="365">
+                                    <StackPanel>
                                         <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="13" />
                                         <TextBlock Text="{Binding Group}" Style="{StaticResource Muted}" FontSize="10" Margin="0,4,0,0" />
                                     </StackPanel>

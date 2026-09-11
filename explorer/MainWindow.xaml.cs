@@ -87,7 +87,7 @@ public partial class MainWindow : Window
             ViewModel.FlushUpdate();
             if (ViewModel.HasInputError || ViewModel.HasIncompleteInput)
             {
-                MessageBox.Show(this, "Finish the curve equation before starting a calculation.", "Explorer", MessageBoxButton.OK, MessageBoxImage.Information);
+                ConfirmationWindow.ShowMessage(this, "Check the equation", "Finish the curve equation before starting a calculation.");
                 return;
             }
         }
@@ -201,7 +201,7 @@ public partial class MainWindow : Window
                 button.Content = "Copy";
             }
         }
-        catch (ExternalException) { MessageBox.Show(this, "The clipboard is busy. Please try again.", "Copy", MessageBoxButton.OK, MessageBoxImage.Information); }
+        catch (ExternalException) { ConfirmationWindow.ShowMessage(this, "Copy", "The clipboard is busy. Please try again."); }
     }
 
     private void ExportClick(object sender, RoutedEventArgs e)
@@ -218,6 +218,6 @@ public partial class MainWindow : Window
             encoder.Save(stream);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        { MessageBox.Show(this, "The image could not be saved. Check the destination and try again.", "Export plot", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        { ConfirmationWindow.ShowMessage(this, "Export plot", "The image could not be saved. Check the destination and try again."); }
     }
 }
