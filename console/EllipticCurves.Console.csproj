@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <ApplicationIcon>..\explorer\ec_logo.ico</ApplicationIcon>
+    <ApplicationIcon>../docs/ico/ec_logo.ico</ApplicationIcon>
     <PublishSelfContained>true</PublishSelfContained>
   </PropertyGroup>
 

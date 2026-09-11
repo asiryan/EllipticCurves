@@ -412,7 +412,10 @@ format, worker messages and displayed text; the tests use literal expectations f
 
 The desktop project uses the [Microsoft .NET Desktop SDK settings](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props-desktop).
 
-The application logo is `ec_logo.png`; it is embedded as a WPF resource for the
-header and window icon. After replacing the PNG, run `./explorer/tools/Update-Icon.ps1`
-from the repository root to regenerate the executable's multi-size `ec_logo.ico`,
-then rebuild the application.
+The shared application logo is [docs/png/ec_logo_v3a.png](../docs/png/ec_logo_v3a.png).
+Explorer links it as the embedded WPF resource `ec_logo.png` for the header and
+window icon; the library also uses it as its NuGet package icon. After replacing
+the PNG, run `./explorer/tools/Update-Icon.ps1` from the repository root to regenerate
+[docs/ico/ec_logo.ico](../docs/ico/ec_logo.ico), the multi-size executable icon used
+by both Explorer and Console, then rebuild the applications. The files are embedded
+during build or packaging; installed applications do not need the `docs` directory.

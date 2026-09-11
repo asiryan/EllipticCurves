@@ -2,8 +2,8 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
 # Keep the supplied PNG unchanged; center proportional, transparent copies in ICO frames.
-$projectDirectory = Split-Path -Parent $PSScriptRoot
-$source = [Drawing.Bitmap]::new((Join-Path $projectDirectory 'ec_logo.png'))
+$repositoryDirectory = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$source = [Drawing.Bitmap]::new((Join-Path $repositoryDirectory 'docs/png/ec_logo_v3a.png'))
 $frames = [Collections.Generic.List[byte[]]]::new()
 $sizes = @(16, 24, 32, 48, 64, 128, 256)
 try {
@@ -25,7 +25,7 @@ try {
             $frames.Add($stream.ToArray())
         } finally { $stream.Dispose(); $graphics.Dispose(); $bitmap.Dispose() }
     }
-    $output = [IO.File]::Create((Join-Path $projectDirectory 'ec_logo.ico'))
+    $output = [IO.File]::Create((Join-Path $repositoryDirectory 'docs/ico/ec_logo.ico'))
     $writer = [IO.BinaryWriter]::new($output)
     try {
         $writer.Write([uint16]0)
@@ -47,4 +47,4 @@ try {
         foreach ($frame in $frames) { $writer.Write($frame) }
     } finally { $writer.Dispose(); $output.Dispose() }
 } finally { $source.Dispose() }
-Write-Output 'Updated ec_logo.ico (16, 24, 32, 48, 64, 128 and 256 pixels).'
+Write-Output 'Updated docs/ico/ec_logo.ico (16, 24, 32, 48, 64, 128 and 256 pixels).'

@@ -52,7 +52,8 @@ properties explicitly before packaging them.
 
 The NuGet README is [docs/nuget-readme.md](nuget-readme.md), not the root README.
 The library project packs it as `README.md`, together with `LICENSE.md`,
-`ec_logo.png`, the library and its generated XML API documentation.
+`ec_logo.png` (from [docs/png/ec_logo_v3a.png](png/ec_logo_v3a.png)), the library
+and its generated XML API documentation.
 Console and Explorer are excluded from NuGet packaging. Pack the library project explicitly
 rather than packing the entire solution.
 
@@ -134,7 +135,7 @@ Compress-Archive -Path artifacts/console-win-x64/* -DestinationPath artifacts/El
 Use a fresh output directory and keep the entire publish folder, including the
 runtime and library files. From a terminal in the extracted folder, run
 `EllipticCurves.Console.exe`; a separate .NET installation is not required.
-The executable uses Explorer's icon. For ARM64, replace `win-x64` with
+The executable and Explorer share [docs/ico/ec_logo.ico](ico/ec_logo.ico). For ARM64, replace `win-x64` with
 `win-arm64` in the runtime, output directory and archive name.
 
 The default equation is `Y^2 = X^3 - 17 X^2 + 72 X`, and LMFDB lookup defaults to

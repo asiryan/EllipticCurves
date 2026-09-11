@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -35,10 +35,7 @@
 		<Pack>True</Pack>
 		<PackagePath></PackagePath>
 	</None>
-	<None Include="ec_logo.png">
-		<Pack>True</Pack>
-		<PackagePath></PackagePath>
-	</None>
+	<None Include="../docs/png/ec_logo_v3a.png" Pack="true" PackagePath="ec_logo.png" />
   </ItemGroup>
 
 </Project>
