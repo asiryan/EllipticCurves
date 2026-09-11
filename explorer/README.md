@@ -44,6 +44,13 @@ are available only for an existing file with unsaved changes or a failed save to
 They are disabled while the status is **Saved**. Use Save as for the first save of
 a new session. Save writes to the current file without a picker. Save as always
 opens the file picker and makes the chosen file the current session after a successful save.
+For an existing session, the picker opens in its folder and immediately suggests an
+available name, such as `name(1).ec`; the name field contains only the file name.
+If the chosen name exists, Save as creates `name(1).ec`, `name(2).ec`, and so on
+without replacing an existing file. A name already ending in a number continues
+that sequence. The title bar shows the actual file name, and subsequent Save writes
+to that file. This also applies to the first save or a renamed session from the
+unsaved-changes dialog; saving to the unchanged current name still updates that file.
 The title bar shows its file name (the full path appears on hover), an asterisk for
 unsaved changes, and **New session**, **Unsaved changes**, **Saving…**, **Saved** or
 **Save failed**. File writing runs in the background; edits made during a save remain

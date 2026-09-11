@@ -42,6 +42,7 @@ internal static partial class Program
             CheckSessionSaveName();
             CheckSessionShortcuts();
             CheckSessionSaveStatus();
+            CheckSessionSaveAsCopies();
             CheckSessionSavingConcurrency();
             CheckSaveChangesDialog();
             CheckExplorerSelection();

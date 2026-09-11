@@ -131,6 +131,113 @@ public sealed class ExplorerSessionTests
         finally { File.Delete(path); Directory.Delete(directory); }
     }
 
+    [Theory]
+    [InlineData("session.ec", "session(1).ec")]
+    [InlineData("session(1).ec", "session(2).ec")]
+    [InlineData("curve.study.EC", "curve.study(1).EC")]
+    [InlineData("curve (sample).ec", "curve (sample)(1).ec")]
+    public void SavingACopyAddsANumberAndPreservesTheExistingFile(string name, string expected)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ec-save-copy-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        var original = Path.Combine(directory, name);
+        try
+        {
+            Assert.Equal(original, SessionFile.GetAvailablePath(original));
+            SessionFile.Save(original, ExplorerSession.New());
+            var bytes = File.ReadAllBytes(original);
+            var suggested = SessionFile.GetAvailablePath(original);
+            Assert.Equal(Path.Combine(directory, expected), suggested);
+            Assert.Equal(new[] { original }, Directory.GetFiles(directory));
+            var edited = ExplorerSession.New() with { Equation = "y^2 = x^3 + 7", Preset = null };
+            var actual = SessionFile.Save(original, edited, createCopy: true);
+            Assert.Equal(suggested, actual);
+            Assert.Equal(bytes, File.ReadAllBytes(original));
+            Assert.Equal(edited.Equation, SessionFile.Load(actual).Equation);
+            Assert.Equal(2, Directory.GetFiles(directory).Length);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Fact]
+    public void SavingACopyRechecksTheNameSuggestedBeforeTheDialogOpened()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ec-save-suggestion-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        var original = Path.Combine(directory, "session.ec");
+        try
+        {
+            SessionFile.Save(original, ExplorerSession.New());
+            var suggested = SessionFile.GetAvailablePath(original);
+            Assert.Equal(Path.Combine(directory, "session(1).ec"), suggested);
+            File.WriteAllText(suggested, "Created while the dialog was open");
+            var actual = SessionFile.Save(suggested, ExplorerSession.New(), createCopy: true);
+            Assert.Equal(Path.Combine(directory, "session(2).ec"), actual);
+            Assert.Equal("Created while the dialog was open", File.ReadAllText(suggested));
+            Assert.Equal("y^2 = x^3 - x", SessionFile.Load(actual).Equation);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Fact]
+    public void SavingACopySkipsFilesAndDirectoriesButUsesAGapInTheNumbers()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ec-save-gap-" + Guid.NewGuid());
+        var occupiedFolder = Path.Combine(directory, "session(2).ec");
+        Directory.CreateDirectory(occupiedFolder);
+        try
+        {
+            foreach (var name in new[] { "session.ec", "session(1).ec", "session(4).ec" })
+                File.WriteAllText(Path.Combine(directory, name), "Keep this file");
+            var actual = SessionFile.Save(Path.Combine(directory, "session.ec"), ExplorerSession.New(), createCopy: true);
+            Assert.Equal(Path.Combine(directory, "session(3).ec"), actual);
+            Assert.Equal("y^2 = x^3 - x", SessionFile.Load(actual).Equation);
+            Assert.Equal("Keep this file", File.ReadAllText(Path.Combine(directory, "session(4).ec")));
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(occupiedFolder);
+            Directory.Delete(directory);
+        }
+    }
+
+    [Fact]
+    public async Task ConcurrentCopiesKeepEverySnapshotAndDoNotOverwriteEachOther()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ec-save-concurrent-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        var original = Path.Combine(directory, "session.ec");
+        try
+        {
+            SessionFile.Save(original, ExplorerSession.New());
+            var bytes = File.ReadAllBytes(original);
+            var copies = await Task.WhenAll(Enumerable.Range(1, 8).Select(index => Task.Run(() =>
+            {
+                var equation = $"y^2 = x^3 + {index}";
+                var path = SessionFile.Save(original, ExplorerSession.New() with { Equation = equation, Preset = null }, createCopy: true);
+                return (path, equation);
+            })));
+            Assert.Equal(8, copies.Select(copy => copy.path).Distinct().Count());
+            Assert.All(copies, copy => Assert.Equal(copy.equation, SessionFile.Load(copy.path).Equation));
+            Assert.Equal(bytes, File.ReadAllBytes(original));
+            Assert.Equal(9, Directory.GetFiles(directory).Length);
+        }
+        finally
+        {
+            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
+            Directory.Delete(directory);
+        }
+    }
+
     private static ExplorerSession Example() => new()
     {
         Equation = "y^2 + x*y + y = x^3 + 1/3*x^2 - 7/11*x + 2/5",

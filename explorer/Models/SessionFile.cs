@@ -1,5 +1,6 @@
 #nullable enable
 using System.IO;
+using System.Globalization;
 using System.Text.Json;
 using EllipticCurves.Explorer.Computations;
 
@@ -46,7 +47,7 @@ public static class SessionFile
         catch (JsonException error) { throw new InvalidDataException("This is not a valid Explorer session file.", error); }
     }
 
-    public static void Save(string path, ExplorerSession session)
+    public static string Save(string path, ExplorerSession session, bool createCopy = false)
     {
         Validate(session);
         var destination = Path.GetFullPath(path);
@@ -59,10 +60,56 @@ public static class SessionFile
                 if (stream.Length > MaxFileBytes) throw new InvalidDataException(FileTooLargeMessage);
                 stream.Flush(flushToDisk: true);
             }
+            if (createCopy) return MoveToAvailablePath(temporary, destination);
             // Replace only after the complete snapshot has been written successfully.
             File.Move(temporary, destination, overwrite: true);
+            return destination;
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
+    private static string MoveToAvailablePath(string temporary, string destination)
+    {
+        while (true)
+        {
+            destination = GetAvailablePath(destination);
+            try
+            {
+                File.Move(temporary, destination, overwrite: false);
+                return destination;
+            }
+            catch (IOException) when (File.Exists(destination) || Directory.Exists(destination))
+            {
+                // Another save took the suggested name; try the next one.
+            }
+        }
+    }
+
+    public static string GetAvailablePath(string path)
+    {
+        var destination = Path.GetFullPath(path);
+        var directory = Path.GetDirectoryName(destination)!;
+        var extension = Path.GetExtension(destination);
+        var name = Path.GetFileNameWithoutExtension(destination);
+        long nextNumber = 1;
+        var suffixStart = name.LastIndexOf('(');
+        if (suffixStart > 0 && name.EndsWith(')')
+            && long.TryParse(name.AsSpan(suffixStart + 1, name.Length - suffixStart - 2),
+                NumberStyles.None, CultureInfo.InvariantCulture, out var suffix)
+            && suffix is > 0 and < long.MaxValue)
+        {
+            name = name[..suffixStart];
+            nextNumber = suffix + 1;
+        }
+
+        var candidate = destination;
+        while (true)
+        {
+            if (!File.Exists(candidate) && !Directory.Exists(candidate))
+                return candidate;
+            candidate = Path.Combine(directory, name + "(" + nextNumber.ToString(CultureInfo.InvariantCulture) + ")" + extension);
+            nextNumber++;
+        }
     }
 
     public static void Validate(ExplorerSession session)

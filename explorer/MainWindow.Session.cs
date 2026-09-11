@@ -10,7 +10,7 @@ namespace EllipticCurves.Explorer;
 
 internal sealed record SessionDialogs(Func<string, SaveChangesResult> ConfirmUnsaved,
     Func<string?, string?> ChooseSavePath, Func<string?> ChooseOpenPath, Action<string, string> ShowError,
-    Func<string, ExplorerSession, Task>? WriteSession = null);
+    Func<string, ExplorerSession, bool, Task<string>>? WriteSession = null);
 
 public partial class MainWindow
 {
@@ -46,11 +46,7 @@ public partial class MainWindow
             name => ConfirmationWindow.AskToSaveChanges(this, name),
             path =>
             {
-                var dialog = new SaveFileDialog
-                {
-                    Filter = SessionFile.DialogFilter, DefaultExt = SessionFile.Extension, AddExtension = true,
-                    FileName = path ?? SessionFile.DefaultFileName, Title = SessionMessages.SaveAsTitle, OverwritePrompt = true
-                };
+                var dialog = CreateSessionSaveDialog(path);
                 return dialog.ShowDialog(this) == true ? dialog.FileName : null;
             },
             () =>
@@ -65,6 +61,22 @@ public partial class MainWindow
             (title, message) => ConfirmationWindow.ShowMessage(this, title, message));
         MarkSessionClean();
         InitializeSessionStatus();
+    }
+
+    internal static SaveFileDialog CreateSessionSaveDialog(string? path)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Filter = SessionFile.DialogFilter, DefaultExt = SessionFile.Extension, AddExtension = true,
+            FileName = SessionFile.GetFileName(path), Title = SessionMessages.SaveAsTitle, OverwritePrompt = false
+        };
+        if (path != null && Path.IsPathFullyQualified(path))
+        {
+            var availablePath = SessionFile.GetAvailablePath(path);
+            dialog.InitialDirectory = Path.GetDirectoryName(availablePath)!;
+            dialog.FileName = Path.GetFileName(availablePath);
+        }
+        return dialog;
     }
 
     internal bool HasUnsavedChanges => Workbench.IsBusy || HasSessionEdits;
@@ -167,8 +179,9 @@ public partial class MainWindow
             isSavingSession = true;
             sessionSaveFailed = false;
             RefreshSessionStatus();
-            if (sessionDialogs.WriteSession is { } write) await write(path, saved);
-            else await Task.Run(() => SessionFile.Save(path, saved));
+            path = sessionDialogs.WriteSession is { } write
+                ? await write(path, saved, choosePath)
+                : await Task.Run(() => SessionFile.Save(path, saved, createCopy: choosePath));
             sessionPath = Path.GetFullPath(path);
             cleanSession = saved;
             return true;

@@ -56,6 +56,7 @@ internal static partial class Program
             foreach (var action in new[] { "New", "Open", "Close" })
             foreach (var option in new[] { "Cancel", "Discard", "Save", "Cancel save", "Failed save" })
             {
+                File.Delete(output);
                 var choice = option == "Cancel" ? SaveChangesChoice.Cancel
                     : option == "Discard" ? SaveChangesChoice.Discard : SaveChangesChoice.Save;
                 var prompts = 0;
@@ -153,6 +154,7 @@ internal static partial class Program
             foreach (var complex in new[] { false, true })
             foreach (var action in new[] { "New", "Open", "Close" })
             {
+                File.Delete(output);
                 // Legacy files containing camera positions must also reopen fitted.
                 var legacy = ExplorerSession.New() with
                 {
@@ -316,6 +318,7 @@ internal static partial class Program
         {
             foreach (var name in new[] { "curve study", "curve study.ec", "curve study.EC" })
             {
+                File.Delete(output);
                 var choice = SaveChangesChoice.Save;
                 string? openPath = input, savePath = null, suggestedPath = null;
                 var window = new MainWindow(null, new SessionDialogs(currentName =>
