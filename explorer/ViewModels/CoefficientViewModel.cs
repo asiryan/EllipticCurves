@@ -45,7 +45,7 @@ public sealed class CoefficientViewModel : ObservableObject, IDataErrorInfo
                 RecenterSlider();
             }
             else parseError = requirePositive ? "Enter a positive step, such as 0.01 or 1/7."
-                : "Enter a number or fraction, such as 8.325, -2/7 or 1e-5 (up to 4096 characters; exponent ±4096).";
+                : "Enter a number or fraction, such as 8.325, -2/7 or 1e-5 (up to 20,000 characters; exponent ±4096; numerator and denominator up to 32768 bits).";
             Notify();
         }
     }

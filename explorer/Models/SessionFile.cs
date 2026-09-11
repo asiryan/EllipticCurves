@@ -79,7 +79,7 @@ public static class SessionFile
         {
             if (job?.Request is not { } request || request.OperationId == null
                 || !CalculationCatalog.All.Any(operation => operation.Id == request.OperationId)
-                || request.Equation == null || request.Equation.Length > 100_000
+                || request.Equation == null || request.Equation.Length > CurveEquationText.MaxTextLength
                 || request.Arguments == null || request.Arguments.Count > 512
                 || request.Arguments.Any(pair => pair.Key.Length > 1024 || pair.Value == null || pair.Value.Length > 100_000)
                 || request.TimeoutSeconds is < 0 or > 86_400 || request.MaxItems is < 1 or > 100_000

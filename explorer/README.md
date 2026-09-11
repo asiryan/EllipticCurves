@@ -64,9 +64,9 @@ browsing other results does not trigger an unsaved-changes warning. Adding,
 deleting or changing results still does. Samples and periods are recomputed
 locally as needed. Open calculation parameter windows are not saved and close when
 another session is opened.
-Slider step and positions, the preset name, visualization mode, cameras, grid and sample visibility, selected torus point,
-panel layout and scroll positions belong to the current window and its undo history;
-they are not written to the file. Opening a session starts in **Real locus** with default display settings and fits the
+Slider step and positions, the preset name, visualization mode, cameras, grid and sample visibility, and selected torus point
+belong to the current window and its undo history. Panel layout and scroll positions are local to the window
+and are not restored by Undo or Redo. None of these settings are written to the file. Opening a session starts in **Real locus** with default display settings and fits the
 curve to the current plot size. Panning, zooming,
 rotating the torus and resetting the view do not trigger an unsaved-changes warning.
 Saving does not move or reset the graph currently on screen.
@@ -116,7 +116,8 @@ deleting or clearing reports belongs to that action and does not add another ste
 History uses in-memory mementos with shared computed results. Undo and Redo restore
 existing curve snapshots, samples, period data and reports without rerunning calculation
 operations or network requests. Work that had not finished preparing a graph when you
-left it is restored as incomplete. Deleting a report, clearing all reports and adding
+left it is restored as incomplete. Reopen **Complex torus** to resume its unfinished preparation;
+Undo and Redo themselves do not start work. Deleting a report, clearing all reports and adding
 a completed, failed, timed-out or stopped calculation are undoable. Undo also restores
 the oldest report if a new calculation displaced it from the 50-report session limit.
 Undo and Redo are disabled while a calculation or session file operation is active.
@@ -241,10 +242,14 @@ terms; sampling is split at real roots to preserve disconnected components.
 The point at infinity is not drawn in the affine plot.
 Inputs outside the numerical plot's representable range retain exact invariants
 and show a plot precision message. To bound input processing, text is limited to
-4096 characters and scientific exponents to ±4096. Numerators and denominators
+100,000 characters per equation and 20,000 per number, with scientific exponents
+limited to ±4096. Each side of an equation accepts up to 4096 terms. Numerators and denominators
 of intermediate expressions and normalized coefficients are limited to 32768 bits
 (roughly 9800 decimal digits); parser nesting is also limited to 64 levels.
-These checks bound expression growth during input processing.
+These checks bound expression growth during input processing. Long terminating
+decimals may be formatted as fractions so generated equations remain readable by
+the editor, calculations and session files. Slider results that exceed the coefficient
+limit are reported as invalid input and cannot be saved until corrected.
 
 Gold markers are exact affine rational points found with `RationalPoints(12, 4)`:
 their x-coordinates are `m/n`, with `|m| ≤ 12` and `1 ≤ n ≤ 4`. This is a bounded

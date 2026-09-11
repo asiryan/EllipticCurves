@@ -145,7 +145,7 @@
                             <Button Grid.Column="2" Content="Reset" Click="ResetEquationClick" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" />
                         </Grid>
                         <TextBlock Text="{Binding FormDescription}" Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" />
-                        <TextBlock x:Name="EquationIntro" Text="Enter a Weierstrass equation." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="Enter the whole curve equation above. Simple and general Weierstrass forms are recognized automatically." />
+                        <TextBlock x:Name="EquationIntro" Text="Enter a Weierstrass equation." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="Enter the whole curve equation in the equation field. Simple and general Weierstrass forms are recognized automatically." />
                         <TextBlock Text="y^2 = x^3 - 106.16x - 0.32" FontFamily="Consolas" Foreground="{StaticResource TextBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
                         <TextBlock Text="y^2 + xy + y = x^3 - x" FontFamily="Consolas" Foreground="{StaticResource TextBrush}" FontSize="11" Margin="0,7,0,0" TextWrapping="Wrap" />
                         <StackPanel Margin="0,12,0,0">

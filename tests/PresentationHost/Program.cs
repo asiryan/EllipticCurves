@@ -93,6 +93,7 @@ internal static partial class Program
             CheckDockAnimation();
             CheckExportBounds();
             CheckPlotRendering();
+            CheckExtremePlotViews();
             CheckViewSwitching();
             CheckTorusCycleColors();
             CheckComplexTorusView();
@@ -848,6 +849,41 @@ internal static partial class Program
                 Require(hasCurve, "PNG export omitted the real locus.");
             }
         }
+    }
+
+    private static void CheckExtremePlotViews()
+    {
+        var window = CreateMainWindow();
+        try
+        {
+            foreach (var equation in new[]
+            {
+                "y^2 + 1e308*x*y = x^3 - 2.5e615*x^2 - 3",
+                "y^2 - 1e308*x*y = x^3 - 2.5e615*x^2 - 3",
+                "y^2 = x^3 + 1e308*x^2"
+            })
+            {
+                window.RestoreSession(ExplorerSession.New() with { Equation = equation });
+                SettleSession(window);
+                var plot = (CurvePlot)window.FindName("Plot");
+                Require(window.ViewModel.Snapshot.IsPlotUnavailable, "Out-of-range curves must show the plot precision message.");
+                Require(!string.IsNullOrEmpty(window.ViewModel.Snapshot.Discriminant), "Unavailable plots must retain exact invariants.");
+                window.ViewModel.FitCommand.Execute(null);
+                SettleSession(window);
+                plot.Fit();
+                plot.Zoom(0.8);
+                plot.Zoom(1.25);
+                var state = plot.CaptureView();
+                Require(double.IsFinite(state.CenterX) && double.IsFinite(state.CenterY)
+                    && double.IsFinite(state.VerticalSpan) && state.VerticalSpan > 0, "Fit or Zoom produced an invalid viewport.");
+                var image = PlotImageExporter.Render(plot);
+                Require(image.PixelWidth > 0 && image.PixelHeight > 0, "Export failed after an out-of-range equation.");
+            }
+            window.RestoreSession(ExplorerSession.New());
+            SettleSession(window);
+            Require(!window.ViewModel.Snapshot.IsPlotUnavailable, "A normal curve must recover after an unavailable plot.");
+        }
+        finally { window.Close(); }
     }
     private static void CheckDockAnimation()
     {

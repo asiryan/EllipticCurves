@@ -17,6 +17,7 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
     private string? restoredSelection;
     private bool restoringSelection;
     private ResultMemento historyResult = new();
+    private const string IncompleteStatus = "Complex view preparation was not completed. Reopen Complex torus to continue.";
     internal event Action? SelectionEdited;
     public string? SessionSelection => restoredSelection ?? SelectedPoint?.Point.ToString();
 
@@ -187,7 +188,8 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
     {
         historyResult.Lattice = Lattice;
         historyResult.Points = Points;
-        historyResult.Status = IsBusy ? "Complex view preparation was not completed." : Status;
+        historyResult.SamplesMapped = samplesMapped;
+        historyResult.Status = IsBusy ? IncompleteStatus : Status;
         OnPropertyChanged(nameof(Lattice));
         OnPropertyChanged(nameof(HasLattice));
         OnPropertyChanged(nameof(IsUnavailable));
@@ -199,6 +201,7 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
     {
         internal TorusLattice? Lattice;
         internal IReadOnlyList<TorusPoint> Points = Array.Empty<TorusPoint>();
+        internal bool SamplesMapped;
         internal string Status = "Choose Complex torus to compute the period lattice.";
     }
     internal sealed record Memento(ResultMemento Result, string? Selection);
@@ -221,8 +224,8 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
         curve = restoredCurve;
         samples = restoredSamples;
         active = isActive;
-        samplesMapped = true;
         historyResult = state.Result;
+        samplesMapped = historyResult.SamplesMapped;
         Lattice = historyResult.Lattice;
         Status = historyResult.Status;
         restoredSelection = state.Selection;
@@ -232,6 +235,7 @@ public sealed class ComplexTorusViewModel : ObservableObject, IDisposable
 
     private void CancelPending()
     {
+        if (IsBusy) Status = IncompleteStatus;
         version++;
         pending?.Cancel();
         pending?.Dispose();

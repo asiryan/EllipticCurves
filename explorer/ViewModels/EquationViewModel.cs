@@ -33,9 +33,10 @@ public sealed class EquationViewModel(Action changed) : ObservableObject, IDataE
 
     public void SetCurve(EllipticCurveQ curve)
     {
-        Curve = curve;
         text = CurveEquationText.Format(curve);
-        parseError = "";
+        // Slider arithmetic can cross the coefficient limit too. Never mark an
+        // equation as valid if calculations or session loading would reject it.
+        if (CurveEquationText.TryParse(text, out var parsed, out parseError)) Curve = parsed!;
         editing = false;
         Notify();
     }

@@ -1,3 +1,5 @@
+using System.Numerics;
+using EllipticCurves.Explorer.Computations;
 using EllipticCurves.Explorer.Models;
 using EllipticCurves.Explorer.ViewModels;
 using Xunit;
@@ -62,8 +64,82 @@ public sealed class ExplorerEquationTests
     [Fact]
     public void GuardsInputLengthAndNesting()
     {
-        Assert.False(CurveEquationText.TryParse("y^2=x^3+" + new string('1', 4096), out _, out _));
+        Assert.False(CurveEquationText.TryParse("y^2=x^3+" + new string('1', CurveEquationText.MaxTextLength), out _, out _));
         Assert.False(CurveEquationText.TryParse("y^2=x^3+" + new string('(', 100) + "1" + new string(')', 100), out _, out _));
+        Assert.False(CurveEquationText.TryParse("y^2=x^3" + string.Concat(Enumerable.Repeat("+1", 4096)), out _, out var error));
+        Assert.Contains("too many terms", error);
+    }
+
+    [Fact]
+    public void MaximumSizeCoefficientsRoundTripInAllFivePositions()
+    {
+        var large = BigInteger.One << (RationalText.MaxValueBits - 1);
+        var fraction = new BigRational(large - 1, large - 3);
+        var original = new EllipticCurveQ(fraction, -fraction, fraction, -fraction, fraction);
+        var formatted = CurveEquationText.Format(original);
+        Assert.InRange(formatted.Length, 4097, CurveEquationText.MaxTextLength);
+        Assert.True(CurveEquationText.TryParse(formatted, out var parsed, out var error), error);
+        Assert.Equal(original, parsed);
+
+        var tiny = new BigRational(1, large);
+        formatted = RationalText.Format(tiny);
+        Assert.InRange(formatted.Length, 1, RationalText.MaxTextLength);
+        Assert.True(RationalText.TryParse(formatted, out var restored));
+        Assert.Equal(tiny, restored);
+    }
+
+    [Theory]
+    [InlineData("1e4096")]
+    [InlineData("1e-4096")]
+    public async Task ScientificCoefficientsSurviveSlidersCalculationsAndSessionFiles(string coefficient)
+    {
+        using var model = new MainViewModel();
+        model.ShowPoints = false;
+        model.Equation.Text = "y^2=x^3+" + coefficient + "*x";
+        model.FlushUpdate();
+        var original = model.Snapshot.Curve;
+        var request = new CalculationRequest("curve.overview", CurveEquationText.Format(original), new());
+        Assert.Contains("Discriminant", await CalculationEngine.ExecuteAsync(request));
+        model.SimpleCoefficients[0].SliderOffset = 1;
+        model.FlushUpdate();
+        Assert.True(model.Equation.IsValid);
+        Assert.Equal(original.A4 + new BigRational(1, 100), model.Snapshot.Curve.A4);
+        Assert.True(CurveEquationText.TryParse(model.Equation.Text, out var parsed, out var error), error);
+        Assert.Equal(model.Snapshot.Curve, parsed);
+        var path = Path.Combine(Path.GetTempPath(), "ec-scientific-" + Guid.NewGuid() + ".ec");
+        try
+        {
+            SessionFile.Save(path, ExplorerSession.New() with { Equation = model.Equation.Text });
+            var saved = SessionFile.Load(path);
+            using var reopened = new MainViewModel();
+            reopened.ShowPoints = false;
+            reopened.RestoreSession(saved);
+            Assert.Equal(model.Snapshot.Curve, reopened.Snapshot.Curve);
+            Assert.Contains("Discriminant", await CalculationEngine.ExecuteAsync(request with { Equation = saved.Equation }));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void SliderOverflowIsInvalidAndCanBeUndoneByReturningToItsAnchor()
+    {
+        using var model = new MainViewModel();
+        model.ShowPoints = false;
+        var largest = new BigRational((BigInteger.One << RationalText.MaxValueBits) - 1);
+        model.Equation.SetCurve(new EllipticCurveQ(0, 0, 0, largest, 0));
+        model.FlushUpdate();
+        var snapshot = model.Snapshot;
+        model.Step.Text = "1";
+        model.SimpleCoefficients[0].SliderOffset = 1;
+        model.FlushUpdate();
+        Assert.False(model.Equation.IsValid);
+        Assert.True(model.HasInputError);
+        Assert.Same(snapshot, model.Snapshot);
+        Assert.Throws<InvalidDataException>(() => SessionFile.Validate(ExplorerSession.New() with { Equation = model.Equation.Text }));
+        model.SimpleCoefficients[0].SliderOffset = 0;
+        model.FlushUpdate();
+        Assert.True(model.Equation.IsValid);
+        Assert.Equal(largest, model.Snapshot.Curve.A4);
     }
 
     [Theory]

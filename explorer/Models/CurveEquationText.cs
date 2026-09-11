@@ -1,5 +1,4 @@
 #nullable enable
-using System.Numerics;
 using System.Text;
 
 namespace EllipticCurves.Explorer.Models;
@@ -9,14 +8,15 @@ public static class CurveEquationText
 {
     // Text length and nesting alone do not bound expressions such as ((2^3)^3)^3.
     // Limit intermediate rationals as well, since parsing runs on the editor thread.
-    private const int MaxCoefficientBits = 32768;
+    // Five fractions with 32768-bit numerators/denominators fit in this budget.
+    public const int MaxTextLength = 100_000;
 
     public static bool TryParse(string text, out EllipticCurveQ? curve, out string error)
     {
         curve = null;
         error = "";
         if (string.IsNullOrWhiteSpace(text)) { error = "Enter an equation, such as y^2 = x^3 - x."; return false; }
-        if (text.Length > 4096) { error = "Keep the equation within 4096 characters."; return false; }
+        if (text.Length > MaxTextLength) { error = "Keep the equation within 100,000 characters."; return false; }
         if (text.Contains('²') || text.Contains('³')) { error = "Enter powers using ^, for example y^2 = x^3 - x."; return false; }
         try
         {
@@ -68,7 +68,7 @@ public static class CurveEquationText
 
     private static BigRational Bounded(BigRational value)
     {
-        if (BigInteger.Abs(value.Num).GetBitLength() > MaxCoefficientBits || value.Den.GetBitLength() > MaxCoefficientBits)
+        if (!RationalText.IsWithinLimit(value))
             throw new FormatException("The equation produces numbers that are too large. Simplify the coefficients.");
         return value;
     }
@@ -107,7 +107,7 @@ public static class CurveEquationText
 
     private sealed class Parser(string input)
     {
-        private int position, depth;
+        private int position, depth, terms;
 
         public Dictionary<(int X, int Y), BigRational> Parse()
         {
@@ -183,6 +183,7 @@ public static class CurveEquationText
 
         private Dictionary<(int X, int Y), BigRational> Atom()
         {
+            if (++terms > 4096) throw new FormatException("The equation contains too many terms. Simplify the expression.");
             var next = Peek();
             if (next == '(')
             {

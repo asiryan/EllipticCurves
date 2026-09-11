@@ -53,13 +53,17 @@ public sealed class CurvePlot : FrameworkElement
         var right = data.Roots[^1];
         // Include part of the unbounded branch even when there is only one real root.
         right += Math.Max(0.5, 0.25 * Math.Max(right - left, data.CharacteristicScale));
+        if (!double.IsFinite(right) || !double.IsFinite(right - left)) return PlotViewState.Default;
         var fittedCenterX = left / 2 + right / 2;
         var ys = new List<double> { data.CenterY(left), data.CenterY(right) };
+        if (ys.Any(y => !double.IsFinite(y))) return PlotViewState.Default;
         for (var i = 0; i <= 100; i++)
             if (data.TryEvaluate(left + (right - left) * i / 100, out var upper, out var lower)) { ys.Add(upper); ys.Add(lower); }
         var fittedCenterY = ys.Min() / 2 + ys.Max() / 2;
         var horizontalSpan = Math.Max(5, (right - left) * 1.8);
-        var fittedSpan = Math.Clamp(Math.Max(Math.Max(3.4, (ys.Max() - ys.Min()) * 1.35), horizontalSpan * (PlotBounds.Height / PlotBounds.Width)), MinimumSpan(fittedCenterX, fittedCenterY), 1e300);
+        var minimumSpan = MinimumSpan(fittedCenterX, fittedCenterY);
+        if (!double.IsFinite(minimumSpan) || minimumSpan > CurvePlotData.MaximumPlotMagnitude) return PlotViewState.Default;
+        var fittedSpan = Math.Clamp(Math.Max(Math.Max(3.4, (ys.Max() - ys.Min()) * 1.35), horizontalSpan * (PlotBounds.Height / PlotBounds.Width)), minimumSpan, CurvePlotData.MaximumPlotMagnitude);
         return new(fittedCenterX, fittedCenterY, fittedSpan);
     }
 

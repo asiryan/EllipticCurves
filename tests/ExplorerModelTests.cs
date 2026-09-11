@@ -301,6 +301,28 @@ public sealed class ExplorerModelTests
         Assert.True(data.TryEvaluate(2, out _, out _));
     }
 
+    [Theory]
+    [InlineData("1e-12", 1e-6)]
+    [InlineData("1e-100", 1e-50)]
+    [InlineData("1e-300", 1e-150)]
+    public void SmallCurvesPreserveForbiddenIntervalsWithoutUnderflow(string coefficient, double scale)
+    {
+        Assert.True(RationalText.TryParse(coefficient, out var value));
+        var data = new CurvePlotData(new EllipticCurveQ(0, 0, 0, -value, 0));
+        Assert.True(data.IsDrawable);
+        Assert.Equal(3, data.Roots.Count);
+        Assert.False(data.TryEvaluate(-2 * scale, out _, out _));
+        Assert.False(data.TryEvaluate(0.5 * scale, out _, out _));
+        Assert.True(data.TryEvaluate(-0.5 * scale, out var upper, out var lower));
+        Assert.True(upper > 0 && double.IsFinite(upper));
+        Assert.Equal(-upper, lower);
+        var expected = Math.Sqrt(0.375) * Math.Sqrt(scale) * scale;
+        Assert.InRange(upper / expected, 1 - 1e-12, 1 + 1e-12);
+        Assert.True(data.TryEvaluate(0, out upper, out lower));
+        Assert.Equal(0, upper);
+        Assert.Equal(0, lower);
+    }
+
     [Fact]
     public void SingularIsolatedPointIsNotLostBySignChangeRootSearch()
     {

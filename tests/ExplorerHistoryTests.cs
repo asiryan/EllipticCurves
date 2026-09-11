@@ -151,6 +151,54 @@ public sealed class ExplorerHistoryTests
         Assert.Equal(1, calls);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IncompleteTorusMementosResumeOnlyWhenTheModeIsReopened(bool periodsReady)
+    {
+        var calls = 0;
+        var curve = CurvePreset.Classic.CreateCurve();
+        var samples = new[] { new EllipticCurvePoint(-1, 0), new EllipticCurvePoint(0, 0), new EllipticCurvePoint(1, 0) };
+        using var torus = new ComplexTorusViewModel((input, token) => { calls++; return TorusLattice.Create(input, token); });
+        ComplexTorusViewModel.Memento state = null;
+        if (periodsReady)
+        {
+            // Stop at the real boundary between period preparation and point mapping.
+            torus.PropertyChanged += (_, e) =>
+            {
+                if (state != null || e.PropertyName != nameof(torus.HasLattice) || !torus.HasLattice) return;
+                state = torus.CaptureMemento();
+                torus.Update(curve, samples, false);
+            };
+        }
+        torus.Update(curve, samples, true);
+        var pending = torus.PendingUpdate;
+        if (!periodsReady)
+        {
+            state = torus.CaptureMemento();
+            torus.Update(curve, samples, false);
+        }
+        await pending;
+        var beforeUndo = calls;
+        Assert.NotNull(state);
+        torus.RestoreMemento(state, curve, samples, true);
+        torus.Update(curve, samples, true);
+        Assert.False(torus.IsBusy);
+        Assert.True(torus.PendingUpdate.IsCompleted);
+        Assert.Contains("not completed", torus.Status);
+        Assert.Equal(beforeUndo, calls);
+        Assert.Equal(periodsReady, torus.HasLattice);
+
+        torus.Update(curve, samples, false);
+        torus.Update(curve, samples, true);
+        Assert.True(torus.IsBusy);
+        await torus.PendingUpdate;
+        Assert.False(torus.IsBusy);
+        Assert.Equal(4, torus.Points.Count);
+        Assert.Contains("3 / 3", torus.Status);
+        Assert.Equal(1, calls); // Reuse existing periods when only mapping was unfinished.
+    }
+
     [Fact]
     public async Task RestoringAnUnchangedGraphKeepsItsOriginalBackgroundWork()
     {
