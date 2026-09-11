@@ -48,7 +48,7 @@
                     <Button x:Name="SaveAsButton" Content="Save as" Click="SaveAsClick"
                             Tag="Ctrl+Shift+S" AutomationProperties.AcceleratorKey="Ctrl+Shift+S"
                             Style="{StaticResource SessionAction}" IsEnabled="{Binding CanSaveAs}"
-                            ToolTip="Save this session with a different name or in another folder" />
+                            ToolTip="Save this session with a different name or in another folder." />
                     <Button x:Name="ExitButton" Content="Exit" Click="ExitClick" IsEnabled="{Binding CanExit}"
                             Style="{StaticResource SessionAction}" />
                 </StackPanel>
