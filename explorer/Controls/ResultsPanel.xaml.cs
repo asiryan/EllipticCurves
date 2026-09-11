@@ -74,7 +74,7 @@ public partial class ResultsPanel : UserControl
         }
     }
 
-    private void SaveClick(object sender, RoutedEventArgs e)
+    private void ExportClick(object sender, RoutedEventArgs e)
     {
         var selected = Selected;
         if (selected == null) return;
@@ -82,7 +82,7 @@ public partial class ResultsPanel : UserControl
         {
             Filter = "Text report (*.txt)|*.txt",
             FileName = "elliptic-calculation-" + selected.StartedAt.ToString("yyyyMMdd-HHmmss") + ".txt",
-            Title = "Save calculation report"
+            Title = "Export calculation report"
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try
@@ -91,7 +91,7 @@ public partial class ResultsPanel : UserControl
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            ConfirmationWindow.ShowMessage(Window.GetWindow(this), "Save result", "Could not save the report. Check the destination and try again.");
+            ConfirmationWindow.ShowMessage(Window.GetWindow(this), "Export result", "Could not export the report. Check the destination and try again.");
         }
     }
 }

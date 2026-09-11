@@ -78,7 +78,7 @@ An untouched session or an unchanged saved/opened session does not prompt.
 Changes to the equation, results, visualization options or saved panel settings are tracked;
 background sample generation alone does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
-The Results panel's **Save** still exports an individual text report.
+The Results panel's **Export** exports an individual text report.
 
 ## Explore
 
@@ -277,7 +277,7 @@ Results retain their input curve, parameters and proof/certification status.
 Height results include exact enclosure bounds; database decimals are labelled
 as approximations. A completed calculation does not imply a proved rank or a
 complete Mordell–Weil basis: the library's status and reason are preserved.
-Use **Copy** or **Save** to export the displayed text report. **Repeat** reopens
+Use **Copy** or **Export** to export the displayed text report. **Repeat** reopens
 the parameter window with that result's original curve, inputs and limits; it
 does not start another calculation until you choose **Run calculation**.
 To remove a result, right-click its entry in the history dropdown and choose

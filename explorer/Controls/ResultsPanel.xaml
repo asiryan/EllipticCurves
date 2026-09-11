@@ -81,7 +81,7 @@
             </Grid>
             <UniformGrid Grid.Row="5" Columns="3" Margin="0,12,0,0" IsEnabled="{Binding HasSelection}">
                 <Button Content="Copy" Click="CopyClick" Padding="5,8" Margin="0,0,6,0" ToolTip="Copy the complete calculation report" />
-                <Button Content="Save" Click="SaveClick" Padding="5,8" Margin="0,0,6,0" ToolTip="Save the report as text" />
+                <Button Content="Export" Click="ExportClick" Padding="5,8" Margin="0,0,6,0" ToolTip="Export the report as text" />
                 <Button Content="Repeat" Click="RepeatClick" Padding="5,8" ToolTip="Reopen this calculation with its original curve and parameters" />
             </UniformGrid>
         </Grid>
