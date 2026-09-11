@@ -53,9 +53,19 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     public bool CanRun => !IsBusy && !disposed;
     public bool HasSelection => Selected != null;
     public bool HasResults => Jobs.Count > 0;
+    public bool CanDelete(CalculationJobViewModel? job) => job != null && job != Active && Jobs.Contains(job);
     public string Summary => IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Explorer" : Jobs.Count + " calculations this session";
-    public string ResultsButtonLabel => IsBusy ? "Results · running" : "Results";
     public RelayCommand CancelCommand => new(_ => Cancel());
+
+    public void Delete(CalculationJobViewModel? job)
+    {
+        if (!CanDelete(job)) return;
+        var index = Jobs.IndexOf(job!);
+        var wasSelected = job == Selected;
+        Jobs.RemoveAt(index);
+        if (wasSelected) Selected = Jobs.Count == 0 ? null : Jobs[Math.Min(index, Jobs.Count - 1)];
+        NotifyState();
+    }
 
     public async Task RunAsync(CalculationRequest request)
     {
@@ -106,7 +116,6 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     private void NotifyState()
     {
         OnPropertyChanged(nameof(IsBusy)); OnPropertyChanged(nameof(CanRun)); OnPropertyChanged(nameof(HasResults)); OnPropertyChanged(nameof(Summary));
-        OnPropertyChanged(nameof(ResultsButtonLabel));
     }
     public void Dispose() { disposed = true; Cancel(); }
 }

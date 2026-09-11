@@ -97,6 +97,9 @@ when the window opens, so editing the plot later does not silently change a pend
 calculation. Finite-extension curves and rational-number tools have independent
 inputs. **Run calculation** opens the results panel on the right.
 
+The title bar contains Explorer and the native/local status indicator. **Export
+plot** is in the plot panel's own toolbar.
+
 | Category | Available calculations |
 | --- | --- |
 | Curve and models | Exact coefficients and invariants, real components, CM discriminant, short and global minimal models, twists, construction from j |
@@ -132,9 +135,20 @@ Results retain their input curve, parameters and proof/certification status.
 Height results include exact enclosure bounds; database decimals are labelled
 as approximations. A completed calculation does not imply a proved rank or a
 complete Mordell–Weil basis: the library's status and reason are preserved.
-Use **Copy**, **Save…** or **Repeat…** on any result. History keeps the last
+Use **Copy**, **Save…** or **Repeat…** on the displayed result. To remove a result, right-click
+its entry in the history dropdown and choose **Delete**. This deletes that entry,
+even when another result is displayed; stop an active calculation before deleting it. History keeps the last
 50 calculations for the current session; save reports before closing the app.
-Drag the divider to resize the panel or use **Results** to hide and reopen it.
+Both side panels start at their minimum widths. Drag either divider to resize its
+panel; matching gaps and dividers keep the two sides aligned.
+The **Equation** and **Results** panels each have a header chevron that folds the
+panel into a narrow, full-height tab on its own side, freeing space for the plot.
+The folded and expanded versions share the same top, bottom and outer edge,
+including the window margin. Either panel can be folded independently; click its
+tab to restore it. Both panels retain their resized width, and Equation keeps its
+settings and Experiment state. Folding uses a short animation when Windows allows
+interface animations. A dot on the folded Results tab indicates a running
+calculation; the result selection and history remain intact.
 
 ## Development
 
@@ -158,6 +172,14 @@ streams before creating WPF. `CalculationRunner` owns its child process and
 terminates it on cancellation, timeout or app shutdown. The worker also exits if
 the host disconnects. A portable test host exercises this protocol, errors,
 non-cooperative cancellation and disconnect behavior without opening any UI.
+
+On Windows, also run the compiled-XAML regression check. It loads the real theme
+and main workspace, verifies history-menu deletion, Repeat, both sidebars' folding,
+aligned bounds at different window sizes and the animation, and never opens a window:
+
+```powershell
+dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release
+```
 
 The desktop project uses the [Microsoft .NET Desktop SDK settings](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props-desktop).
 

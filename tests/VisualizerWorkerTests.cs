@@ -81,6 +81,64 @@ public sealed class VisualizerWorkerTests
     }
 
     [Fact]
+    public void DeleteMovesSelectionAndClearsTheLastResult()
+    {
+        using var workbench = new WorkbenchViewModel();
+        var newest = new CalculationJobViewModel(Request(), "Newest") { Status = "Completed" };
+        var middle = new CalculationJobViewModel(Request(), "Middle") { Status = "Failed" };
+        var oldest = new CalculationJobViewModel(Request(), "Oldest") { Status = "Cancelled" };
+        foreach (var job in new[] { newest, middle, oldest }) workbench.Jobs.Add(job);
+        workbench.Selected = middle;
+        var notifications = new List<string>();
+        workbench.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+
+        workbench.Delete(middle);
+        Assert.Equal(new[] { newest, oldest }, workbench.Jobs);
+        Assert.Same(oldest, workbench.Selected);
+        Assert.Contains(nameof(workbench.Summary), notifications);
+        workbench.Delete(oldest);
+        Assert.Same(newest, workbench.Selected);
+        workbench.Delete(newest);
+        Assert.Empty(workbench.Jobs);
+        Assert.Null(workbench.Selected);
+        Assert.False(workbench.HasSelection);
+        Assert.False(workbench.HasResults);
+        Assert.False(workbench.CanDelete(workbench.Selected));
+        Assert.Contains(nameof(workbench.HasResults), notifications);
+        Assert.Equal("Choose a calculation in Explorer", workbench.Summary);
+        workbench.Delete(null); // An empty history is a harmless no-op.
+    }
+
+    [Fact]
+    public async Task DeleteProtectsTheActiveCalculationButAllowsOlderResults()
+    {
+        using var workbench = new WorkbenchViewModel(new CalculationRunner(() => StartInfo("--unresponsive")));
+        var older = new CalculationJobViewModel(Request(), "Older") { Status = "Completed" };
+        workbench.Jobs.Add(older);
+        var calculation = workbench.RunAsync(Request());
+        var active = workbench.Active;
+        try
+        {
+            Assert.False(workbench.CanDelete(active));
+            workbench.Delete(active);
+            Assert.Contains(active, workbench.Jobs);
+            Assert.True(workbench.CanDelete(older));
+            workbench.Delete(older);
+            Assert.Same(active, workbench.Selected);
+            Assert.Same(active, Assert.Single(workbench.Jobs));
+            Assert.True(workbench.IsBusy);
+        }
+        finally
+        {
+            workbench.Cancel();
+            await calculation.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        Assert.True(workbench.CanDelete(active));
+        workbench.Delete(active);
+        Assert.Empty(workbench.Jobs);
+    }
+
+    [Fact]
     public async Task WorkbenchKeepsCapturedInputsAndCanRunAgainAfterCancellation()
     {
         var calls = 0;

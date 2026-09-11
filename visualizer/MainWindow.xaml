@@ -11,8 +11,37 @@
     <Window.InputBindings>
         <KeyBinding Key="F" Modifiers="Control" Command="{Binding FitCommand}" />
     </Window.InputBindings>
+    <Window.Resources>
+        <Style x:Key="SidebarSplitter" TargetType="GridSplitter">
+            <Setter Property="Width" Value="4" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Cursor" Value="SizeWE" />
+            <Setter Property="ResizeDirection" Value="Columns" />
+            <Setter Property="ResizeBehavior" Value="PreviousAndNext" />
+        </Style>
+        <Style x:Key="SidebarTab" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="TabFrame" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabFrame" Property="Background" Value="{StaticResource RaisedBrush}" /><Setter TargetName="TabFrame" Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="TabFrame" Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Grid x:Name="AppRoot" Margin="1" Background="{StaticResource BackgroundBrush}">
-        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="72" /><RowDefinition Height="*" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /><RowDefinition Height="32" /></Grid.RowDefinitions>
         <Border BorderBrush="#242E38" BorderThickness="0,0,0,1" Padding="8,0,8,0">
             <Grid>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="0,8,0,0">
@@ -21,6 +50,11 @@
                     <Border Width="1" Height="13" Background="{StaticResource BorderBrush}" Margin="18,0" />
                     <controls:ExplorerMenu x:Name="Explorer" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                 </StackPanel>
+                <Grid x:Name="NativeIndicator" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,158,0" IsHitTestVisible="False">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Ellipse Fill="{StaticResource AccentBrush}" Width="5" Height="5" Margin="0,0,7,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="NATIVE · LOCAL" Foreground="{StaticResource MutedBrush}" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Content="─" Width="44" Style="{StaticResource QuietButton}" Click="MinimizeClick" AutomationProperties.Name="Minimize" />
                     <Button Content="□" Width="44" Style="{StaticResource QuietButton}" Click="MaximizeClick" AutomationProperties.Name="Maximize or restore" />
@@ -28,31 +62,18 @@
                 </StackPanel>
             </Grid>
         </Border>
-        <Grid Grid.Row="1" Margin="28,0">
-            <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="A little change. A whole new curve." FontSize="25" FontWeight="SemiBold" />
-                <TextBlock Text="Write your equation. Explore the geometry. See the arithmetic." Style="{StaticResource Muted}" Margin="0,6,0,0" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Border Background="#172D2B" CornerRadius="6" Padding="10,7" Margin="0,0,18,0">
-                    <Grid VerticalAlignment="Center">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <Ellipse Fill="{StaticResource AccentBrush}" Width="6" Height="6" Margin="0,0,7,0" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Text="NATIVE · LOCAL" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    </Grid>
-                </Border>
-                <Button x:Name="ResultsToggle" Content="{Binding ResultsButtonLabel}" Click="ToggleResultsClick" Margin="0,0,10,0" ToolTip="Show or hide calculation results" />
-                <Button Content="Export plot ↗" Click="ExportClick" ToolTip="Save the current plot as a PNG image" />
-            </StackPanel>
-        </Grid>
-        <Grid Grid.Row="2" Margin="28,0">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="650" /><ColumnDefinition x:Name="ResultsGap" Width="12" /><ColumnDefinition x:Name="ResultsColumn" Width="360" MinWidth="300" /></Grid.ColumnDefinitions>
-            <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition x:Name="EquationColumn" Width="230" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Border Style="{StaticResource Card}">
+        <Grid x:Name="Workspace" Grid.Row="1" Margin="20,16,20,0" ClipToBounds="True">
+            <Grid.ColumnDefinitions><ColumnDefinition x:Name="EquationColumn" Width="230" MinWidth="230" /><ColumnDefinition Width="12" /><ColumnDefinition x:Name="PlotColumn" Width="*" MinWidth="400" /><ColumnDefinition Width="12" /><ColumnDefinition x:Name="ResultsColumn" Width="300" MinWidth="300" /></Grid.ColumnDefinitions>
+            <Grid x:Name="EquationHost" ClipToBounds="True">
+            <Border x:Name="EquationPanel" Style="{StaticResource Card}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20">
                     <StackPanel>
-                        <Grid><TextBlock Text="Equation" FontSize="17" FontWeight="SemiBold" /><Button Content="Reset" Command="{Binding ResetCommand}" HorizontalAlignment="Right" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" /></Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <Button x:Name="EquationCollapseButton" Content="‹" Click="CollapseEquationClick" Style="{StaticResource QuietButton}" Width="24" Padding="0,2" Margin="-6,0,6,0" FontSize="20" ToolTip="Collapse equation panel" AutomationProperties.Name="Collapse equation panel" />
+                            <TextBlock Grid.Column="1" Text="Equation" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Grid.Column="2" Content="Reset" Command="{Binding ResetCommand}" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" />
+                        </Grid>
                         <TextBlock Text="{Binding FormDescription}" Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" />
                         <TextBlock Text="Enter the whole curve equation. Simple and general Weierstrass forms are recognized automatically." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="19" />
                         <TextBlock Text="y^2 = x^3 - 106.16x - 0.32" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
@@ -85,6 +106,17 @@
                     </StackPanel>
                 </ScrollViewer>
             </Border>
+            <Button x:Name="EquationTab" Style="{StaticResource SidebarTab}" Visibility="Collapsed"
+                    Click="ExpandEquationClick" ToolTip="Expand equation panel" AutomationProperties.Name="Expand equation panel">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="›" FontSize="18" HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,10" />
+                    <TextBlock Text="EQUATION" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center">
+                        <TextBlock.LayoutTransform><RotateTransform Angle="-90" /></TextBlock.LayoutTransform>
+                    </TextBlock>
+                </StackPanel>
+            </Button>
+            </Grid>
+            <GridSplitter x:Name="EquationSplitter" Grid.Column="1" Style="{StaticResource SidebarSplitter}" ToolTip="Resize equation panel" AutomationProperties.Name="Resize equation panel" />
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="*" /><RowDefinition Height="10" /><RowDefinition Height="96" /><RowDefinition Height="10" /><RowDefinition Height="60" /></Grid.RowDefinitions>
                 <Border Style="{StaticResource Card}" Padding="20,12">
@@ -101,24 +133,32 @@
                         <TextBlock Grid.Row="2" Text="{Binding Snapshot.Equation, StringFormat=Plotted: {0}}" FontFamily="Cambria Math" FontSize="14" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Equation}" />
                     </Grid>
                 </Border>
-                <Border Grid.Row="2" Style="{StaticResource Card}" Background="#121920" ClipToBounds="True">
+                <Border x:Name="PlotCard" Grid.Row="2" Style="{StaticResource Card}" Background="#121920" ClipToBounds="True">
                     <Grid>
-                        <Grid.RowDefinitions><RowDefinition Height="52" /><RowDefinition Height="*" /><RowDefinition Height="34" /></Grid.RowDefinitions>
-                        <Grid Margin="20,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="Real locus" FontSize="14" FontWeight="SemiBold" /><TextBlock Text="E(ℝ)" FontFamily="Cambria Math" FontSize="15" Foreground="{StaticResource MutedBrush}" Margin="12,0,0,0" /></StackPanel>
-                            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal"><CheckBox Content="Grid" IsChecked="{Binding ShowGrid}" Margin="0,0,18,0" /><CheckBox Content="Rational samples" IsChecked="{Binding ShowPoints}" /></StackPanel>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <Grid Margin="16,10" MinHeight="32">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <WrapPanel VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Height="28" Margin="0,0,24,0"><TextBlock Text="Real locus" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" /><TextBlock Text="E(ℝ)" FontFamily="Cambria Math" FontSize="15" Foreground="{StaticResource MutedBrush}" Margin="10,0,0,0" VerticalAlignment="Center" /></StackPanel>
+                                <CheckBox Content="Grid" IsChecked="{Binding ShowGrid}" Height="28" VerticalContentAlignment="Center" Margin="0,0,16,0" />
+                                <CheckBox Content="Rational samples" IsChecked="{Binding ShowPoints}" Height="28" VerticalContentAlignment="Center" />
+                            </WrapPanel>
+                            <Button x:Name="ExportPlotButton" Grid.Column="1" Content="Export plot ↗" Click="ExportClick" Padding="10,6" FontSize="11" Margin="16,0,0,0" VerticalAlignment="Center" ToolTip="Save the current plot as a PNG image" />
                         </Grid>
                         <controls:CurvePlot x:Name="Plot" Grid.Row="1" Snapshot="{Binding Snapshot}" Samples="{Binding Samples}" ShowGrid="{Binding ShowGrid}" ShowPoints="{Binding ShowPoints}" Margin="8,0" AutomationProperties.Name="Real elliptic curve plot. Drag to pan, scroll to zoom. Control F to fit." />
                         <Border Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#222B35" CornerRadius="8" Padding="18" Visibility="{Binding Snapshot.IsPlotUnavailable, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="These coefficients exceed the plot's numerical precision.&#10;Your equation and invariants are still exact." TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" /></Border>
                         <Border Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,8,0,0" Background="#332B1E" CornerRadius="6" Padding="10,6" IsHitTestVisible="False" Visibility="{Binding Snapshot.IsSingular, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="Δ = 0 · singular cubic" Foreground="{StaticResource WarningBrush}" FontSize="11" /></Border>
-                        <StackPanel Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="0,0,18,14">
-                            <Button Content="−" Width="34" Padding="0,6" Click="ZoomOutClick" ToolTip="Zoom out" AutomationProperties.Name="Zoom out" />
-                            <Button Content="+" Width="34" Padding="0,6" Margin="5,0" Click="ZoomInClick" ToolTip="Zoom in" AutomationProperties.Name="Zoom in" />
-                            <Button Content="Fit curve" Padding="10,6" Click="FitClick" ToolTip="Fit curve (Ctrl+F)" />
-                        </StackPanel>
-                        <Grid Grid.Row="2" Margin="20,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" Margin="0,0,7,0" /><TextBlock Text="Numerical real locus" Style="{StaticResource Muted}" FontSize="10" /><Ellipse Width="6" Height="6" Fill="#F7CC7C" Margin="18,0,7,0" /><TextBlock Text="Exact rational samples" Style="{StaticResource Muted}" FontSize="10" /></StackPanel>
-                            <TextBlock x:Name="PanHint" Text="Scroll to zoom · drag to pan" Style="{StaticResource Muted}" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed" />
+                        <Grid x:Name="PlotFooter" Grid.Row="2" Margin="16,0,16,12" MinHeight="32">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <WrapPanel x:Name="PlotLegend" VerticalAlignment="Center" Margin="0,0,16,0">
+                                <StackPanel Orientation="Horizontal" Height="20" Margin="0,0,18,0"><Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" Margin="0,0,7,0" /><TextBlock Text="Numerical real locus" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" Height="20"><Ellipse Width="6" Height="6" Fill="#F7CC7C" Margin="0,0,7,0" /><TextBlock Text="Exact rational samples" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" /></StackPanel>
+                            </WrapPanel>
+                            <StackPanel x:Name="PlotNavigation" Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                                <Button Content="−" Width="34" Padding="0,6" Click="ZoomOutClick" ToolTip="Zoom out" AutomationProperties.Name="Zoom out" />
+                                <Button Content="+" Width="34" Padding="0,6" Margin="5,0" Click="ZoomInClick" ToolTip="Zoom in" AutomationProperties.Name="Zoom in" />
+                                <Button Content="Fit curve" Padding="10,6" Click="FitClick" ToolTip="Fit curve (Ctrl+F)" />
+                            </StackPanel>
                         </Grid>
                     </Grid>
                 </Border>
@@ -138,11 +178,23 @@
                     </Grid>
                 </Border>
             </Grid>
+            <GridSplitter x:Name="ResultsSplitter" Grid.Column="3" Style="{StaticResource SidebarSplitter}" ToolTip="Resize results panel" AutomationProperties.Name="Resize results panel" />
+            <Grid x:Name="ResultsHost" Grid.Column="4" ClipToBounds="True">
+                <controls:ResultsPanel x:Name="Results" />
+                <Button x:Name="ResultsTab" Style="{StaticResource SidebarTab}" Visibility="Collapsed"
+                        Click="ExpandResultsClick" ToolTip="{Binding Summary}" AutomationProperties.Name="Expand results panel">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="‹" FontSize="18" HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,10" />
+                        <TextBlock Text="RESULTS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center">
+                            <TextBlock.LayoutTransform><RotateTransform Angle="-90" /></TextBlock.LayoutTransform>
+                        </TextBlock>
+                        <Ellipse Fill="{StaticResource AccentBrush}" Width="5" Height="5" Margin="0,12,0,0" Visibility="{Binding IsBusy, Converter={StaticResource BooleanVisibility}}" />
+                        <TextBlock Text="{Binding Jobs.Count}" FontSize="10" FontFamily="Consolas" HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="{Binding HasResults, Converter={StaticResource BooleanVisibility}}" />
+                    </StackPanel>
+                </Button>
+            </Grid>
         </Grid>
-            <GridSplitter x:Name="ResultsSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="{StaticResource BorderBrush}" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" ToolTip="Resize results panel" />
-            <controls:ResultsPanel x:Name="Results" Grid.Column="2" />
-        </Grid>
-        <Grid Grid.Row="3" Margin="28,0">
+        <Grid Grid.Row="2" Margin="20,0">
             <TextBlock Text="{Binding InputStatus}" VerticalAlignment="Center" FontSize="10"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource MutedBrush}" /><Style.Triggers><DataTrigger Binding="{Binding HasInputError}" Value="True"><Setter Property="Foreground" Value="{StaticResource WarningBrush}" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
             <TextBlock Text="{Binding SampleStatus}" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Muted}" FontSize="10" />
         </Grid>
