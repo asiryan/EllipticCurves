@@ -14,6 +14,7 @@ internal static partial class Program
 {
     private static void CheckEditHistory()
     {
+        CheckResultSelectionHistory();
         var window = CreateMainWindow();
         try
         {
@@ -120,6 +121,83 @@ internal static partial class Program
             ApplicationCommands.Redo.Execute(null, window);
             Require(window.Workbench.Selected?.Report == stopped && !window.Workbench.IsBusy,
                 "Redo must restore a stopped calculation without restarting it.");
+        }
+        finally { window.Close(); }
+    }
+
+    private static void CheckResultSelectionHistory()
+    {
+        var window = CreateMainWindow();
+        try
+        {
+            window.RestoreSession(ExplorerSession.New() with
+            {
+                History = Enumerable.Range(0, 3).Select(index => new CalculationSession(
+                    new("Q.TorsionStructure", "y^2 = x^3 - x", new()), DateTime.Now.AddMinutes(-index),
+                    CalculationStatus.Completed, "Done", TimeSpan.FromSeconds(2), 100, "Cached report " + index)).ToList()
+            });
+            SettleSession(window);
+            window.ResetHistory();
+            var mode = (ComboBox)window.FindName("ViewMode");
+            var torus = (ComplexTorusView)window.FindName("TorusView");
+            var picker = Descendants((ResultsPanel)window.FindName("Results")).OfType<ComboBox>().Single();
+            var report = Descendants((ResultsPanel)window.FindName("Results")).OfType<TextBox>().Single();
+            var snapshot = window.ViewModel.Snapshot;
+            var camera = new TorusCameraState(70, 15, 9);
+            mode.SelectedIndex = 1;
+            torus.RestoreCamera(camera);
+            // Use the real two-way binding, before the graph edit debounce fires.
+            picker.SelectedIndex = 1;
+            picker.SelectedIndex = 2;
+            ApplicationCommands.Undo.Execute(null, picker);
+            RequireResult(1);
+            ApplicationCommands.Undo.Execute(null, picker);
+            RequireResult(0);
+            ApplicationCommands.Undo.Execute(null, picker);
+            Require(mode.SelectedIndex == 0 && !window.EditHistory.CanUndo,
+                "Graph edits must remain undoable after undoing each result selection.");
+            ApplicationCommands.Redo.Execute(null, picker);
+            RequireResult(0);
+            ApplicationCommands.Redo.Execute(null, picker);
+            RequireResult(1);
+            ApplicationCommands.Redo.Execute(null, picker);
+            RequireResult(2);
+            ApplicationCommands.Undo.Execute(null, picker);
+            picker.SelectedIndex = 1;
+            Require(window.EditHistory.CanRedo, "Selecting the current result must preserve Redo.");
+            picker.SelectedIndex = 0;
+            Require(!window.EditHistory.CanRedo, "Selecting a different result must create a new history branch.");
+            ApplicationCommands.Undo.Execute(null, picker);
+            RequireResult(1);
+            CompleteSession(async () => { await Task.Delay(600); return true; });
+            Require(window.EditHistory.CanRedo, "Deferred bindings must not create phantom selection edits after Undo.");
+
+            foreach (var action in new Action[]
+            {
+                () => window.Workbench.Delete(window.Workbench.Selected),
+                () => window.Workbench.Delete(window.Workbench.Jobs[0]),
+                window.Workbench.ClearHistory
+            })
+            {
+                window.ResetHistory();
+                action();
+                ApplicationCommands.Undo.Execute(null, picker);
+                RequireResult(1);
+                Require(window.Workbench.Jobs.Count == 3 && !window.EditHistory.CanUndo,
+                    "Deleting or clearing results and automatically selecting a replacement must form one undo step.");
+            }
+
+            void RequireResult(int index)
+            {
+                SettleSession(window);
+                Require(window.Workbench.Selected == window.Workbench.Jobs[index] && picker.SelectedIndex == index
+                    && report.Text == window.Workbench.Selected.Report,
+                    "Undo/Redo must restore the selected result in both the picker and the displayed report.");
+                Require(mode.SelectedIndex == 1 && torus.CaptureCamera() == camera,
+                    "Undo/Redo of result selection must not jump to Real locus or change the torus camera.");
+                Require(ReferenceEquals(snapshot, window.ViewModel.Snapshot) && !window.Workbench.IsBusy
+                    && !window.HasUnsavedChanges, "Browsing results must reuse cached data and leave the session saved.");
+            }
         }
         finally { window.Close(); }
     }

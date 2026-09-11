@@ -20,7 +20,7 @@ public partial class MainWindow
     private sealed record WorkspaceMemento(MainViewModel.Memento Editor, WorkbenchViewModel.Memento Results,
         PlotViewState Plot, TorusCameraState Camera, bool Complex, bool FitPending, ComplexTorusViewModel.Memento Torus, int SelectionRevision)
     {
-        public bool SameEdit(WorkspaceMemento other) => Editor.SameEdit(other.Editor) && Results.SameResults(other.Results)
+        public bool SameEdit(WorkspaceMemento other) => Editor.SameEdit(other.Editor) && Results.SameEdit(other.Results)
             && Plot == other.Plot && Camera == other.Camera && Complex == other.Complex
             && SelectionRevision == other.SelectionRevision;
     }
@@ -55,7 +55,7 @@ public partial class MainWindow
     private void ResetInitialHistory()
     {
         if (editCheckpoint != null && !editHistory.CanUndo && !editHistory.CanRedo && ViewModel.CaptureMemento().SameEdit(editCheckpoint.Editor)
-            && Workbench.CaptureMemento().SameResults(editCheckpoint.Results)) ResetHistory();
+            && Workbench.CaptureMemento().SameEdit(editCheckpoint.Results)) ResetHistory();
     }
 
     private void EditorHistoryChanged(object? sender, PropertyChangedEventArgs e)

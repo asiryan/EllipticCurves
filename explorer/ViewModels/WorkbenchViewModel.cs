@@ -12,6 +12,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     private readonly CalculationRunner runner = runner ?? new();
     private CancellationTokenSource? running;
     private bool disposed;
+    private int historyChangeDepth;
     private CalculationJobViewModel? selected, active;
     private readonly ConditionalWeakTable<CalculationJobViewModel, ResultMemento> savedResults = new();
     internal event Action? HistoryChanging;
@@ -23,9 +24,13 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         get => selected;
         set
         {
-            selected = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(HasSelection));
+            if (ReferenceEquals(selected, value)) return;
+            ChangeResults(() =>
+            {
+                selected = value;
+                OnPropertyChanged(nameof(Selected));
+                OnPropertyChanged(nameof(HasSelection));
+            });
         }
     }
 
@@ -52,34 +57,39 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     public void Delete(CalculationJobViewModel? job)
     {
         if (!CanDelete(job)) return;
-        HistoryChanging?.Invoke();
-        var index = Jobs.IndexOf(job!);
-        var wasSelected = job == Selected;
-        Jobs.RemoveAt(index);
-        if (wasSelected) Selected = Jobs.Count == 0 ? null : Jobs[Math.Min(index, Jobs.Count - 1)];
-        NotifyState();
-        HistoryChanged?.Invoke();
+        ChangeResults(() =>
+        {
+            var index = Jobs.IndexOf(job!);
+            var wasSelected = job == Selected;
+            Jobs.RemoveAt(index);
+            if (wasSelected) Selected = Jobs.Count == 0 ? null : Jobs[Math.Min(index, Jobs.Count - 1)];
+            NotifyState();
+        });
     }
 
     public void ClearHistory()
     {
         if (!CanClearHistory) return;
-        HistoryChanging?.Invoke();
-        Jobs.Clear();
-        Selected = null;
-        NotifyState();
-        HistoryChanged?.Invoke();
+        ChangeResults(() =>
+        {
+            Jobs.Clear();
+            Selected = null;
+            NotifyState();
+        });
     }
 
     public void RestoreHistory(IReadOnlyList<CalculationSession> history)
     {
         if (!CanRun) throw new InvalidOperationException(SessionMessages.StopCalculationBeforeOpen);
         var restored = history.Select(CalculationJobViewModel.FromSession).ToArray();
-        Jobs.Clear();
-        foreach (var job in restored) Jobs.Add(job);
-        // History is stored newest first; browsing another report is temporary.
-        Selected = Jobs.FirstOrDefault();
-        NotifyState();
+        ChangeResults(() =>
+        {
+            Jobs.Clear();
+            foreach (var job in restored) Jobs.Add(job);
+            // History is stored newest first; browsing another report is temporary.
+            Selected = Jobs.FirstOrDefault();
+            NotifyState();
+        }, recordHistory: false);
         HistoryReplaced?.Invoke();
     }
 
@@ -87,17 +97,18 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     {
         if (!CanRun) throw new InvalidOperationException("A calculation is already running.");
         request = request with { Arguments = new Dictionary<string, string>(request.Arguments) };
-        HistoryChanging?.Invoke();
         using var cancellation = new CancellationTokenSource();
         using var clock = new CancellationTokenSource();
-        running = cancellation;
         var job = new CalculationJobViewModel(request, CalculationCatalog.Get(request.OperationId).Title);
-        Jobs.Insert(0, job);
-        // Keep the current session bounded; each result can contain up to 2 MB of text.
-        if (Jobs.Count > ExplorerSession.HistoryLimit) Jobs.RemoveAt(Jobs.Count - 1);
-        Selected = Active = job;
-        NotifyState();
-        HistoryChanged?.Invoke();
+        ChangeResults(() =>
+        {
+            running = cancellation;
+            Jobs.Insert(0, job);
+            // Keep the current session bounded; each result can contain up to 2 MB of text.
+            if (Jobs.Count > ExplorerSession.HistoryLimit) Jobs.RemoveAt(Jobs.Count - 1);
+            Selected = Active = job;
+            NotifyState();
+        });
         var watch = Stopwatch.StartNew();
         var timer = UpdateClockAsync(job, watch, clock.Token);
         var progress = new Progress<CalculationUpdate>(update =>
@@ -147,6 +158,21 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         running?.Cancel();
     }
 
+    private void ChangeResults(Action change, bool recordHistory = true)
+    {
+        // WPF may change SelectedItem while Jobs is being updated. Keep these
+        // automatic selections inside the deletion, clear, run or restore action.
+        var record = recordHistory && historyChangeDepth == 0;
+        historyChangeDepth++;
+        try
+        {
+            if (record) HistoryChanging?.Invoke();
+            change();
+        }
+        finally { historyChangeDepth--; }
+        if (record) HistoryChanged?.Invoke();
+    }
+
     private void NotifyState()
     {
         OnPropertyChanged(nameof(IsBusy));
@@ -172,7 +198,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
 
     internal sealed record Memento(ResultMemento[] Results, int Selection)
     {
-        public bool SameResults(Memento other) => Results.SequenceEqual(other.Results);
+        public bool SameEdit(Memento other) => Selection == other.Selection && Results.SequenceEqual(other.Results);
     }
 
     internal Memento CaptureMemento() => new(Jobs.Select(job => savedResults.GetValue(job, value => new(value))).ToArray(),
@@ -181,14 +207,17 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     internal void RestoreMemento(Memento state)
     {
         if (!CanRun) throw new InvalidOperationException(SessionMessages.StopCalculationBeforeOpen);
-        Jobs.Clear();
-        foreach (var result in state.Results)
+        ChangeResults(() =>
         {
-            var job = result.Restore();
-            savedResults.Add(job, result);
-            Jobs.Add(job);
-        }
-        Selected = state.Selection >= 0 && state.Selection < Jobs.Count ? Jobs[state.Selection] : null;
-        NotifyState();
+            Jobs.Clear();
+            foreach (var result in state.Results)
+            {
+                var job = result.Restore();
+                savedResults.Add(job, result);
+                Jobs.Add(job);
+            }
+            Selected = state.Selection >= 0 && state.Selection < Jobs.Count ? Jobs[state.Selection] : null;
+            NotifyState();
+        }, recordHistory: false);
     }
 }

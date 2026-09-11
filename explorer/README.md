@@ -105,10 +105,13 @@ The Results panel's **Export** exports an individual text report.
 
 **Edit → Undo** (**Ctrl+Z**) and **Edit → Redo** (**Ctrl+Y**) restore up to 50 previous
 workspace edits: equations (including incomplete input), coefficients, exact slider
-steps and positions, calculation reports, graph mode, grid and point visibility,
+steps and positions, calculation reports and the selected result, graph mode, grid and point visibility,
 the real plot's position and zoom, and the torus camera and selected point.
 Typing and repeated wheel/slider changes are grouped after a short pause; a mouse
 drag remains one edit until it ends. The shortcuts also work while editing an equation.
+Each selection in **Results** is a separate undo step, so stepping back through reports
+does not skip straight to an earlier graph edit. Automatic selection when adding,
+deleting or clearing reports belongs to that action and does not add another step.
 
 History uses in-memory mementos with shared computed results. Undo and Redo restore
 existing curve snapshots, samples, period data and reports without rerunning calculation
