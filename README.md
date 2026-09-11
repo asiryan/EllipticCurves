@@ -316,9 +316,12 @@ tests work offline.
 
 The [WPF Explorer](visualizer/README.md) provides a modern desktop interface on
 .NET 8: full formula input for simple and general Weierstrass equations, optional
-exploration sliders, an interactive real-locus plot, exact basic
-invariants and bounded rational-point samples. It runs entirely offline using
-native library calculations.
+exploration sliders, an interactive real-locus plot, exact invariants and bounded
+rational-point samples. The Explorer menu exposes the library's computations,
+including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
+Parameter windows feed a results panel with session history, progress, cancellation
+and time limits. Native computations run locally; only the explicit LMFDB fetch
+commands require internet access.
 
 ![Elliptic Curves Explorer](docs/png/visualizer.png)
 

@@ -8,6 +8,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EllipticCurves.Visualizer.ViewModels;
 using EllipticCurves.Visualizer.Windowing;
+using EllipticCurves.Visualizer.Computations;
+using EllipticCurves.Visualizer.Models;
 using Microsoft.Win32;
 
 namespace EllipticCurves.Visualizer;
@@ -15,11 +17,19 @@ namespace EllipticCurves.Visualizer;
 public partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; } = new();
+    public WorkbenchViewModel Workbench { get; } = new();
+    private bool resultsVisible = true;
+    private double resultsWidth = 360;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = ViewModel;
+        Results.DataContext = Workbench;
+        ResultsToggle.DataContext = Workbench;
+        Explorer.OperationRequested += OpenCalculation;
+        Results.HideRequested += () => SetResultsVisible(false);
+        Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
         ViewModel.ViewResetRequested += ResetView;
         SourceInitialized += UpdateWindowInsets;
         StateChanged += UpdateWindowInsets;
@@ -29,10 +39,48 @@ public partial class MainWindow : Window
             new Action(() => AppRoot.Margin = WindowWorkArea.GetContentMargin(this)));
     }
 
-    private void UpdateWindowInsets(object? sender, EventArgs e) => AppRoot.Margin = WindowWorkArea.GetContentMargin(this);
+    private void UpdateWindowInsets(object? sender, EventArgs e)
+    {
+        AppRoot.Margin = WindowWorkArea.GetContentMargin(this);
+        ResultsColumn.MaxWidth = Math.Max(300, ActualWidth - 58 - 12 - 650);
+    }
 
     private void WindowLoaded(object sender, RoutedEventArgs e) => Plot.Fit();
-    private void WindowClosed(object? sender, EventArgs e) { ViewModel.ViewResetRequested -= ResetView; ViewModel.Dispose(); }
+    private void WindowClosed(object? sender, EventArgs e) { Workbench.Dispose(); ViewModel.ViewResetRequested -= ResetView; ViewModel.Dispose(); }
+    private void OpenCalculation(CalculationOperation operation) => OpenCalculation(operation, null);
+    private void OpenCalculation(CalculationOperation operation, CalculationRequest? previous)
+    {
+        if (previous == null && operation.UsesPlot)
+        {
+            ViewModel.Equation.CommitEdit();
+            ViewModel.FlushUpdate();
+            if (ViewModel.HasInputError || ViewModel.HasIncompleteInput)
+            {
+                MessageBox.Show(this, "Finish the curve equation before starting a calculation.", "Explorer", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+        }
+        var dialog = new CalculationWindow(operation, previous?.Equation ?? CurveEquationText.Format(ViewModel.Snapshot.Curve), Workbench, previous) { Owner = this };
+        dialog.RunRequested += RunCalculation;
+        dialog.Show();
+    }
+    private async void RunCalculation(CalculationRequest request)
+    {
+        SetResultsVisible(true);
+        await Workbench.RunAsync(request);
+    }
+    private void ToggleResultsClick(object sender, RoutedEventArgs e) => SetResultsVisible(!resultsVisible);
+    private void SetResultsVisible(bool visible)
+    {
+        if (resultsVisible && !visible) resultsWidth = ResultsColumn.ActualWidth;
+        resultsVisible = visible;
+        Results.Visibility = ResultsSplitter.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        ResultsColumn.MinWidth = visible ? 300 : 0;
+        ResultsColumn.Width = new GridLength(visible ? resultsWidth : 0);
+        ResultsGap.Width = new GridLength(visible ? 12 : 0);
+        EquationColumn.Width = new GridLength(visible ? 230 : 270);
+        PanHint.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+    }
     private void ResetView(object? sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(Plot.Fit));
     private void FitClick(object sender, RoutedEventArgs e) => Plot.Fit();
     private void ZoomInClick(object sender, RoutedEventArgs e) => Plot.Zoom(1 / 1.25);

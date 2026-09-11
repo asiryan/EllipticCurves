@@ -9,6 +9,7 @@
     <IsPackable>false</IsPackable>
     <AssemblyName>EllipticCurves.Visualizer</AssemblyName>
     <RootNamespace>EllipticCurves.Visualizer</RootNamespace>
+    <StartupObject>EllipticCurves.Visualizer.Program</StartupObject>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>ec_logo.ico</ApplicationIcon>
   </PropertyGroup>

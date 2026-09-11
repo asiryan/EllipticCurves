@@ -1,8 +1,9 @@
 # Elliptic Curves Explorer
 
-A WPF desktop application on .NET 8 for exploring the real geometry and basic
-arithmetic of elliptic curves. All calculations use the local EllipticCurves
-library. The application makes no LMFDB requests or other network calls.
+A WPF desktop application on .NET 8 for exploring elliptic-curve geometry and
+the full computational API of the EllipticCurves library. Native calculations run
+locally. The explicit LMFDB fetch commands are the only operations that use the
+network; plotting and editing do not make network requests.
 
 ![Elliptic Curves Explorer](../docs/png/visualizer.png)
 
@@ -88,6 +89,53 @@ Rank, conductor, torsion enumeration, heights and periods are not automatically
 computed by this application. Coefficient updates invoke only the inexpensive native
 invariants and the bounded sample search described above.
 
+## Explorer calculations
+
+Open **Explorer** in the title bar, choose a category or search for an operation.
+Each operation opens a movable, modeless parameter window. The curve is captured
+when the window opens, so editing the plot later does not silently change a pending
+calculation. Finite-extension curves and rational-number tools have independent
+inputs. **Run calculation** opens the results panel on the right.
+
+| Category | Available calculations |
+| --- | --- |
+| Curve and models | Exact coefficients and invariants, real components, CM discriminant, short and global minimal models, twists, construction from j |
+| Rational points and torsion | Membership, addition, subtraction, negation, doubling, scalar multiplication, bounded rational/integral searches, all torsion points, torsion order and group structure |
+| Ranks and arithmetic | Both rank-bound interfaces, analytic rank and certification, conductor, root number, local reduction data, Tamagawa product |
+| Heights and periods | Naive, canonical, local and archimedean heights, height pairing and matrix, regulator, Faltings and stable Faltings heights, certified periods and numerical elliptic logarithms |
+| Isomorphisms and isogenies | Isomorphism tests and maps, coordinate changes and inverse maps, minimal-model maps, Vélu and 2-isogenies with duals, point mapping, division and prime-by-prime saturation |
+| Fourier coefficients and reduction | Individual or ranged Fourier coefficients, Frobenius traces, minimal-model point counts, reduction of curves and points |
+| Prime and extension fields | Curve construction and invariants, points, group operations, enumeration and counting; point order over Fp |
+| Finite-field arithmetic | Field construction, elements, addition, subtraction, negation, multiplication, division, inverses and powers |
+| Rational arithmetic | Exact rational representation, arithmetic, comparison, powers, square testing and exact square roots |
+| LMFDB | Fetch all supported database metadata, map database generators onto the captured model, import stored JSON without internet |
+
+Point inputs have separate x/y fields and an infinity checkbox. Point lists use
+one `x; y` pair per line (`O` for infinity). Field elements and defining
+polynomials use coefficients in ascending powers of t separated by semicolons:
+`0; 1` is t and `2; 0; 1` is t^2 + 2. Over Fp, curve tools reduce the **entered**
+coefficients; the separate reduction operations use a **global minimal model**.
+
+Open **Precision and work limits** for each algorithm's options. Every run also has
+a wall-clock time limit (120 seconds by default; 0 means unlimited) and an output
+item limit. Lists exceeding the output limit are explicitly marked as truncated.
+The text report is capped at 2 million characters. These limits do not convert
+partial searches into completeness claims.
+
+The progress bar shows the current stage and elapsed time. Where the library
+does not report completed work, the bar remains indeterminate; item formatting
+can show measured progress when the collection size is known. **Stop** and the
+time limit terminate the calculation process, including methods without cooperative
+cancellation. Only one calculation runs at a time; plotting remains interactive.
+
+Results retain their input curve, parameters and proof/certification status.
+Height results include exact enclosure bounds; database decimals are labelled
+as approximations. A completed calculation does not imply a proved rank or a
+complete Mordell–Weil basis: the library's status and reason are preserved.
+Use **Copy**, **Save…** or **Repeat…** on any result. History keeps the last
+50 calculations for the current session; save reports before closing the app.
+Drag the divider to resize the panel or use **Results** to hide and reopen it.
+
 ## Development
 
 The XAML theme, plot control, immutable calculation snapshots and view models are
@@ -96,8 +144,20 @@ and view-model sources are linked into the existing test project, so their tests
 also run without WPF on non-Windows systems:
 
 ```powershell
-dotnet test tests/EllipticCurves.Tests.csproj -c Release --filter "FullyQualifiedName~VisualizerModelTests|FullyQualifiedName~VisualizerEquationTests"
+dotnet test tests/EllipticCurves.Tests.csproj -c Release --filter "FullyQualifiedName~Visualizer"
 ```
+
+The calculation catalog covers public mathematical methods on rational curves,
+Fp/Fq curves, finite fields and rational numbers; explicit entries cover computed
+properties, returned isomorphism/isogeny maps and LMFDB. Object identity methods,
+formatting and duplicate aliases are not separate actions. Coverage tests check
+every public method, parameter conversion and representative offline invocation.
+
+The executable's private `--compute-worker` entry point uses redirected UTF-8
+streams before creating WPF. `CalculationRunner` owns its child process and
+terminates it on cancellation, timeout or app shutdown. The worker also exits if
+the host disconnects. A portable test host exercises this protocol, errors,
+non-cooperative cancellation and disconnect behavior without opening any UI.
 
 The desktop project uses the [Microsoft .NET Desktop SDK settings](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props-desktop).
 

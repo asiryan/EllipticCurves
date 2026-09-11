@@ -6,7 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="WorkerHost/**/*.cs" />
     <Compile Include="../visualizer/Models/*.cs" Link="Visualizer/Models/%(Filename)%(Extension)" />
+    <Compile Include="../visualizer/Computations/*.cs" Link="Visualizer/Computations/%(Filename)%(Extension)" />
     <Compile Include="../visualizer/ViewModels/*.cs" Link="Visualizer/ViewModels/%(Filename)%(Extension)" />
     <None Update="Fixtures/*.csv" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
@@ -16,5 +18,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <ProjectReference Include="../sources/EllipticCurves.csproj" />
+    <ProjectReference Include="WorkerHost/WorkerHost.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <Target Name="CopyCalculationWorkerHost" AfterTargets="Build">
+    <ItemGroup><WorkerHostFiles Include="WorkerHost/bin/$(Configuration)/net8.0/*" /></ItemGroup>
+    <Copy SourceFiles="@(WorkerHostFiles)" DestinationFolder="$(OutDir)worker" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
