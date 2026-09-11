@@ -245,7 +245,7 @@ internal static class Program
             root.Measure(new Size(1438, 918));
             root.Arrange(new Rect(0, 0, 1438, 918));
             root.UpdateLayout();
-            var plotted = Descendants(root).OfType<TextBlock>().Single(t => t.Inlines.OfType<Run>().Any(r => r.Text == "PLOTTED: "));
+            var plotted = Descendants(root).OfType<TextBlock>().Single(t => t.Inlines.OfType<Run>().Any(r => r.Text == "EQUATION OVER ℚ: "));
             var equationPreview = plotted.Inlines.OfType<Run>().Last();
             Require(equationPreview.Text == window.ViewModel.Snapshot.Equation, "The initial plotted equation is missing.");
             window.ViewModel.ShowPoints = false;

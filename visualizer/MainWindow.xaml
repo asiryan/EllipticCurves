@@ -135,7 +135,7 @@
                             </TextBlock>
                         </StackPanel>
                         <TextBlock Grid.Row="2" Style="{StaticResource Eyebrow}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Equation}">
-                            <Run Text="PLOTTED: " /><Run Text="{Binding Snapshot.Equation, Mode=OneWay}" FontFamily="Cambria Math" FontSize="14" FontWeight="Normal" />
+                            <Run Text="EQUATION OVER ℚ: " /><Run Text="{Binding Snapshot.Equation, Mode=OneWay}" FontFamily="Cambria Math" FontSize="14" FontWeight="Normal" />
                         </TextBlock>
                     </Grid>
                 </Border>
