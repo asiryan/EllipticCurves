@@ -6,7 +6,8 @@ Magma or other mathematical software. LMFDB integration is optional.
 
 This package contains the library. The Windows desktop
 [Elliptic Curves Explorer](https://github.com/asiryan/EllipticCurves/blob/main/explorer/README.md)
-and the Console command-line tool are separate applications in the repository.
+and the [Console command-line tool](https://github.com/asiryan/EllipticCurves/blob/main/console/README.md)
+are separate applications in the repository.
 
 ```csharp
 using EllipticCurves;
