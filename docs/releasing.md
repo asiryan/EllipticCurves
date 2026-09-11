@@ -83,10 +83,17 @@ archive name, and validate that build on an appropriate Windows machine.
 
 Check the published application itself before uploading: open Explorer and run
 a torsion calculation, verify that its result appears, stop a running calculation,
-save a report and export a PNG. Also check panel resizing/folding and the Clear
-and Reset confirmations. Exercise live LMFDB fetching separately when internet
-access is available. Testing the packaged executable verifies the calculation
-worker's startup and published dependencies as well as the UI.
+save a report and export PNGs from both **Real locus** and **Complex torus**.
+For the complex view, check period preparation, shared point selection, rotation,
+zoom and **Reset view**; a singular cubic should show an explanation instead of a
+torus. Inspect both exported images for dark backgrounds, correct bounds and
+unclipped visible content. Repeat at a compact window size, where the complex
+view can scroll and export captures only its visible viewport.
+
+Also check panel resizing/folding and the Clear and Reset confirmations.
+Exercise live LMFDB fetching separately when internet access is available.
+Testing the packaged executable verifies the calculation worker's startup and
+published dependencies as well as the UI.
 
 ## Optional console distribution
 

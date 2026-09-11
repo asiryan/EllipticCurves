@@ -86,9 +86,12 @@ The plot's mode selector switches between **Real locus · E(ℝ)** and
   radii do not represent the curve's complex structure; that information is in
   the lattice and τ. The turquoise and blue cycles correspond to ω₁ and ω₂.
 
-Gold markers represent the same bounded rational samples as the real plot.
-The point at infinity **O** is included at the lattice origin. Select a point
-from the dropdown or click a marker in either panel to highlight it in both.
+The legend shows **Selected point** with a white dot, followed by
+**Exact rational samples** with a gold dot, using the same styling as the real plot.
+Gold markers represent the same bounded rational samples as the real plot;
+the selected point is white in both panels. The point at infinity **O** is included
+at the lattice origin. Select a point from the dropdown or click a marker in
+either panel to highlight it in both.
 Repeated boundary markers in the parallelogram represent the same point after
 edge identification. Exact x/y coordinates remain in the entered curve's model;
 their period coordinates u and v are numerical elliptic logarithms, with
@@ -100,9 +103,9 @@ Drag the torus to rotate it and scroll to zoom. With it focused, arrow keys rota
 the torus, or **Ctrl+F** restores the camera. Arrow keys in the lattice cycle
 through the markers. **Grid** toggles the subdivisions in both panels;
 **Rational samples** hides affine markers while retaining O. The real plot keeps
-its viewport when switching modes. **Export plot** saves the visible complex
-view, including both panels, to PNG. In a small window the complex view scrolls
-vertically to keep its diagrams readable.
+its viewport when switching modes. The **−**, **+** and **Reset view** buttons
+remain in the same position in both modes. In a small window the complex view
+scrolls vertically to keep its diagrams readable.
 
 Period and point mapping calculations run locally in the background only while
 the complex mode is open. They use a 180 ms debounce, a 15-second cancellation
@@ -111,6 +114,21 @@ the mode cancels outstanding work; late results cannot replace the current curve
 The period lattice remains usable if subsequent point mapping reaches its limit.
 Singular cubics (Δ = 0) show an explanation
 instead of a smooth torus. No internet connection or extra graphics package is needed.
+
+## PNG export
+
+**Export plot** saves the active visualization with a dark background at twice
+its WPF layout dimensions (192 DPI). In real-locus mode, the image contains the
+graph, axes and visible rational markers. In complex mode, it contains the visible
+period-lattice and torus panels, point selector and notes, preserving the current
+camera and selection. Complex export becomes available once the period lattice
+is ready, even if point mapping is still running.
+
+The image excludes the surrounding equation, results and invariant panels, as
+well as the shared plot toolbar, legend and navigation buttons. For a compact
+complex view, the current scroll position determines what is captured; content
+outside the scroll viewport is not included. Enlarge the plot area to fit more
+content before exporting. Export does not reset the camera or change the live layout.
 
 ## Calculation scope
 
@@ -247,7 +265,9 @@ not included in `dotnet test EllipticCurves.sln`. It loads the real theme and ma
 workspace and verifies Explorer click/focus scrolling, history-menu deletion,
 acceptance/rejection of Clear and Reset, the presence of Repeat, both sidebars'
 folding, aligned bounds at different window sizes, animation and PNG rendering.
-It also checks the complex view's shared point selection and compact layout.
+PNG checks cover both embedded views, offsets within the window, fractional layout
+sizes, dark backgrounds and preservation of content at the image edges. It also
+checks the complex view's shared point selection and compact layout.
 It uses an invisible native layout host and shows no application windows:
 
 ```powershell
