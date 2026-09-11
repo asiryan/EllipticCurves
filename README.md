@@ -315,7 +315,8 @@ tests work offline.
 ## Desktop visualizer (Windows)
 
 The [WPF Explorer](visualizer/README.md) provides a modern desktop interface on
-.NET 8: five coefficient sliders, an interactive real-locus plot, exact basic
+.NET 8: full formula input for simple and general Weierstrass equations, optional
+exploration sliders, an interactive real-locus plot, exact basic
 invariants and bounded rational-point samples. It runs entirely offline using
 native library calculations.
 

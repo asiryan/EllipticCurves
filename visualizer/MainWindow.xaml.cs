@@ -2,6 +2,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -39,6 +40,37 @@ public partial class MainWindow : Window
     private void MinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
     private void MaximizeClick(object sender, RoutedEventArgs e) { if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this); else SystemCommands.MaximizeWindow(this); }
     private void CloseClick(object sender, RoutedEventArgs e) => Close();
+
+    private void CoefficientEditFinished(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: CoefficientViewModel coefficient }) coefficient.CommitEdit();
+    }
+
+    private void EquationEditFinished(object sender, KeyboardFocusChangedEventArgs e) => ViewModel.Equation.CommitEdit();
+
+    private void EquationKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        ViewModel.Equation.CommitEdit();
+        ViewModel.FlushUpdate();
+        e.Handled = true;
+    }
+
+    private void CoefficientKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not FrameworkElement { DataContext: CoefficientViewModel coefficient }) return;
+        coefficient.CommitEdit();
+        ViewModel.FlushUpdate();
+        e.Handled = true;
+    }
+
+    private void ResetSlider(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: CoefficientViewModel coefficient }) return;
+        coefficient.ResetCommand.Execute(null);
+        ViewModel.FlushUpdate();
+        e.Handled = true;
+    }
 
     private async void CopyClick(object sender, RoutedEventArgs e)
     {

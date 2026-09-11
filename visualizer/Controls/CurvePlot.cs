@@ -40,16 +40,18 @@ public sealed class CurvePlot : FrameworkElement
     public void Fit()
     {
         var data = Snapshot?.Plot;
-        if (data is null || data.Roots.Count == 0) return;
+        if (data is null || !data.IsDrawable) return;
         var left = data.Roots[0];
         var right = data.Roots[^1];
-        centerX = (left + right) / 2 + 0.3 * Math.Max(1, right - left);
+        // Include part of the unbounded branch even when there is only one real root.
+        right += Math.Max(0.5, 0.25 * Math.Max(right - left, data.CharacteristicScale));
+        centerX = left / 2 + right / 2;
         var ys = new List<double> { data.CenterY(left), data.CenterY(right) };
         for (var i = 0; i <= 100; i++)
             if (data.TryEvaluate(left + (right - left) * i / 100, out var upper, out var lower)) { ys.Add(upper); ys.Add(lower); }
-        centerY = (ys.Min() + ys.Max()) / 2;
+        centerY = ys.Min() / 2 + ys.Max() / 2;
         var horizontalSpan = Math.Max(5, (right - left) * 1.8);
-        verticalSpan = Math.Clamp(Math.Max(Math.Max(3.4, (ys.Max() - ys.Min()) * 1.35), horizontalSpan * PlotBounds.Height / PlotBounds.Width), 1e-5, 1e6);
+        verticalSpan = Math.Clamp(Math.Max(Math.Max(3.4, (ys.Max() - ys.Min()) * 1.35), horizontalSpan * (PlotBounds.Height / PlotBounds.Width)), MinimumSpan, 1e300);
         pointer = null;
         RefreshGeometry();
     }
@@ -76,7 +78,7 @@ public sealed class CurvePlot : FrameworkElement
             dc.DrawGeometry(null, new Pen(CurveBrush, 2), piece.Upper);
             dc.DrawGeometry(null, new Pen(CurveBrush, 2), piece.Lower);
         }
-        if (Snapshot.IsSingular)
+        if (Snapshot.IsSingular && Snapshot.Plot.IsDrawable)
             foreach (var root in Snapshot.Plot.Roots)
                 dc.DrawEllipse(CurveBrush, null, ToScreen(root, Snapshot.Plot.CenterY(root)), 3, 3);
         if (ShowPoints && Samples is not null)
@@ -132,7 +134,7 @@ public sealed class CurvePlot : FrameworkElement
     {
         geometry.Clear();
         geometryDirty = false;
-        if (Snapshot is null) return;
+        if (Snapshot is null || !Snapshot.Plot.IsDrawable) return;
         var data = Snapshot.Plot;
         var bounds = PlotBounds;
         var left = ToWorld(bounds.TopLeft).X;
@@ -251,7 +253,7 @@ public sealed class CurvePlot : FrameworkElement
     {
         if (!double.IsFinite(factor) || factor <= 0) return;
         var before = ToWorld(anchor);
-        verticalSpan = Math.Clamp(verticalSpan * factor, 1e-5, 1e6);
+        verticalSpan = Math.Clamp(verticalSpan * factor, MinimumSpan, 1e300);
         var after = ToWorld(anchor);
         centerX += before.X - after.X;
         centerY += before.Y - after.Y;
@@ -259,6 +261,7 @@ public sealed class CurvePlot : FrameworkElement
     }
 
     private Point BoundedScreen(double x, double y) { var p = ToScreen(x, y); return new Point(Math.Clamp(p.X, -1e7, 1e7), Math.Clamp(p.Y, -1e7, 1e7)); }
+    private double MinimumSpan => Math.Max(1e-12, Math.Max(Math.Abs(centerX), Math.Abs(centerY)) * 1e-12);
     private void RefreshGeometry() { geometryDirty = true; InvalidateVisual(); }
     private static void InvalidateGeometry(DependencyObject source, DependencyPropertyChangedEventArgs args) => ((CurvePlot)source).RefreshGeometry();
     private FormattedText Label(string text, double size, Brush? brush = null) => new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, LabelTypeface, size, brush ?? LabelBrush, VisualTreeHelper.GetDpi(this).PixelsPerDip);

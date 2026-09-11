@@ -34,6 +34,16 @@ public sealed class VisualizerModelTests
     [InlineData("3,5", 7, 2)]
     [InlineData("100", 100, 1)]
     [InlineData("-100", -100, 1)]
+    [InlineData("8.325", 333, 40)]
+    [InlineData("8,325", 333, 40)]
+    [InlineData("333/40", 333, 40)]
+    [InlineData(" -2 / 7 ", -2, 7)]
+    [InlineData("1e-5", 1, 100000)]
+    [InlineData("-1.25E+3", -1250, 1)]
+    [InlineData("100.1", 1001, 10)]
+    [InlineData("-1000000", -1000000, 1)]
+    [InlineData(".00025", 1, 4000)]
+    [InlineData("−2,5", -5, 2)]
     public void DecimalInputRemainsExact(string input, int numerator, int denominator)
     {
         var coefficient = new CoefficientViewModel("a₄", "x", () => { }) { Text = input };
@@ -45,30 +55,141 @@ public sealed class VisualizerModelTests
     [InlineData("")]
     [InlineData("-")]
     [InlineData("NaN")]
-    [InlineData("1.25")]
-    [InlineData("100.1")]
-    [InlineData("-101")]
+    [InlineData("1/")]
+    [InlineData("1/0")]
+    [InlineData("1/2/3")]
+    [InlineData("1e-")]
+    [InlineData("1.2.3")]
+    [InlineData("Infinity")]
+    [InlineData("1e999999999")]
     public void InvalidInputPreservesLastCurveAndCanBeCorrected(string input)
     {
         using var model = new MainViewModel();
         var previous = model.Snapshot;
-        model.Coefficients[3].Text = input;
+        var coefficient = model.SimpleCoefficients[0];
+        coefficient.Text = input;
+        Assert.True(model.HasIncompleteInput);
+        Assert.False(model.HasInputError);
+        Assert.Empty(coefficient.Error);
+        coefficient.CommitEdit();
         Assert.True(model.HasInputError);
         Assert.Same(previous, model.Snapshot);
-        model.Coefficients[3].Value = -2;
+        coefficient.Text = "-2";
+        model.FlushUpdate();
         Assert.False(model.HasInputError);
         Assert.Equal(new BigRational(-2), model.Snapshot.Curve.A4);
     }
 
     [Fact]
-    public void SliderUsesTenthsAndClampsAtItsBounds()
+    public void StepsAndSlidersPreserveTheExactAnchorWithoutClampingCoefficients()
     {
-        var coefficient = new CoefficientViewModel("a₄", "x", () => { }) { Value = 0.30000000000000004 };
-        Assert.Equal(new BigRational(3, 10), coefficient.ExactValue);
-        coefficient.Value = 101;
-        Assert.Equal(new BigRational(100), coefficient.ExactValue);
-        coefficient.Value = -101;
-        Assert.Equal(new BigRational(-100), coefficient.ExactValue);
+        using var model = new MainViewModel();
+        var coefficient = model.SimpleCoefficients[0];
+        coefficient.Text = "8.325";
+        coefficient.SliderOffset = 1;
+        Assert.Equal("8.335", coefficient.Text);
+        coefficient.SliderOffset = 0;
+        Assert.Equal(new BigRational(333, 40), coefficient.ExactValue);
+        coefficient.Text = "1000.325";
+        coefficient.SliderOffset = 2;
+        Assert.Equal("1000.345", coefficient.Text);
+        coefficient.SliderOffset = 0;
+        Assert.Equal("1000.325", coefficient.Text);
+        model.Step.Text = "1/7";
+        Assert.Equal(0, coefficient.SliderOffset);
+        coefficient.SliderOffset = 1;
+        Assert.Equal(new BigRational(40013, 40) + new BigRational(1, 7), coefficient.ExactValue);
+        coefficient.ResetCommand.Execute(null);
+        Assert.Equal(BigRational.Zero, coefficient.ExactValue);
+        Assert.Equal("0", coefficient.Text);
+        Assert.Equal(0, coefficient.SliderOffset);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("1/")]
+    public void InvalidStepDoesNotChangeCoefficientAndDoesNotPreventReset(string input)
+    {
+        using var model = new MainViewModel();
+        var coefficient = model.SimpleCoefficients[0];
+        coefficient.Text = "8.325";
+        model.Step.Text = input;
+        coefficient.SliderOffset = 3;
+        Assert.Equal(new BigRational(333, 40), coefficient.ExactValue);
+        coefficient.Text = "-";
+        coefficient.CommitEdit();
+        coefficient.ResetCommand.Execute(null);
+        Assert.True(coefficient.IsValid);
+        Assert.Empty(coefficient.Error);
+        Assert.Equal(BigRational.Zero, coefficient.ExactValue);
+    }
+
+    [Fact]
+    public void LongDecimalsAndLargeRatiosDoNotPassThroughDecimalOrDouble()
+    {
+        const string input = "0.123456789012345678901234567890123456789";
+        Assert.True(RationalText.TryParse(input, out var value));
+        Assert.Equal(new BigRational(System.Numerics.BigInteger.Parse("123456789012345678901234567890123456789"), System.Numerics.BigInteger.Pow(10, 39)), value);
+        Assert.Equal(input, RationalText.Format(value));
+        var large = System.Numerics.BigInteger.Pow(10, 400);
+        Assert.Equal(1.0, CurvePlotData.ToDouble(new BigRational(large + 1, large - 1)), 12);
+    }
+
+    [Fact]
+    public async Task EditingIsDebouncedAndNeverResetsTheView()
+    {
+        using var model = new MainViewModel();
+        model.ShowPoints = false;
+        var previous = model.Snapshot;
+        var updates = 0;
+        var viewResets = 0;
+        model.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(model.Snapshot)) updates++; };
+        model.ViewResetRequested += (_, _) => viewResets++;
+        model.SimpleCoefficients[0].Text = "8.3";
+        var superseded = model.PendingUpdate;
+        model.SimpleCoefficients[0].Text = "8.325";
+        Assert.Same(previous, model.Snapshot);
+        await Task.WhenAll(superseded, model.PendingUpdate);
+        Assert.Equal(new BigRational(333, 40), model.Snapshot.Curve.A4);
+        Assert.Equal(1, updates);
+        Assert.Equal(0, viewResets);
+        var plotted = model.Snapshot;
+        model.SimpleCoefficients[0].Text = "9";
+        var abandoned = model.PendingUpdate;
+        model.SimpleCoefficients[0].Text = "1/";
+        await abandoned;
+        Assert.Same(plotted, model.Snapshot);
+    }
+
+    [Fact]
+    public void FormulaAutomaticallySelectsCoefficientsForBothForms()
+    {
+        using var model = new MainViewModel();
+        model.Equation.Text = "y^2 + 2/7*xy = x^3 + 1000x";
+        model.FlushUpdate();
+        Assert.False(model.IsSimpleForm);
+        Assert.Equal(5, model.ActiveCoefficients.Count);
+        Assert.Equal(new BigRational(2, 7), model.Snapshot.Curve.A1);
+        Assert.Equal(new BigRational(1000), model.Snapshot.Curve.A4);
+        model.Equation.Text = "y^2 = x^3 + 8.325x";
+        model.FlushUpdate();
+        Assert.True(model.IsSimpleForm);
+        Assert.Equal(2, model.ActiveCoefficients.Count);
+        Assert.False(model.HasIncompleteInput);
+        Assert.Equal(BigRational.Zero, model.Snapshot.Curve.A1);
+        Assert.Equal(new BigRational(333, 40), model.Snapshot.Curve.A4);
+    }
+
+    [Fact]
+    public void UnrepresentablePlotRetainsExactInvariantsWithoutCrashing()
+    {
+        Assert.True(RationalText.TryParse("1e400", out var coefficient));
+        var snapshot = new CurveSnapshot(new EllipticCurveQ(0, 0, 0, coefficient, 1));
+        Assert.Equal(coefficient, snapshot.Curve.A4);
+        Assert.True(snapshot.IsPlotUnavailable);
+        Assert.False(snapshot.Plot.TryEvaluate(0, out _, out _));
+        Assert.NotEmpty(snapshot.Discriminant);
     }
 
     [Fact]
@@ -135,7 +256,7 @@ public sealed class VisualizerModelTests
     public async Task RapidEditsOnlyPublishSamplesForLatestCurve()
     {
         using var model = new MainViewModel();
-        for (var i = 0; i < 12; i++) model.Coefficients[4].Value = i;
+        for (var i = 0; i < 12; i++) model.SimpleCoefficients[1].SetExact(i);
         model.ApplyPreset(CurvePreset.All[1]);
         await model.PendingSamples;
         Assert.NotEmpty(model.Samples);
@@ -163,9 +284,13 @@ public sealed class VisualizerModelTests
     {
         var model = new MainViewModel();
         var pending = model.PendingSamples;
+        var snapshot = model.Snapshot;
+        model.SimpleCoefficients[0].Text = "8.325";
+        var pendingUpdate = model.PendingUpdate;
         model.Dispose();
         model.Dispose();
-        await pending;
+        await Task.WhenAll(pending, pendingUpdate);
+        Assert.Same(snapshot, model.Snapshot);
         Assert.Empty(model.Samples);
     }
 }

@@ -65,6 +65,7 @@
         <Setter Property="BorderThickness" Value="0" />
     </Style>
     <Style TargetType="TextBox">
+        <Setter Property="ToolTip" Value="{Binding Text}" />
         <Setter Property="Background" Value="#11171E" />
         <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -85,7 +86,7 @@
                         <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Trigger>
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource WarningBrush}" />
-                            <Setter Property="ToolTip" Value="Enter −100 to 100, with at most one decimal place." />
+                            <Setter Property="ToolTip" Value="{Binding (Validation.Errors)[0].ErrorContent, RelativeSource={RelativeSource Self}}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

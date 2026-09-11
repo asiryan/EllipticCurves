@@ -12,7 +12,7 @@
         <KeyBinding Key="F" Modifiers="Control" Command="{Binding FitCommand}" />
     </Window.InputBindings>
     <Grid x:Name="AppRoot" Margin="1" Background="{StaticResource BackgroundBrush}">
-        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="88" /><RowDefinition Height="*" /><RowDefinition Height="36" /></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="72" /><RowDefinition Height="*" /><RowDefinition Height="36" /></Grid.RowDefinitions>
         <Border BorderBrush="#242E38" BorderThickness="0,0,0,1" Padding="8,0,8,0">
             <Grid>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="0,8,0,0">
@@ -31,11 +31,15 @@
         <Grid Grid.Row="1" Margin="28,0">
             <StackPanel VerticalAlignment="Center">
                 <TextBlock Text="A little change. A whole new curve." FontSize="25" FontWeight="SemiBold" />
-                <TextBlock Text="Move the coefficients. Explore the geometry. See the arithmetic." Style="{StaticResource Muted}" Margin="0,6,0,0" />
+                <TextBlock Text="Write your equation. Explore the geometry. See the arithmetic." Style="{StaticResource Muted}" Margin="0,6,0,0" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Border Background="#172D2B" CornerRadius="6" Padding="10,7" Margin="0,0,18,0">
-                    <StackPanel Orientation="Horizontal"><Ellipse Fill="{StaticResource AccentBrush}" Width="6" Height="6" Margin="0,0,7,0" /><TextBlock Text="NATIVE · OFFLINE" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold" /></StackPanel>
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Ellipse Fill="{StaticResource AccentBrush}" Width="6" Height="6" Margin="0,0,7,0" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="NATIVE · OFFLINE" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </Grid>
                 </Border>
                 <Button Content="Export plot ↗" Click="ExportClick" ToolTip="Save the current plot as a PNG image" />
             </StackPanel>
@@ -45,41 +49,53 @@
             <Border Style="{StaticResource Card}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20">
                     <StackPanel>
-                        <Grid><TextBlock Text="Coefficients" FontSize="17" FontWeight="SemiBold" /><Button Content="Reset" Command="{Binding ResetCommand}" HorizontalAlignment="Right" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" /></Grid>
-                        <TextBlock Text="General Weierstrass form" Style="{StaticResource Muted}" Margin="0,5,0,0" />
-                        <TextBlock FontFamily="Cambria Math" FontSize="13" Foreground="{StaticResource MutedBrush}" Margin="0,10,0,18" LineHeight="18">y² + a₁xy + a₃y =<LineBreak />x³ + a₂x² + a₄x + a₆</TextBlock>
-                        <ItemsControl ItemsSource="{Binding Coefficients}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,0,0,10">
-                                        <Grid>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontFamily="Cambria Math" FontSize="23" /><TextBlock Text="{Binding Term}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center" /></StackPanel>
-                                            <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" Width="80" MinHeight="34" HorizontalAlignment="Right" TextAlignment="Right" AutomationProperties.Name="{Binding Name}" />
-                                        </Grid>
-                                        <Slider Value="{Binding Value, Mode=TwoWay}" Minimum="-100" Maximum="100" TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="1" Height="24" Margin="0,4,0,0" AutomationProperties.Name="{Binding Name}" />
-                                        <Grid><TextBlock Text="−100" FontSize="9" Foreground="#718293" /><TextBlock Text="100" FontSize="9" Foreground="#718293" HorizontalAlignment="Right" /></Grid>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,0,0,18" />
+                        <Grid><TextBlock Text="Equation" FontSize="17" FontWeight="SemiBold" /><Button Content="Reset" Command="{Binding ResetCommand}" HorizontalAlignment="Right" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" /></Grid>
+                        <TextBlock Text="{Binding FormDescription}" Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="Enter the whole curve equation. Simple and general Weierstrass forms are recognized automatically." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="19" />
+                        <TextBlock Text="y^2 = x^3 - 106.16x - 0.32" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="y^2 + xy + y = x^3 - x" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" FontSize="11" Margin="0,7,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="Enter powers with ^. Multiplication may be written as * or omitted; decimal commas and fractions work too." Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" LineHeight="19" />
+                        <Expander Header="Experiment" Foreground="{StaticResource TextBrush}" Margin="0,22,0,0" HorizontalContentAlignment="Stretch">
+                            <StackPanel Margin="0,12,0,0">
+                                <TextBlock Text="SLIDER STEP" Style="{StaticResource Eyebrow}" Margin="0,0,0,9" />
+                                <TextBox DataContext="{Binding Step}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" MinHeight="34" AutomationProperties.Name="Slider step" LostKeyboardFocus="CoefficientEditFinished" PreviewKeyDown="CoefficientKeyDown" />
+                                <UniformGrid Columns="3" Margin="0,7,0,12"><Button Content="1" Command="{Binding SetStepCommand}" CommandParameter="1" Padding="0,6" Margin="0,0,4,0" /><Button Content="0.1" Command="{Binding SetStepCommand}" CommandParameter="0.1" Padding="0,6" Margin="0,0,4,0" /><Button Content="0.01" Command="{Binding SetStepCommand}" CommandParameter="0.01" Padding="0,6" /></UniformGrid>
+                                <TextBlock Text="Drag up to 50 steps each way. Right-click a slider to reset to 0. Editing its coefficient in the formula or changing the step recenters the range." Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,12" />
+                                <ItemsControl ItemsSource="{Binding ActiveCoefficients}">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <StackPanel Margin="0,0,0,15">
+                                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding Name}" FontFamily="Cambria Math" FontSize="18" /><TextBlock Grid.Column="1" Text="{Binding Text}" FontFamily="Consolas" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text}" /></Grid>
+                                            <Slider Value="{Binding SliderOffset, Mode=TwoWay}" Minimum="-50" Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" Margin="0,4,0,0" PreviewMouseRightButtonDown="ResetSlider" AutomationProperties.Name="{Binding Name, StringFormat=Experiment {0}; right-click to reset to zero}">
+                                                <Slider.Style><Style TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}"><Style.Triggers><DataTrigger Binding="{Binding IsValid}" Value="False"><Setter Property="Opacity" Value="0.4" /></DataTrigger></Style.Triggers></Style></Slider.Style>
+                                            </Slider>
+                                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding SliderMinimum}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SliderMinimum}" /><TextBlock Grid.Column="2" Text="{Binding SliderMaximum}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextAlignment="Right" TextTrimming="CharacterEllipsis" ToolTip="{Binding SliderMaximum}" /></Grid>
+                                        </StackPanel>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Expander>
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,22,0,18" />
                         <TextBlock Text="START SOMEWHERE" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
                         <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name" AutomationProperties.Name="Curve preset" />
                         <TextBlock Text="{Binding PresetDescription}" Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="Tip: use the arrow keys for 0.1 steps, or type a coefficient directly." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="19" />
+                        <TextBlock Text="The graph updates after a short pause. Your zoom stays in place; use Fit curve to recenter." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="19" />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
             <Grid Grid.Column="2">
-                <Grid.RowDefinitions><RowDefinition Height="82" /><RowDefinition Height="14" /><RowDefinition Height="*" /><RowDefinition Height="14" /><RowDefinition Height="106" /><RowDefinition Height="14" /><RowDefinition Height="70" /></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="10" /><RowDefinition Height="*" /><RowDefinition Height="10" /><RowDefinition Height="96" /><RowDefinition Height="10" /><RowDefinition Height="60" /></Grid.RowDefinitions>
                 <Border Style="{StaticResource Card}" Padding="20,12">
                     <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="YOUR EQUATION" Style="{StaticResource Eyebrow}" Margin="0,0,0,6" />
-                            <TextBlock Text="{Binding Snapshot.Equation}" FontFamily="Cambria Math" FontSize="24" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Equation}" />
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <TextBlock Text="EDIT YOUR EQUATION" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" />
+                        <Button Content="Copy" Click="CopyClick" Style="{StaticResource QuietButton}" HorizontalAlignment="Right" Padding="8,2" Foreground="{StaticResource MutedBrush}" ToolTip="Copy the displayed curve and exact invariants" />
+                        <StackPanel Grid.Row="1" Margin="0,10,0,8" DataContext="{Binding Equation}">
+                            <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" MinHeight="50" FontSize="19" Padding="12,8" AutomationProperties.Name="Curve equation" LostKeyboardFocus="EquationEditFinished" PreviewKeyDown="EquationKeyDown" />
+                            <TextBlock Text="{Binding Error}" Foreground="{StaticResource WarningBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0">
+                                <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Error}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
-                        <Button Grid.Column="1" Content="Copy" Click="CopyClick" Style="{StaticResource QuietButton}" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="{StaticResource MutedBrush}" ToolTip="Copy the equation and exact invariants" />
+                        <TextBlock Grid.Row="2" Text="{Binding Snapshot.Equation, StringFormat=Plotted: {0}}" FontFamily="Cambria Math" FontSize="14" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Equation}" />
                     </Grid>
                 </Border>
                 <Border Grid.Row="2" Style="{StaticResource Card}" Background="#121920" ClipToBounds="True">
@@ -90,11 +106,12 @@
                             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal"><CheckBox Content="Grid" IsChecked="{Binding ShowGrid}" Margin="0,0,18,0" /><CheckBox Content="Rational samples" IsChecked="{Binding ShowPoints}" /></StackPanel>
                         </Grid>
                         <controls:CurvePlot x:Name="Plot" Grid.Row="1" Snapshot="{Binding Snapshot}" Samples="{Binding Samples}" ShowGrid="{Binding ShowGrid}" ShowPoints="{Binding ShowPoints}" Margin="8,0" AutomationProperties.Name="Real elliptic curve plot. Drag to pan, scroll to zoom. Control F to fit." />
+                        <Border Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#222B35" CornerRadius="8" Padding="18" Visibility="{Binding Snapshot.IsPlotUnavailable, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="These coefficients exceed the plot's numerical precision.&#10;Your equation and invariants are still exact." TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" /></Border>
                         <Border Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,8,0,0" Background="#332B1E" CornerRadius="6" Padding="10,6" IsHitTestVisible="False" Visibility="{Binding Snapshot.IsSingular, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="Δ = 0 · singular cubic" Foreground="{StaticResource WarningBrush}" FontSize="11" /></Border>
                         <StackPanel Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="0,0,18,14">
                             <Button Content="−" Width="34" Padding="0,6" Click="ZoomOutClick" ToolTip="Zoom out" AutomationProperties.Name="Zoom out" />
                             <Button Content="+" Width="34" Padding="0,6" Margin="5,0" Click="ZoomInClick" ToolTip="Zoom in" AutomationProperties.Name="Zoom in" />
-                            <Button Content="Fit" Padding="10,6" Click="FitClick" ToolTip="Fit curve (Ctrl+F)" />
+                            <Button Content="Fit curve" Padding="10,6" Click="FitClick" ToolTip="Fit curve (Ctrl+F)" />
                         </StackPanel>
                         <Grid Grid.Row="2" Margin="20,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" Margin="0,0,7,0" /><TextBlock Text="Numerical real locus" Style="{StaticResource Muted}" FontSize="10" /><Ellipse Width="6" Height="6" Fill="#F7CC7C" Margin="18,0,7,0" /><TextBlock Text="Exact rational samples" Style="{StaticResource Muted}" FontSize="10" /></StackPanel>

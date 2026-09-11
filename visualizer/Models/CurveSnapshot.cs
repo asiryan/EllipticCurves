@@ -15,6 +15,7 @@ public sealed class CurveSnapshot
     public string C4 { get; }
     public string C6 { get; }
     public bool IsSingular { get; }
+    public bool IsPlotUnavailable => !Plot.IsDrawable;
 
     public CurveSnapshot(EllipticCurveQ curve)
     {
