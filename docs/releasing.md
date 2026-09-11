@@ -7,6 +7,32 @@ tests and framework-dependent applications still requires the .NET 8 runtime;
 WPF requires the Windows Desktop runtime. Explorer and its presentation check
 run on Windows.
 
+## Build script
+
+On Windows, run [build.bat](../build.bat) to build the solution in Release, run
+the arithmetic/portable tests and the WPF presentation check, pack the library,
+and publish Explorer and the console application:
+
+```powershell
+.\build.bat
+# Optional Explorer target:
+.\build.bat win-arm64
+```
+
+The default Explorer target is `win-x64`. Each invocation creates a fresh
+`artifacts/release/TIMESTAMP-RUNTIME` directory containing `nuget/`,
+`explorer-RUNTIME/`, `console/`, `EllipticCurves.Explorer-RUNTIME.zip` and
+`EllipticCurves.Console.zip`. Both application archives include the license.
+Explorer includes its runtime; the console application requires .NET 8.
+Versions come from the project files described below.
+
+The script works from any current directory, stops on the first failed command
+and returns a nonzero exit code. A failed run can leave partial output in its
+directory. It does not delete previous releases or upload artifacts. Windows
+PowerShell is used for timestamps and ZIP creation. Tests run on the build
+machine; an ARM64 package still needs validation on an ARM64 Windows machine.
+Run `build.bat --help` for usage. The individual commands follow below.
+
 ## Components and versions
 
 | Component | Project | Target | Distribution |
