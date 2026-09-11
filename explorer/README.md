@@ -201,6 +201,14 @@ polynomials use coefficients in ascending powers of t separated by semicolons:
 `0; 1` is t and `2; 0; 1` is t^2 + 2. Over Fp, curve tools reduce the **entered**
 coefficients; the separate reduction operations use a **global minimal model**.
 
+Both rank-bound actions enable parallel general descent by default, using up to
+four workers (fewer when fewer processors are available). In **Precision and work
+limits**, set **Max Degree Of Parallelism** to `1` for sequential execution or to
+another positive worker limit. All workers share the same work allowances;
+increasing the worker count does not increase **Max Descent Work**. The 2-isogeny
+method remains sequential, and incomplete descent still returns an unknown upper
+bound. The library itself defaults to sequential execution.
+
 Open **Precision and work limits** for each algorithm's options. Every run also has
 a wall-clock time limit (120 seconds by default; 0 means unlimited, with a maximum
 nonzero setting of 86,400 seconds) and an output item limit (1,000 by default,

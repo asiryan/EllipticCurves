@@ -10,6 +10,8 @@ public static class CalculationInput
 {
     public const string ElementHelp = "A scalar or coefficients in ascending powers of t separated by ;. Example: 0; 1 means t.";
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
+    public static int DefaultRankWorkers => Math.Min(4, Math.Max(1, Environment.ProcessorCount - 1));
+    public const string RankWorkersHelp = "Maximum parallel workers for general rank descent. 1 runs sequentially. All workers share the work limits; the 2-isogeny method stays sequential.";
     public static bool IsOptions(Type type) => type == typeof(RankComputationOptions) || type == typeof(AnalyticRankOptions)
         || type == typeof(RealComputationOptions) || type == typeof(PointDivisionOptions) || type == typeof(SaturationOptions);
     public static bool IsPoint(Type type) => type == typeof(EllipticCurvePoint) || type == typeof(EllipticCurvePointFp) || type == typeof(EllipticCurvePointFq);
@@ -20,7 +22,8 @@ public static class CalculationInput
     {
         if (IsOptions(type))
         {
-            var defaults = value ?? Activator.CreateInstance(type)!;
+            var defaults = value ?? (type == typeof(RankComputationOptions)
+                ? new RankComputationOptions { MaxDegreeOfParallelism = DefaultRankWorkers } : Activator.CreateInstance(type)!);
             foreach (var property in type.GetProperties().Where(p => p.CanWrite))
                 foreach (var field in Describe(property.PropertyType, key + "." + property.Name, property.GetValue(defaults), true))
                     yield return field;
@@ -36,7 +39,8 @@ public static class CalculationInput
             yield break;
         }
         var initial = value != null ? Convert.ToString(value, Invariant)! : Default(type, key);
-        var help = type == typeof(BigRational) ? "Exact decimal, fraction or scientific notation. Decimal commas are accepted."
+        var help = key.EndsWith("." + nameof(RankComputationOptions.MaxDegreeOfParallelism), StringComparison.Ordinal) ? RankWorkersHelp
+            : type == typeof(BigRational) ? "Exact decimal, fraction or scientific notation. Decimal commas are accepted."
             : type == typeof(EllipticCurveQ) ? "Full Weierstrass equation. Use ^ for powers."
             : type == typeof(FiniteFieldElement) ? ElementHelp
             : IsPoints(type) ? "One point per line: x; y. Use O for infinity. Decimal commas and fractions are accepted. An empty list is allowed."
@@ -57,7 +61,13 @@ public static class CalculationInput
 
     public static string Validate(CalculationParameter parameter, string text)
     {
-        try { ParseScalar(parameter.ValueType, text); return ""; }
+        try
+        {
+            var value = ParseScalar(parameter.ValueType, text);
+            if (parameter.Key.EndsWith("." + nameof(RankComputationOptions.MaxDegreeOfParallelism), StringComparison.Ordinal)
+                && (int)value < 1) return parameter.Label + ": enter at least 1 worker.";
+            return "";
+        }
         catch (Exception error) when (error is FormatException or OverflowException or ArgumentException)
         { return parameter.Label + ": " + error.Message; }
     }

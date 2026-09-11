@@ -103,7 +103,7 @@ exactly before accepting it. Isogeny descent instead spans witnessed square clas
 ## Limits and result semantics
 
 Defaults are SearchBound=32, MaxSquareClasses=65536, MaxDescentWork=5000000,
-MaxPointSearchWork=1000000 and ReductionPrimeBound=101. SearchBound controls both
+MaxPointSearchWork=1000000, ReductionPrimeBound=101 and MaxDegreeOfParallelism=1. SearchBound controls both
 the numerator/denominator box for x on the minimal curve and primitive quartic
 coordinates. Zero disables all point searches.
 
@@ -124,6 +124,38 @@ unfound rational points can leave a gap. Cassels-Tate pairings, higher descents
 and construction of a full saturated Mordell-Weil basis are not implemented.
 Heights, subgroup regulators and saturation at requested primes have
 [separate APIs](heights-and-saturation.md); `GetRankBounds` does not compute them.
+
+## Parallel enumeration
+
+Set `RankComputationOptions.MaxDegreeOfParallelism` to a positive worker limit.
+The library defaults to 1, preserving sequential enumeration. General descent
+distributes `(a,b)` rows dynamically, with each worker enumerating the complete
+integer interval for `c`. It uses the same exact bounds and candidate checks as
+the sequential path. Regions and invariant levels finish in order; each level
+retains its own coordinate scale. Neither reduction regions nor forms are
+materialized in full to schedule the work.
+
+Equivalence testing, insertion into the covering list, point-witness processing
+and updates of the lower-bound certificate are serialized together. Equivalent
+coverings discovered concurrently therefore cannot become separate classes.
+Work and point-search allowances are shared, with atomic reservations that do
+not overshoot either limit. A limit or failure stops the other workers through
+a linked token; all workers are joined before reading a partial proof or
+propagating an exception. Caller cancellation retains its cancellation token.
+Unexpected arithmetic errors are not converted into an incomplete rank result.
+
+Scheduling can change which equivalent representative is retained and which
+witnesses are found within finite point-search limits. Work counts and partial
+lower bounds need not match the sequential run. Completed Selmer dimensions and
+the resulting upper bounds have the same mathematical meaning in either mode;
+no partial enumeration is accepted as an upper bound. Set the worker limit to 1
+when sequential ordering is required. 2-isogeny descent remains sequential.
+
+Explorer enables this mode for both rank-bound actions, initially using
+`min(4, max(1, Environment.ProcessorCount - 1))` workers. The field can be changed
+in **Precision and work limits**, including setting it to 1. Explorer permits
+one active calculation at a time. This default does not change the library's
+sequential default or increase any mathematical work allowance.
 
 ## Independent validation
 

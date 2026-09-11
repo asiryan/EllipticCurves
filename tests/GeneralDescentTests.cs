@@ -9,15 +9,16 @@ public class GeneralDescentTests
     private static DescentBudget Budget() => new(new RankComputationOptions { MaxDescentWork = 20000000 }, default);
 
     public static IEnumerable<object[]> PariCases => File.ReadLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "general-descent.csv"))
-        .Skip(8).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => new object[] { x });
+        .Skip(8).Where(x => !string.IsNullOrWhiteSpace(x))
+        .SelectMany(row => new[] { 1, 2, 4 }.Select(workers => new object[] { row, workers }));
 
     [Theory]
     [MemberData(nameof(PariCases))]
-    public void GeneralSelmerDimensionsMatchIndependentPari(string row)
+    public void GeneralSelmerDimensionsMatchIndependentPari(string row, int workers)
     {
         var a = row.Split(',').Select(int.Parse).ToArray();
         var e = new EllipticCurveQ(a[0], a[1], a[2], a[3], a[4]);
-        var result = e.GetRankBounds(new RankComputationOptions { PreferGeneralTwoDescent = true });
+        var result = e.GetRankBounds(new RankComputationOptions { PreferGeneralTwoDescent = true, MaxDegreeOfParallelism = workers });
         Assert.True(result.TwoSelmerDimension == a[7], $"{row}: {result}, Selmer={result.TwoSelmerDimension}, work={result.DescentWork}, {result.Reason}");
         Assert.True(result.LowerBound <= a[6], $"{row}: {result}");
         Assert.True(result.UpperBound >= a[5], $"{row}: {result}");
@@ -159,7 +160,8 @@ public class GeneralDescentTests
         var e = new EllipticCurveQ(0, 0, 1, -1, 0);
         foreach (var options in new RankComputationOptions[] {
             new() { SearchBound = -1 }, new() { MaxSquareClasses = 1 }, new() { MaxDescentWork = -1 },
-            new() { MaxPointSearchWork = -1 }, new() { ReductionPrimeBound = 2 }, new() { ReductionPrimeBound = 10001 } })
+            new() { MaxPointSearchWork = -1 }, new() { ReductionPrimeBound = 2 }, new() { ReductionPrimeBound = 10001 },
+            new() { MaxDegreeOfParallelism = 0 }, new() { MaxDegreeOfParallelism = -1 } })
             Assert.Throws<ArgumentOutOfRangeException>(() => e.GetRankBounds(options));
         Assert.Throws<ArgumentNullException>(() => e.GetRankBounds((RankComputationOptions)null!));
         Assert.Throws<OperationCanceledException>(() => e.GetRankBounds(new RankComputationOptions(), new CancellationToken(true)));

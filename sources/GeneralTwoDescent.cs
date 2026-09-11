@@ -15,6 +15,7 @@ namespace EllipticCurves
         private readonly RationalPointRank points;
         private readonly int torsionDimension;
         private readonly List<TwoDescentCovering> coverings = new List<TwoDescentCovering>();
+        private readonly object proofLock = new object();
         private readonly BigInteger[] badPrimes;
         private BigRational modelScale;
         private int solubleClasses = 1; // the identity class
@@ -90,67 +91,81 @@ namespace EllipticCurves
 
             void Region(BigInteger minA, BigInteger maxA, Func<BigInteger, BigInteger, (RationalInterval low, RationalInterval high)> cBounds)
             {
-                for (var a = minA; a <= maxA; a++)
+                IEnumerable<(BigInteger a, BigInteger b)> Rows(DescentBudget rowBudget)
                 {
-                    budget.Step();
-                    if (a.IsZero) continue; // a zero leading coefficient is the identity class
-                    for (var b = -2 * BigInteger.Abs(a) + 1; b <= 2 * BigInteger.Abs(a); b++)
+                    for (var a = minA; a <= maxA; a++)
                     {
-                        budget.Step();
-                        var bounds = cBounds(a, b);
-                        var minC = DescentPolynomial.Ceiling(bounds.low.Lower);
-                        var maxC = DescentPolynomial.Floor(bounds.high.Upper);
-                        for (var c = minC; c <= maxC; c++)
+                        rowBudget.Step();
+                        if (a.IsZero) continue; // a zero leading coefficient is the identity class
+                        for (var b = -2 * BigInteger.Abs(a) + 1; b <= 2 * BigInteger.Abs(a); b++)
                         {
-                            budget.Step();
-                            var p = 3 * b * b - 8 * a * c;
-                            var syzygy = p * p * p - 48 * i * a * a * p - 64 * j * a * a * a;
-                            if (syzygy < 0 || syzygy % 27 != 0) continue;
-                            var square = syzygy / 27;
-                            var r = InternalMath.IntegerSqrt(square);
-                            if (r * r != square) continue;
-                            // Enumerate both signs; this makes reflection boundary cases explicit.
-                            Candidate(r);
-                            if (!r.IsZero) Candidate(-r);
-                            void Candidate(BigInteger rr)
-                            {
-                                var dn = rr - b * b * b + 4 * a * b * c;
-                                if (dn % (8 * a * a) != 0) return;
-                                var d = dn / (8 * a * a);
-                                var en = i + 3 * b * d - c * c;
-                                if (en % (12 * a) != 0) return;
-                                var form = new BinaryQuartic(a, b, c, d, en / (12 * a));
-                                if (form.I != i || form.J != j) throw new InvalidOperationException("Quartic reconstruction failed its invariant check.");
-                                Consider(form.Scale(coefficientScale));
-                            }
+                            rowBudget.Step();
+                            yield return (a, b);
                         }
                     }
                 }
+                DescentParallelism.ForEach(budget, Rows, (row, rowBudget) =>
+                {
+                    var (a, b) = row;
+                    var bounds = cBounds(a, b);
+                    var minC = DescentPolynomial.Ceiling(bounds.low.Lower);
+                    var maxC = DescentPolynomial.Floor(bounds.high.Upper);
+                    for (var c = minC; c <= maxC; c++)
+                    {
+                        rowBudget.Step();
+                        var p = 3 * b * b - 8 * a * c;
+                        var syzygy = p * p * p - 48 * i * a * a * p - 64 * j * a * a * a;
+                        if (syzygy < 0 || syzygy % 27 != 0) continue;
+                        var square = syzygy / 27;
+                        var r = InternalMath.IntegerSqrt(square);
+                        if (r * r != square) continue;
+                        // Enumerate both signs; this makes reflection boundary cases explicit.
+                        Candidate(r);
+                        if (!r.IsZero) Candidate(-r);
+                        void Candidate(BigInteger rr)
+                        {
+                            var dn = rr - b * b * b + 4 * a * b * c;
+                            if (dn % (8 * a * a) != 0) return;
+                            var d = dn / (8 * a * a);
+                            var en = i + 3 * b * d - c * c;
+                            if (en % (12 * a) != 0) return;
+                            var form = new BinaryQuartic(a, b, c, d, en / (12 * a));
+                            if (form.I != i || form.J != j) throw new InvalidOperationException("Quartic reconstruction failed its invariant check.");
+                            // Equivalence testing and insertion are one transaction. A concurrent
+                            // collection alone would let equivalent classes inflate the rank bound.
+                            lock (proofLock)
+                            {
+                                rowBudget.Token.ThrowIfCancellationRequested();
+                                Consider(form.Scale(coefficientScale), rowBudget);
+                            }
+                        }
+                    }
+                });
             }
         }
 
-        private void Consider(BinaryQuartic q)
+        private void Consider(BinaryQuartic q, DescentBudget proofBudget)
         {
-            budget.Step();
+            proofBudget.Step();
             var signature = Signature(q);
-            if (!signature.Contains(0) && q.HasRationalRoot(budget)) return;
+            if (!signature.Contains(0) && q.HasRationalRoot(proofBudget)) return;
             foreach (var previous in coverings)
             {
-                if (!signature.SequenceEqual(previous.Signature) || !q.Equivalent(previous.Form, budget)) continue;
-                if (!previous.HasPoint) TryPoint(q, previous);
+                if (!signature.SequenceEqual(previous.Signature) || !q.Equivalent(previous.Form, proofBudget)) continue;
+                if (!previous.HasPoint) TryPoint(q, previous, proofBudget);
                 return;
             }
-            if (!QuarticLocalSolubility.Everywhere(q, badPrimes, budget)) return;
+            if (!QuarticLocalSolubility.Everywhere(q, badPrimes, proofBudget)) return;
             if (coverings.Count >= budget.Options.MaxSquareClasses - 1)
                 throw new DescentLimitException("MaxSquareClasses was reached while enumerating the 2-Selmer group.");
             var covering = new TwoDescentCovering(q, signature);
             coverings.Add(covering);
-            TryPoint(q, covering);
+            TryPoint(q, covering, proofBudget);
         }
 
-        private void TryPoint(BinaryQuartic q, TwoDescentCovering covering)
+        private void TryPoint(BinaryQuartic q, TwoDescentCovering covering, DescentBudget proofBudget)
         {
-            if (!q.TryPoint(budget, out var u, out var v, out var y)) return;
+            if (!q.TryPoint(proofBudget, out var u, out var v, out var y)) return;
             if (y.IsZero) throw new InvalidOperationException("A nontrivial covering unexpectedly has a rational branch point.");
             var image = q.MapPoint(u, v, y);
             var x = image.x / (36 * modelScale * modelScale) - curve.B2 / 12;

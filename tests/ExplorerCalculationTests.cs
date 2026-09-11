@@ -71,6 +71,36 @@ public sealed class ExplorerCalculationTests
         Assert.Contains("Reason:", bounds);
     }
 
+    [Fact]
+    public async Task BothRankActionsDefaultToParallelExecutionAndAllowSequentialOverride()
+    {
+        Assert.Equal(1, new RankComputationOptions().MaxDegreeOfParallelism);
+        foreach (var operation in CalculationCatalog.All.Where(o => o.Member?.Name == nameof(EllipticCurveQ.GetRankBounds)))
+        {
+            var degree = operation.Parameters.Single(p => p.Key.EndsWith(".MaxDegreeOfParallelism"));
+            Assert.Equal(CalculationInput.DefaultRankWorkers.ToString(), degree.Default);
+            Assert.InRange(int.Parse(degree.Default), 1, 4);
+            Assert.Contains("1 runs sequentially", degree.Help);
+            using var workbench = new WorkbenchViewModel();
+            using var form = new CalculationFormViewModel(operation, "y^2 + y = x^3 - x", workbench);
+            var field = form.Fields.Single(f => f.Parameter.Key == degree.Key);
+            Assert.Equal(degree.Default, field.Text);
+            field.Text = "0";
+            Assert.False(form.CanRun);
+            field.Text = "1";
+            Assert.True(form.CanRun);
+            var request = form.CreateRequest();
+            var sequential = await CalculationEngine.ExecuteAsync(request);
+            Assert.Contains("Exact Rank: 1", sequential);
+            using var repeat = new CalculationFormViewModel(operation, request.Equation, workbench, request);
+            Assert.Equal("1", repeat.Fields.Single(f => f.Parameter.Key == degree.Key).Text);
+            var defaults = await CalculationEngine.ExecuteAsync(new(operation.Id, request.Equation, new()));
+            Assert.Contains("Exact Rank: 1", defaults);
+            var invalid = request with { Arguments = new(request.Arguments) { [degree.Key] = "0" } };
+            await Assert.ThrowsAsync<FormatException>(() => CalculationEngine.ExecuteAsync(invalid));
+        }
+    }
+
     [Theory]
     [InlineData("FaltingsHeight")]
     [InlineData("StableFaltingsHeight")]

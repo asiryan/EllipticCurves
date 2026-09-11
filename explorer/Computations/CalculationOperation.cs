@@ -34,10 +34,18 @@ public sealed class CalculationOperation
             foreach (var name in new[] { "a1", "a2", "a3", "a4", "a6" })
                 parameters.Add(new("field." + name, name, name == "a4" ? "-1" : "0", CalculationInput.ElementHelp, typeof(FiniteFieldElement)));
         if (member is MethodInfo method)
+        {
             foreach (var parameter in method.GetParameters())
                 if (!parameter.IsOut && parameter.ParameterType != typeof(CancellationToken) && parameter.ParameterType != typeof(HttpClient))
                     parameters.AddRange(CalculationInput.Describe(parameter.ParameterType, parameter.Name!,
                         parameter.HasDefaultValue ? parameter.DefaultValue : null));
+            // The convenience overload has no options object. Expose the same Explorer
+            // execution setting and route it through the options overload in the worker.
+            if (method.DeclaringType == typeof(EllipticCurveQ) && method.Name == nameof(EllipticCurveQ.GetRankBounds)
+                && method.GetParameters()[0].ParameterType == typeof(int))
+                parameters.AddRange(CalculationInput.Describe(typeof(int), "execution.MaxDegreeOfParallelism",
+                    CalculationInput.DefaultRankWorkers, true));
+        }
         if (extra != null) parameters.AddRange(extra);
         Parameters = parameters;
     }

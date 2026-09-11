@@ -114,7 +114,8 @@ var rank = e.GetRankBounds(new RankComputationOptions
 {
     SearchBound = 64,
     MaxDescentWork = 10000000,
-    MaxPointSearchWork = 2000000
+    MaxPointSearchWork = 2000000,
+    MaxDegreeOfParallelism = 4 // optional; the library defaults to 1 (sequential)
 }, timeout.Token);
 Console.WriteLine(rank.Reason);
 ```
@@ -123,6 +124,11 @@ General descent enumerates a complete reduction region; its cost can grow rapidl
 with the curve invariants. The work limits bound counted steps, not elapsed time or
 integer factorization. Point-search exhaustion preserves a completed upper bound.
 `PreferGeneralTwoDescent` also enables the general method for curves with 2-torsion.
+`MaxDegreeOfParallelism` parallelizes general binary-quartic enumeration only;
+the 2-isogeny method and other rank stages remain sequential. All workers share
+the same work limits. Cancellation and work exhaustion stop and join the workers
+before returning. Parallel scheduling may change covering representatives, work
+counts and partial lower bounds; an upper bound still requires complete descent.
 See [the descent construction and proof conditions](docs/two-descent.md).
 
 ## Analytic rank and BSD

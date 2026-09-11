@@ -17,6 +17,9 @@ namespace EllipticCurves
         public int ReductionPrimeBound { get; set; } = 101;
         /// <summary>Use the general binary-quartic descent even when a rational 2-isogeny is available.</summary>
         public bool PreferGeneralTwoDescent { get; set; }
+        /// <summary>Maximum workers for general binary-quartic enumeration. Must be positive; 1 (the default) is sequential.
+        /// Other rank stages, including 2-isogeny descent, remain sequential. Work limits are shared by all workers.</summary>
+        public int MaxDegreeOfParallelism { get; set; } = 1;
 
         internal RankComputationOptions Snapshot()
         {
@@ -26,6 +29,7 @@ namespace EllipticCurves
             if (copy.MaxDescentWork < 0) throw new ArgumentOutOfRangeException(nameof(MaxDescentWork));
             if (copy.MaxPointSearchWork < 0) throw new ArgumentOutOfRangeException(nameof(MaxPointSearchWork));
             if (copy.ReductionPrimeBound < 3 || copy.ReductionPrimeBound > 10000) throw new ArgumentOutOfRangeException(nameof(ReductionPrimeBound));
+            if (copy.MaxDegreeOfParallelism < 1) throw new ArgumentOutOfRangeException(nameof(MaxDegreeOfParallelism));
             return copy;
         }
     }

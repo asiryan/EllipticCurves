@@ -56,7 +56,17 @@ public static class CalculationEngine
                 foreach (var point in inputs.OfType<EllipticCurvePoint>())
                     if (!inputCurve.IsOnCurve(point)) throw new ArgumentException("Point " + point + " is not on the captured curve.");
             }
-            try { result = method.Invoke(method.IsStatic ? null : target, inputs); }
+            try
+            {
+                result = target is EllipticCurveQ rankCurve && method.Name == nameof(EllipticCurveQ.GetRankBounds)
+                    && parameters[0].ParameterType == typeof(int)
+                    ? rankCurve.GetRankBounds(new RankComputationOptions
+                    {
+                        SearchBound = (int)inputs[0]!, MaxSquareClasses = (int)inputs[1]!,
+                        MaxDegreeOfParallelism = (int)CalculationInput.ParseScalar(typeof(int), arguments["execution.MaxDegreeOfParallelism"])
+                    }, token)
+                    : method.Invoke(method.IsStatic ? null : target, inputs);
+            }
             catch (TargetInvocationException error) when (error.InnerException != null)
             { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
             if (operation.Id.StartsWith("map.", StringComparison.Ordinal))

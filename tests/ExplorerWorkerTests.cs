@@ -30,6 +30,20 @@ public sealed class ExplorerWorkerTests
     }
 
     [Fact]
+    public async Task ParallelRankRunsThroughTheRealWorkerProtocol()
+    {
+        var operation = CalculationCatalog.All.Single(o => o.Member?.Name == nameof(EllipticCurveQ.GetRankBounds)
+            && o.Parameters.Any(p => p.Key == "options.MaxDegreeOfParallelism"));
+        var request = new CalculationRequest(operation.Id, "y^2 = x^3 - 49/50*x + 1/2",
+            new() { ["options.MaxDescentWork"] = "20000000" });
+        var outcome = await new CalculationRunner(() => StartInfo()).RunAsync(request, _ => { })
+            .WaitAsync(TimeSpan.FromSeconds(60));
+        Assert.Equal("Completed", outcome.Status);
+        Assert.Contains("Exact Rank: 1", outcome.Text);
+        Assert.Contains("Two Selmer Dimension: 1", outcome.Text);
+    }
+
+    [Fact]
     public async Task WorkerPropagatesLibraryErrors()
     {
         var op = CalculationCatalog.All.Single(o => o.Member?.Name == "GetConductor");
