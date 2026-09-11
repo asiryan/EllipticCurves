@@ -5,7 +5,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" FontSize="13"
         ShowInTaskbar="False" WindowStartupLocation="CenterOwner" UseLayoutRounding="True"
-        FocusManager.FocusedElement="{Binding ElementName=CancelButton}"
+        FocusManager.FocusedElement="{Binding ElementName=DialogRoot}"
         KeyboardNavigation.TabNavigation="Cycle" ContentRendered="WindowContentRendered">
     <Window.Resources>
         <Style x:Key="ConfirmationActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -13,24 +13,9 @@
             <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="16,7" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-                <Border x:Name="Frame" Background="{TemplateBinding Background}" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="7">
-                    <Grid>
-                        <Border x:Name="Highlight" Background="#14FFFFFF" Opacity="0" CornerRadius="6" IsHitTestVisible="False" />
-                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
-                    </Grid>
-                </Border>
-                <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Highlight" Property="Opacity" Value="0.5" /></Trigger>
-                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Highlight" Property="Opacity" Value="1" /></Trigger>
-                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Frame" Property="Opacity" Value="0.65" /></Trigger>
-                    <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Frame" Property="Opacity" Value="0.35" /></Trigger>
-                </ControlTemplate.Triggers>
-            </ControlTemplate></Setter.Value></Setter>
         </Style>
     </Window.Resources>
-    <Grid>
+    <Grid x:Name="DialogRoot" Focusable="True" KeyboardNavigation.IsTabStop="False" FocusVisualStyle="{x:Null}">
     <Border Margin="12" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1" CornerRadius="12">
         <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35" Color="Black" /></Border.Effect>

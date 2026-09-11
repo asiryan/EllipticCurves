@@ -75,7 +75,8 @@ and the checks to run before publishing a release.
   plot is hidden, it is fitted when you next switch to **Real locus**.
 - **Reset** in the Equation header asks for confirmation before restoring
   `y^2 = x^3 - x` and recentering the plot. The custom dark dialog opens centered
-  on the main window with **Cancel** focused; Escape or the close button cancels.
+  on the main window without highlighting either button. Enter or Escape cancels
+  from the initial state; the close button also cancels.
 - Copy the equation and exact invariants, or export the current plot to PNG.
 
 ## Complex torus
@@ -228,7 +229,7 @@ To remove a result, right-click its entry in the history dropdown and choose
 even when another result is displayed; stop an active calculation before deleting it. History keeps the last
 50 calculations for the current session; save reports before closing the app.
 **Clear** in the Results header removes the entire session history after
-confirmation in the same dark dialog, with **Cancel** focused by default. It is disabled while a calculation
+confirmation in the same dark dialog. **Clear** is disabled while a calculation
 is running or the history is empty. Saved report files are unaffected.
 Both side panels start at their minimum widths. Drag either divider to resize its
 panel; matching gaps and dividers keep the two sides aligned.

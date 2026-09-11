@@ -44,7 +44,7 @@ public partial class ConfirmationWindow : Window
         ShowDialog();
     }
 
-    private void WindowContentRendered(object? sender, EventArgs e) => CancelButton.Focus();
+    private void WindowContentRendered(object? sender, EventArgs e) => DialogRoot.Focus();
     private void ConfirmClick(object sender, RoutedEventArgs e)
     {
         Confirmed = true;

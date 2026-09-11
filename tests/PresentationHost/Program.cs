@@ -351,7 +351,7 @@ internal static class Program
                 var confirm = (Button)dialog.FindName("ConfirmButton");
                 var detail = (Border)dialog.FindName("DetailPanel");
                 Require(cancel.IsDefault && cancel.IsCancel && !confirm.IsDefault, "Enter and Escape must default to cancellation.");
-                Require(FocusManager.GetFocusedElement(dialog) == cancel, "Initial confirmation focus must be on Cancel.");
+                Require(FocusManager.GetFocusedElement(dialog) == root, "Initial confirmation focus must not highlight an action button.");
                 Require((detail.Visibility == Visibility.Visible) == reset, "Only Reset should show the equation preview.");
                 Rect Bounds(FrameworkElement element) => element.TransformToAncestor(root).TransformBounds(new Rect(element.RenderSize));
                 Require(Bounds(confirm).Right < Bounds(cancel).Left && new Rect(root.RenderSize).Contains(Bounds(cancel))
