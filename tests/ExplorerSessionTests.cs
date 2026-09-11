@@ -10,27 +10,17 @@ namespace EllipticCurves.Tests;
 public sealed class ExplorerSessionTests
 {
     [Fact]
-    public void ChangeComparisonIncludesResultsAndOptionsButIgnoresGraphNavigationAndAutomaticOriginSelection()
+    public void ChangeComparisonIncludesEquationEditingParametersAndResults()
     {
         var baseline = ExplorerSession.New();
         SessionFile.Validate(baseline);
         Assert.True(SessionChanges.Equal(baseline, ExplorerSession.New()));
-        Assert.True(SessionChanges.Equal(baseline, baseline with { SelectedTorusPoint = null, FitRealViewWhenShown = false }));
-        Assert.True(SessionChanges.Equal(baseline, baseline with { Plot = new(200, -300, 70), TorusCamera = new(45, 30, 8) }));
         var changes = new[]
         {
             baseline with { Equation = "y^2 = x^3 + x" },
             baseline with { SliderStep = "1/7" },
             baseline with { SliderOffsets = new[] { 1, 0 } },
-            baseline with { ShowGrid = false },
-            baseline with { ShowPoints = false },
-            baseline with { ComplexView = true },
-            baseline with { CoefficientsExpanded = true },
-            baseline with { EquationPanel = new(false, 238) },
-            baseline with { ResultsPanel = new(true, 400) },
-            baseline with { EquationScrollOffset = 10 },
-            baseline with { TorusScrollOffset = 20 },
-            baseline with { SelectedTorusPoint = "(0, 0)" },
+            baseline with { Preset = null },
             baseline with { History = Example().History }
         };
         Assert.All(changes, changed => Assert.False(SessionChanges.Equal(baseline, changed)));
@@ -46,6 +36,35 @@ public sealed class ExplorerSessionTests
             Request = history.History[0].Request with { Arguments = new() { ["example"] = "Different input" } }
         };
         Assert.False(SessionChanges.Equal(history, updated));
+    }
+
+    [Fact]
+    public void VisualSettingsDoNotCountAsEditsOrHideDataChanges()
+    {
+        var baseline = ExplorerSession.New();
+        var visualChanges = new[]
+        {
+            baseline with { ComplexView = true },
+            baseline with { ShowGrid = false },
+            baseline with { ShowPoints = false },
+            baseline with { CoefficientsExpanded = true },
+            baseline with { EquationPanel = new(false, 238) },
+            baseline with { ResultsPanel = new(true, 400) },
+            baseline with { EquationScrollOffset = 10 },
+            baseline with { TorusScrollOffset = 20 },
+            baseline with { SelectedTorusPoint = "(0, 0)" },
+            baseline with { SelectedTorusPoint = null },
+            baseline with { FitRealViewWhenShown = false },
+            baseline with { Plot = new(200, -300, 70) },
+            baseline with { TorusCamera = new(45, 30, 8) }
+        };
+        Assert.All(visualChanges, changed =>
+        {
+            Assert.True(SessionChanges.Equal(baseline, changed));
+            Assert.True(SessionChanges.Equal(changed, baseline));
+            Assert.False(SessionChanges.Equal(baseline, changed with { Equation = "y^2 = x^3 + 7" }));
+            Assert.False(SessionChanges.Equal(baseline, changed with { History = Example().History }));
+        });
     }
 
     [Fact]

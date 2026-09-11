@@ -1,23 +1,15 @@
 #nullable enable
 namespace EllipticCurves.Explorer.Models;
 
-// Graph navigation and browsing results are temporary. Compare the session data
-// without serializing large reports or committing incomplete edits.
+// Visual settings are saved with the session, but only edits to its data need
+// an unsaved-changes warning. Compare without serializing reports or committing edits.
 public static class SessionChanges
 {
     public static bool Equal(ExplorerSession left, ExplorerSession right) =>
         left.Equation == right.Equation && left.SliderStep == right.SliderStep && left.Preset == right.Preset
         && left.SliderOffsets.SequenceEqual(right.SliderOffsets)
-        && left.ShowGrid == right.ShowGrid && left.ShowPoints == right.ShowPoints && left.ComplexView == right.ComplexView
-        && left.CoefficientsExpanded == right.CoefficientsExpanded
-        && left.EquationScrollOffset == right.EquationScrollOffset && left.TorusScrollOffset == right.TorusScrollOffset
-        // Background period mapping supplies O when no point has been selected.
-        && PointKey(left.SelectedTorusPoint) == PointKey(right.SelectedTorusPoint)
-        && left.EquationPanel == right.EquationPanel && left.ResultsPanel == right.ResultsPanel
         && left.History.Count == right.History.Count
         && left.History.Zip(right.History).All(pair => SameCalculation(pair.First, pair.Second));
-
-    private static string PointKey(string? value) => value ?? EllipticCurvePoint.Infinity.ToString();
 
     private static bool SameCalculation(CalculationSession left, CalculationSession right)
     {

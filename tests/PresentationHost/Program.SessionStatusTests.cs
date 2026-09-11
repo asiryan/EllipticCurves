@@ -55,10 +55,13 @@ internal static partial class Program
             Require(!CompleteSession(() => window.TrySaveSessionAsync()) && pickers == 0 && !File.Exists(first),
                 "Save without an existing file must not open a picker or write a file.");
             window.ViewModel.ShowGrid = false;
-            CheckStatus("Unsaved changes", "session.ec *");
+            CheckStatus("New session", "session.ec");
             window.ViewModel.ShowGrid = true;
             CheckStatus("New session", "session.ec");
             window.ViewModel.Equation.Text = "y^2 = x^3 + 7";
+            CheckStatus("Unsaved changes", "session.ec *");
+            ((ComboBox)window.FindName("ViewMode")).SelectedIndex = 1;
+            window.ViewModel.ShowPoints = false;
             CheckStatus("Unsaved changes", "session.ec *");
             CheckSaveAvailability(false);
             Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs) && pickers == 1,
@@ -71,6 +74,17 @@ internal static partial class Program
             CheckStatus("Unsaved changes", "curve-study.ec *");
             Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 1
                 && SessionFile.Load(first).SliderStep == "0.2", "Ctrl+S must overwrite the current file without a picker.");
+            CheckStatus("Saved", "curve-study.ec");
+            window.ViewModel.ShowGrid = false;
+            window.ViewModel.ShowPoints = false;
+            ((ComboBox)window.FindName("ViewMode")).SelectedIndex = 1;
+            CheckStatus("Saved", "curve-study.ec");
+            CheckSaveAvailability(true);
+            Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 1,
+                "Ctrl+S must save current visual settings even without data edits.");
+            var visual = SessionFile.Load(first);
+            Require(visual.ComplexView && !visual.ShowGrid && !visual.ShowPoints,
+                "Saving a clean session must still write changed visual settings.");
             CheckStatus("Saved", "curve-study.ec");
             var original = File.ReadAllBytes(first);
 

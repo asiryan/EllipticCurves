@@ -188,6 +188,50 @@ internal static partial class Program
                     }
                     Require(torus.CaptureCamera() == TorusCameraState.Default && !window.HasUnsavedChanges,
                         "Opening/resetting a graph must leave a clean session and a default torus camera.");
+                    var mode = (ComboBox)window.FindName("ViewMode");
+                    foreach (var index in new[] { 1, 0, 1 })
+                    {
+                        mode.SelectedIndex = index;
+                        SettleSession(window);
+                        Require(!window.HasUnsavedChanges && window.SessionStatus.Status == "Saved"
+                            && !window.SessionStatus.DisplayName.EndsWith(" *"),
+                            "Switching between 2D and 3D must not mark a saved session as modified.");
+                    }
+                    window.ViewModel.ShowGrid = false;
+                    window.ViewModel.ShowPoints = false;
+                    SettleSession(window);
+                    Require(!window.HasUnsavedChanges, "Toggling grid and samples must not mark the session dirty.");
+                    window.ViewModel.ShowPoints = true;
+                    CompleteSession(async () =>
+                    {
+                        await window.ViewModel.PendingSamples;
+                        return true;
+                    });
+                    SettleSession(window);
+                    // Drain sample bindings before starting the hidden view's background model explicitly.
+                    CompleteSession(async () =>
+                    {
+                        torus.Model.Update(window.ViewModel.Snapshot.Curve, window.ViewModel.Samples, true);
+                        await torus.Model.PendingUpdate;
+                        return true;
+                    });
+                    SettleSession(window);
+                    Require(!window.HasUnsavedChanges && window.SessionStatus.Status == "Saved",
+                        "Background torus preparation must leave the session saved.");
+                    torus.Model.SelectedPoint = torus.Model.Points.First(point => !point.Point.IsInfinity);
+                    var selectedPoint = torus.Model.SessionSelection;
+                    var coefficients = (Expander)window.FindName("CoefficientsExpander");
+                    coefficients.IsExpanded = true;
+                    ((ColumnDefinition)window.FindName("EquationColumn")).Width = new GridLength(320);
+                    ((ColumnDefinition)window.FindName("ResultsColumn")).Width = new GridLength(410);
+                    var equationScroll = (ScrollViewer)window.FindName("EquationScroll");
+                    equationScroll.Height = 280;
+                    SettleSession(window);
+                    equationScroll.ScrollToBottom();
+                    SettleSession(window);
+                    Require(equationScroll.VerticalOffset > 0 && !window.HasUnsavedChanges
+                        && window.SessionStatus.Status == "Saved",
+                        "Display settings, point selection and panel layout must not count as session edits.");
                     Require(window.Workbench.Selected == window.Workbench.Jobs[0],
                         "Opening a session must select the newest result.");
                     var results = (ResultsPanel)window.FindName("Results");
@@ -211,8 +255,12 @@ internal static partial class Program
                     Require(System.Text.Json.JsonSerializer.Serialize(saved.History) == System.Text.Json.JsonSerializer.Serialize(legacy.History)
                         && window.Workbench.Selected == window.Workbench.Jobs[1],
                         "Saving must preserve every result, default to the newest and leave the displayed report unchanged.");
-                    Require(saved.Plot == fitted && saved.FitRealViewWhenShown && saved.TorusCamera == TorusCameraState.Default,
+                    Require(saved.Plot == fitted && saved.FitRealViewWhenShown && saved.TorusCamera == TorusCameraState.Default && saved.ComplexView,
                         "The file must contain Reset view regardless of the user's current graph navigation.");
+                    Require(!saved.ShowGrid && saved.ShowPoints && saved.SelectedTorusPoint == selectedPoint
+                        && saved.CoefficientsExpanded && saved.EquationPanel.Width == 320 && saved.ResultsPanel.Width == 410
+                        && saved.EquationScrollOffset == equationScroll.VerticalOffset,
+                        "Save as must preserve visual settings and layout even when they did not mark the session dirty.");
                     Require(plot.CaptureView() == navigatedPlot && torus.CaptureCamera() == navigatedTorus && !window.HasUnsavedChanges,
                         "Saving must not move the visible graph or leave the session dirty.");
 
@@ -221,6 +269,11 @@ internal static partial class Program
                     {
                         restored.RestoreSession(saved);
                         SettleSession(restored, 1120, 760);
+                        var restoredVisuals = restored.CaptureSession();
+                        Require(restoredVisuals.ComplexView && !restoredVisuals.ShowGrid && restoredVisuals.ShowPoints
+                            && restoredVisuals.SelectedTorusPoint == selectedPoint && restoredVisuals.CoefficientsExpanded
+                            && !restored.HasUnsavedChanges,
+                            "Opening must restore the saved visual settings without marking the session dirty.");
                         Require(restored.Workbench.Jobs.Count == 2 && restored.Workbench.Selected == restored.Workbench.Jobs[0]
                             && restored.Workbench.Selected.Result == "Newest result",
                             "Reopening must restore the whole history and display its newest result.");
@@ -236,6 +289,13 @@ internal static partial class Program
                     }
                     finally { restored.Close(); }
 
+                    mode.SelectedIndex = 0;
+                    window.ViewModel.ShowGrid = true;
+                    torus.Model.SelectedPoint = torus.Model.Points[0];
+                    window.ViewModel.ShowPoints = false;
+                    coefficients.IsExpanded = false;
+                    ((Button)window.FindName("EquationCollapseButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    SettleSession(window);
                     bool CloseWindow() { CompleteSession(() => { window.Close(); return window.PendingSessionOperation; }); return closed; }
                     Require(action == "New" ? CompleteSession(window.NewSessionAsync) : action == "Open" ? CompleteSession(window.OpenSessionAsync) : CloseWindow(),
                         $"{action} was blocked after graph or result navigation only.");

@@ -16,7 +16,6 @@ public partial class MainWindow
 {
     private string? sessionPath;
     private int sessionRestoreVersion;
-    private int cleanSessionVersion;
     private ExplorerSession? cleanSession;
     private SessionDialogs sessionDialogs = null!;
     private bool sessionActionInProgress, isSavingSession, sessionSaveFailed, allowSessionClose;
@@ -75,7 +74,6 @@ public partial class MainWindow
     private void MarkSessionClean()
     {
         cleanSession = ReadSession();
-        cleanSessionVersion++;
         QueueSessionStatusRefresh();
     }
 
@@ -175,7 +173,6 @@ public partial class MainWindow
             else await Task.Run(() => SessionFile.Save(path, saved));
             sessionPath = Path.GetFullPath(path);
             cleanSession = saved;
-            cleanSessionVersion++;
             return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
@@ -264,25 +261,11 @@ public partial class MainWindow
         UpdateSidebarBounds();
         var version = ++sessionRestoreVersion;
         MarkSessionClean();
-        var baselineVersion = cleanSessionVersion;
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
         {
             if (version != sessionRestoreVersion) return;
-            var equationOffset = EquationScroll.VerticalOffset;
-            var torusOffset = TorusView.ScrollOffset;
             EquationScroll.ScrollToVerticalOffset(saved.EquationScrollOffset);
             TorusView.RestoreScroll(saved.TorusScrollOffset);
-            // Account for layout clamping, without marking unrelated edits clean.
-            EquationScroll.UpdateLayout();
-            TorusView.UpdateLayout();
-            if (cleanSession != null && baselineVersion == cleanSessionVersion)
-                cleanSession = cleanSession with
-                {
-                    EquationScrollOffset = cleanSession.EquationScrollOffset == equationOffset
-                        ? EquationScroll.VerticalOffset : cleanSession.EquationScrollOffset,
-                    TorusScrollOffset = cleanSession.TorusScrollOffset == torusOffset
-                        ? TorusView.ScrollOffset : cleanSession.TorusScrollOffset
-                };
         }));
     }
 

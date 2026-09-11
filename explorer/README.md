@@ -84,8 +84,11 @@ Open or Close is cancelled so those edits remain available.
 Enter, Escape and the dialog close button cancel.
 Cancelling the file picker or failing to save also cancels the pending action.
 An untouched session or an unchanged saved/opened session does not prompt.
-Changes to the equation, results, visualization options or saved panel settings are tracked;
-background sample generation alone does not count as an edit. Sessions are saved
+Changes to the equation, editing parameters and results are tracked. Switching
+between 2D and 3D, toggling the grid or samples, selecting a torus point, scrolling
+or rearranging panels does not count as an edit. These visual settings are still
+written on **Save** or **Save as**, even when the session shows **Saved**.
+Background sample generation does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
 The Results panel's **Export** exports an individual text report.
 
