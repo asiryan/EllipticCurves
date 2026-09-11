@@ -72,7 +72,7 @@
                     <TextBlock Text="{Binding Selected.Status}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="1" Text="{Binding Selected.Timing}" Style="{StaticResource Muted}" FontSize="11" Margin="0,5,0,10" />
                     <TextBox Grid.Row="2" Text="{Binding Selected.Report, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" Style="{StaticResource WorkbenchText}"
-                             TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextBrush}" Padding="10" VerticalContentAlignment="Top"
+                             TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas" FontSize="12" Foreground="{StaticResource TextBrush}" Padding="10" VerticalContentAlignment="Top"
                              AutomationProperties.Name="Calculation result and input parameters" ToolTip="{x:Null}" />
                 </Grid>
             </Grid>
