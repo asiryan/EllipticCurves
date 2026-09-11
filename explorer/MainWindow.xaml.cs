@@ -79,7 +79,14 @@ public partial class MainWindow : Window
     }
 
     private void WindowLoaded(object sender, RoutedEventArgs e) => Plot.Fit();
-    private void WindowClosed(object? sender, EventArgs e) { Workbench.Dispose(); ViewModel.ViewResetRequested -= ResetView; ViewModel.Dispose(); }
+
+    private void WindowClosed(object? sender, EventArgs e)
+    {
+        Workbench.Dispose();
+        ViewModel.ViewResetRequested -= ResetView;
+        ViewModel.Dispose();
+    }
+
     private void RepositoryClick(object sender, RoutedEventArgs e)
     {
         const string repositoryUrl = "https://github.com/asiryan/EllipticCurves";
@@ -106,7 +113,8 @@ public partial class MainWindow : Window
                 return;
             }
         }
-        var dialog = new CalculationWindow(operation, previous?.Equation ?? CurveEquationText.Format(ViewModel.Snapshot.Curve), Workbench, previous) { Owner = this };
+        var dialog = new CalculationWindow(operation,
+            previous?.Equation ?? CurveEquationText.Format(ViewModel.Snapshot.Curve), Workbench, previous) { Owner = this };
         dialog.RunRequested += RunCalculation;
         dialog.Show();
     }
@@ -155,7 +163,11 @@ public partial class MainWindow : Window
             state.IsAnimating = false;
         }
 
-        if (!IsLoaded || !SystemParameters.ClientAreaAnimation) { Finish(); return; }
+        if (!IsLoaded || !SystemParameters.ClientAreaAnimation)
+        {
+            Finish();
+            return;
+        }
         state.IsAnimating = true;
         var animation = new GridLengthAnimation { From = from, To = to, Duration = TimeSpan.FromMilliseconds(200) };
         animation.Completed += (_, _) => Finish();
@@ -170,7 +182,12 @@ public partial class MainWindow : Window
     private void ZoomInClick(object sender, RoutedEventArgs e) => Plot.Zoom(1 / 1.25);
     private void ZoomOutClick(object sender, RoutedEventArgs e) => Plot.Zoom(1.25);
     private void MinimizeClick(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
-    private void MaximizeClick(object sender, RoutedEventArgs e) { if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this); else SystemCommands.MaximizeWindow(this); }
+    private void MaximizeClick(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+        else SystemCommands.MaximizeWindow(this);
+    }
+
     private void CloseClick(object sender, RoutedEventArgs e) => Close();
 
     private void CoefficientEditFinished(object sender, KeyboardFocusChangedEventArgs e)
@@ -216,12 +233,20 @@ public partial class MainWindow : Window
                 button.Content = "Copy";
             }
         }
-        catch (ExternalException) { ConfirmationWindow.ShowMessage(this, "Copy", "The clipboard is busy. Please try again."); }
+        catch (ExternalException)
+        {
+            ConfirmationWindow.ShowMessage(this, "Copy", "The clipboard is busy. Please try again.");
+        }
     }
 
     private void ExportClick(object sender, RoutedEventArgs e)
     {
-        var dialog = new SaveFileDialog { Filter = "PNG image (*.png)|*.png", FileName = "elliptic-curve.png", Title = "Export the current real locus" };
+        var dialog = new SaveFileDialog
+        {
+            Filter = "PNG image (*.png)|*.png",
+            FileName = "elliptic-curve.png",
+            Title = "Export the current real locus"
+        };
         if (dialog.ShowDialog(this) != true) return;
         try
         {
@@ -233,6 +258,8 @@ public partial class MainWindow : Window
             encoder.Save(stream);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        { ConfirmationWindow.ShowMessage(this, "Export plot", "The image could not be saved. Check the destination and try again."); }
+        {
+            ConfirmationWindow.ShowMessage(this, "Export plot", "The image could not be saved. Check the destination and try again.");
+        }
     }
 }

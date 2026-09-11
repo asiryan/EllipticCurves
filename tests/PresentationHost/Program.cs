@@ -71,7 +71,7 @@ internal static class Program
             CheckConfirmationDialogs();
             CheckDockAnimation();
             CheckPlotRendering();
-            Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, title indicator, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
+            Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
         }

@@ -23,27 +23,42 @@ public partial class ConfirmationWindow : Window
 
     internal static bool Confirm(Window? owner, string title, string message, string confirmText, string? detail = null)
     {
-        var dialog = new ConfirmationWindow(title, message, confirmText, detail) { Owner = owner };
-        if (owner == null) dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        dialog.ShowDialog();
+        var dialog = new ConfirmationWindow(title, message, confirmText, detail);
+        dialog.ShowForOwner(owner);
         return dialog.Confirmed;
     }
 
     internal static void ShowMessage(Window? owner, string title, string message)
     {
-        var dialog = new ConfirmationWindow(title, message, string.Empty) { Owner = owner };
+        var dialog = new ConfirmationWindow(title, message, string.Empty);
         dialog.ConfirmButton.Visibility = Visibility.Collapsed;
         dialog.CancelButton.Content = "OK";
         AutomationProperties.SetName(dialog.CloseButton, "Close message");
-        if (owner == null) dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        dialog.ShowDialog();
+        dialog.ShowForOwner(owner);
+    }
+
+    private void ShowForOwner(Window? owner)
+    {
+        Owner = owner;
+        if (owner == null) WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        ShowDialog();
     }
 
     private void WindowContentRendered(object? sender, EventArgs e) => CancelButton.Focus();
-    private void ConfirmClick(object sender, RoutedEventArgs e) { Confirmed = true; Close(); }
+    private void ConfirmClick(object sender, RoutedEventArgs e)
+    {
+        Confirmed = true;
+        Close();
+    }
+
     private void CancelClick(object sender, RoutedEventArgs e) => Close();
+
     private void HeaderMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState == MouseButtonState.Pressed) { DragMove(); e.Handled = true; }
+        if (e.ButtonState == MouseButtonState.Pressed)
+        {
+            DragMove();
+            e.Handled = true;
+        }
     }
 }
