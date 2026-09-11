@@ -42,7 +42,7 @@
                 </StackPanel>
             </Border>
         </StackPanel>
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="24,0,24,8">
+        <ScrollViewer Grid.Row="2" Style="{StaticResource PanelScrollViewer}" Padding="24,0,24,8">
             <StackPanel>
                 <ItemsControl ItemsSource="{Binding BasicFields}" ItemTemplate="{StaticResource ParameterTemplate}" />
                 <Expander Header="Precision and work limits" Foreground="{StaticResource TextBrush}" Margin="0,0,0,18"
