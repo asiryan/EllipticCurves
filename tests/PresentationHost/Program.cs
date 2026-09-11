@@ -71,6 +71,7 @@ internal static class Program
             CheckConfirmations(request);
             CheckConfirmationDialogs();
             CheckDockAnimation();
+            CheckExportBounds();
             CheckPlotRendering();
             CheckComplexTorusView();
             Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
@@ -85,6 +86,7 @@ internal static class Program
     private static void CheckComplexTorusView()
     {
         using var view = new ComplexTorusView();
+        var host = new Border { Padding = new Thickness(8, 59, 8, 0), Child = view };
         var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
         var dispatcher = Dispatcher.CurrentDispatcher;
         dispatcher.Invoke(() => view.Model.Update(curve, new[]
@@ -104,10 +106,10 @@ internal static class Program
 
         void Layout(double width, double height)
         {
-            view.Measure(new Size(width, height));
-            view.Arrange(new Rect(0, 0, width, height));
-            view.UpdateLayout();
-            dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(view.UpdateLayout));
+            host.Measure(new Size(width + 16, height + 59));
+            host.Arrange(new Rect(0, 0, width + 16, height + 59));
+            host.UpdateLayout();
+            dispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(host.UpdateLayout));
         }
         Layout(800, 540);
         var lattice = (PeriodLatticePlot)view.FindName("LatticePlot");
@@ -125,8 +127,12 @@ internal static class Program
         Require(!lattice.ShowGrid && !torus.ShowGrid, "Complex grid visibility is not shared.");
         view.Zoom(0.8);
         view.Fit();
-        var bitmap = new RenderTargetBitmap(800, 540, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(view);
+        var bitmap = PlotImageExporter.Render(view);
+        var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
+        bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+        Require(bitmap.PixelWidth == 1600 && bitmap.PixelHeight == 1080
+            && pixels.Where((_, i) => i % 4 == 3).All(alpha => alpha != 0),
+            "The embedded complex view exported with an offset or transparent background.");
         Layout(400, 240);
         Require(lattice.ActualWidth >= 100 && lattice.ActualHeight >= 90 && torus.ActualHeight >= 90,
             "The complex diagrams collapsed in a small viewport.");
@@ -328,20 +334,57 @@ internal static class Program
         }
         finally { window.Close(); window.Workbench.Dispose(); window.ViewModel.Dispose(); }
     }
+    private static void CheckExportBounds()
+    {
+        // Keep the source attached, with both a row offset and a margin, as in MainWindow.
+        // An origin-only rendering check misses the transparent strips and cropped content.
+        var target = new Grid { Width = 200.25, Height = 140.25, Margin = new Thickness(8, 0, 0, 0) };
+        target.Children.Add(new Border { Width = 12, Height = 12, Background = Brushes.Lime,
+            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+        target.Children.Add(new Border { Width = 12, Height = 12, Background = Brushes.Gold,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom });
+        var host = new Grid();
+        host.RowDefinitions.Add(new RowDefinition { Height = new GridLength(59) });
+        host.RowDefinitions.Add(new RowDefinition());
+        Grid.SetRow(target, 1);
+        host.Children.Add(target);
+        host.Measure(new Size(220, 220));
+        host.Arrange(new Rect(0, 0, 220, 220));
+        host.UpdateLayout();
+        var originalOffset = VisualTreeHelper.GetOffset(target);
+        var originalSize = target.RenderSize;
+        var bitmap = PlotImageExporter.Render(target);
+        Require(bitmap.PixelWidth == 401 && bitmap.PixelHeight == 281, "Export must round fractional dimensions up.");
+        var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
+        bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+        Color Pixel(int x, int y)
+        {
+            var i = (y * bitmap.PixelWidth + x) * 4;
+            return Color.FromArgb(pixels[i + 3], pixels[i + 2], pixels[i + 1], pixels[i]);
+        }
+        Require(Pixel(4, 4) == Colors.Lime && Pixel(390, 270) == Colors.Gold,
+            "Export shifted or cropped the source's corner markers.");
+        Require(Pixel(200, 140) == Color.FromRgb(0x12, 0x19, 0x20)
+            && pixels.Where((_, i) => i % 4 == 3).All(alpha => alpha != 0),
+            "The export canvas must have a dark background, including the rounded edge pixels.");
+        Require(VisualTreeHelper.GetParent(target) == host && VisualTreeHelper.GetOffset(target) == originalOffset
+            && target.RenderSize == originalSize, "Export must not move or resize the live view.");
+    }
+
     private static void CheckPlotRendering()
     {
         foreach (var equation in new[] { "y^2=x^3-x", "y^2+xy+y=x^3-x", "y^2=x^3", "y^2=x^3-3*x-2", "y^2=x^3+1e400*x" })
         {
             Require(CurveEquationText.TryParse(equation, out var curve, out var error), error);
             var plot = new CurvePlot { Snapshot = new CurveSnapshot(curve!) };
-            plot.Measure(new Size(800, 500));
-            plot.Arrange(new Rect(0, 0, 800, 500));
+            var host = new Border { Padding = new Thickness(8, 59, 8, 0), Child = plot };
+            host.Measure(new Size(816, 559));
+            host.Arrange(new Rect(0, 0, 816, 559));
             plot.Fit();
             plot.Zoom(0.8);
             plot.Zoom(1.25);
             plot.UpdateLayout();
-            var bitmap = new RenderTargetBitmap(1600, 1000, 192, 192, PixelFormats.Pbgra32);
-            bitmap.Render(plot);
+            var bitmap = PlotImageExporter.Render(plot);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var stream = new System.IO.MemoryStream();

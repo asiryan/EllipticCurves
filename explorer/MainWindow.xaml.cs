@@ -12,6 +12,7 @@ using System.Windows.Threading;
 using EllipticCurves.Explorer.ViewModels;
 using EllipticCurves.Explorer.Windowing;
 using EllipticCurves.Explorer.Computations;
+using EllipticCurves.Explorer.Controls;
 using EllipticCurves.Explorer.Models;
 using Microsoft.Win32;
 
@@ -285,8 +286,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) != true) return;
         try
         {
-            var bitmap = new RenderTargetBitmap((int)Math.Ceiling(target.ActualWidth * 2), (int)Math.Ceiling(target.ActualHeight * 2), 192, 192, PixelFormats.Pbgra32);
-            bitmap.Render(target);
+            var bitmap = PlotImageExporter.Render(target);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var stream = File.Create(dialog.FileName);
