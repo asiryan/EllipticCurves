@@ -41,10 +41,10 @@ Run `build.bat --help` for usage. The individual commands follow below.
 | Console | [console/EllipticCurves.Console.csproj](../console/EllipticCurves.Console.csproj) | .NET 8 | Complete self-contained publish folder in a ZIP |
 | Desktop Explorer | [explorer/EllipticCurves.Explorer.csproj](../explorer/EllipticCurves.Explorer.csproj) | .NET 8, Windows | Complete publish folder in a ZIP |
 
-The library currently sets `Version`, `AssemblyVersion` and `FileVersion` to
-`3.1.0`. Use its project file as the source of truth for the NuGet version.
+The library sets `Version`, `AssemblyVersion` and `FileVersion` in its project
+file. Use that file as the source of truth for the NuGet version.
 The Console and Explorer projects currently have no explicit version settings
-and use the SDK's default `Version` of `1.0.0`. A project reference does not
+and use the SDK's default `Version`. A project reference does not
 inherit the library's version. If all release artifacts should share a version,
 set the applications' version properties explicitly before packaging them.
 
@@ -82,8 +82,8 @@ dotnet pack sources/EllipticCurves.csproj -c Release -p:GeneratePackageOnBuild=f
 
 This command builds and explicitly packs the library. Disabling automatic packing
 for this invocation avoids coupling the pack operation to the project's normal
-`GeneratePackageOnBuild` behavior. At the current version, the output is
-`artifacts/nuget/EllipticCurves.3.1.0.nupkg`.
+`GeneratePackageOnBuild` behavior. The package is written to `artifacts/nuget/`,
+with its filename derived from the package ID and version in the project file.
 
 Before uploading, inspect the package archive for the `lib/netstandard2.0` DLL
 and XML documentation, the README, license and icon. Confirm that the `.nuspec`
