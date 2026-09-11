@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -78,6 +80,19 @@ public partial class MainWindow : Window
 
     private void WindowLoaded(object sender, RoutedEventArgs e) => Plot.Fit();
     private void WindowClosed(object? sender, EventArgs e) { Workbench.Dispose(); ViewModel.ViewResetRequested -= ResetView; ViewModel.Dispose(); }
+    private void RepositoryClick(object sender, RoutedEventArgs e)
+    {
+        const string repositoryUrl = "https://github.com/asiryan/EllipticCurves";
+        try
+        {
+            using var browser = Process.Start(new ProcessStartInfo(repositoryUrl) { UseShellExecute = true });
+        }
+        catch (Exception error) when (error is Win32Exception or InvalidOperationException)
+        {
+            ConfirmationWindow.ShowMessage(this, "Open GitHub repository",
+                "Could not open the browser. Open this address manually:\n" + repositoryUrl);
+        }
+    }
     private void OpenCalculation(CalculationOperation operation) => OpenCalculation(operation, null);
     private void OpenCalculation(CalculationOperation operation, CalculationRequest? previous)
     {

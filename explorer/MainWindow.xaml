@@ -49,16 +49,17 @@
         <Border BorderBrush="#242E38" BorderThickness="0,0,0,1" Padding="8,0,8,0">
             <Grid>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="0,8,0,0">
-                    <Image Source="ec_logo.png" Width="28" Height="28" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Elliptic Curves logo" />
-                    <TextBlock Text="ELLIPTIC CURVES" FontWeight="SemiBold" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" />
+                    <Button Click="RepositoryClick" Style="{StaticResource QuietButton}" Padding="0" Cursor="Hand"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                            ToolTip="https://github.com/asiryan/EllipticCurves" AutomationProperties.Name="Open Elliptic Curves on GitHub">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="ec_logo.png" Width="28" Height="28" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Elliptic Curves logo" />
+                            <TextBlock Text="ELLIPTIC CURVES" FontWeight="SemiBold" FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Border Width="1" Height="13" Background="{StaticResource BorderBrush}" Margin="18,0" />
                     <controls:ExplorerMenu x:Name="Explorer" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                 </StackPanel>
-                <Grid x:Name="NativeIndicator" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,158,0" IsHitTestVisible="False">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <Ellipse Fill="{StaticResource AccentBrush}" Width="5" Height="5" Margin="0,0,7,0" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="NATIVE · LOCAL" Foreground="{StaticResource MutedBrush}" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
-                </Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource CaptionButton}" Click="MinimizeClick" AutomationProperties.Name="Minimize">
                         <Path Style="{StaticResource CaptionIcon}" Data="M0.5,5 H9.5" />

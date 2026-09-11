@@ -418,7 +418,6 @@ internal static class Program
             Layout();
             Require(equationIntro.RenderSize == textBounds.Size, "Expanding Coefficients changed the help text wrapping.");
             Require(Descendants(plotCard).Contains(export), "Export must be on the plot panel.");
-            Require(window.FindName("NativeIndicator") != null, "Native status indicator is missing.");
             Require(window.FindName("ResultsToggle") == null, "The old Results toolbar button remains.");
             Require(!Descendants(root).OfType<TextBlock>().Any(t => t.Text.Contains("A little change")), "The slogan remains.");
             Require(Math.Abs(results.ActualWidth - 300) < 1, "Results must start compact.");
