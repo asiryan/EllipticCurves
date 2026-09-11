@@ -12,12 +12,14 @@
         <KeyBinding Key="N" Modifiers="Control" Command="{x:Static ApplicationCommands.New}" />
         <KeyBinding Key="O" Modifiers="Control" Command="{x:Static ApplicationCommands.Open}" />
         <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}" />
+        <KeyBinding Key="S" Modifiers="Control+Shift" Command="{x:Static ApplicationCommands.SaveAs}" />
         <KeyBinding Key="F" Modifiers="Control" Command="{Binding FitCommand}" />
     </Window.InputBindings>
     <Window.CommandBindings>
         <CommandBinding Command="{x:Static ApplicationCommands.New}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.Open}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.Save}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
+        <CommandBinding Command="{x:Static ApplicationCommands.SaveAs}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
     </Window.CommandBindings>
     <Window.Resources>
         <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
@@ -60,7 +62,8 @@
     <Grid x:Name="AppRoot" Margin="1" Background="{StaticResource BackgroundBrush}">
         <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /><RowDefinition Height="32" /></Grid.RowDefinitions>
         <Border BorderBrush="#242E38" BorderThickness="0,0,0,1" Padding="8,0,8,0">
-            <Grid>
+            <Grid Grid.IsSharedSizeScope="True">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" SharedSizeGroup="TitleBarSide" /></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="0,8,0,0">
                     <Button Click="RepositoryClick" Style="{StaticResource QuietButton}" Padding="0" Cursor="Hand"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"
@@ -74,7 +77,30 @@
                     <controls:SessionMenu x:Name="Session" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <controls:ExplorerMenu x:Name="Explorer" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Grid x:Name="SessionFileIndicator" Grid.Column="1" MaxWidth="460" Margin="24,0" VerticalAlignment="Center" HorizontalAlignment="Center" ClipToBounds="True"
+                      DataContext="{Binding SessionStatus, RelativeSource={RelativeSource AncestorType=Window}}"
+                      ToolTip="{Binding FileLocation}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border x:Name="SessionStatusBadge" Background="{StaticResource RaisedBrush}" CornerRadius="5" Padding="8,4" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="5" Height="5" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse.Style><Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="{StaticResource AccentBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NeedsSave}" Value="True"><Setter Property="Fill" Value="{StaticResource WarningBrush}" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding IsSaving}" Value="True"><Setter Property="Fill" Value="{StaticResource AccentBrush}" /></DataTrigger>
+                                    </Style.Triggers>
+                                </Style></Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock x:Name="SessionSaveStatus" Text="{Binding Status}" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                       AutomationProperties.Name="Session save status" AutomationProperties.LiveSetting="Polite" />
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="SessionFileName" Grid.Column="1" Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ClipToBounds="True"
+                               AutomationProperties.Name="Session file name" />
+                </Grid>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource CaptionButton}" Click="MinimizeClick" AutomationProperties.Name="Minimize">
                         <Path Style="{StaticResource CaptionIcon}" Data="M0,5.5 H10" />
                     </Button>

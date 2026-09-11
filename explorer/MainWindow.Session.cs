@@ -9,7 +9,8 @@ using Microsoft.Win32;
 namespace EllipticCurves.Explorer;
 
 internal sealed record SessionDialogs(Func<string, SaveChangesResult> ConfirmUnsaved,
-    Func<string?, string?> ChooseSavePath, Func<string?> ChooseOpenPath, Action<string, string> ShowError);
+    Func<string?, string?> ChooseSavePath, Func<string?> ChooseOpenPath, Action<string, string> ShowError,
+    Func<string, ExplorerSession, Task>? WriteSession = null);
 
 public partial class MainWindow
 {
@@ -18,21 +19,25 @@ public partial class MainWindow
     private int cleanSessionVersion;
     private ExplorerSession? cleanSession;
     private SessionDialogs sessionDialogs = null!;
+    private bool sessionActionInProgress, isSavingSession, sessionSaveFailed, allowSessionClose;
+    internal Task<bool> PendingSessionOperation { get; private set; } = Task.FromResult(true);
 
     private void SessionCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-        e.CanExecute = e.Command == ApplicationCommands.Save || Workbench.CanRun;
+        e.CanExecute = !sessionActionInProgress && (e.Command == ApplicationCommands.Save
+            ? sessionPath != null : e.Command == ApplicationCommands.SaveAs || Workbench.CanRun);
         e.Handled = true;
     }
 
-    private void SessionCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+    private async void SessionCommandExecuted(object sender, ExecutedRoutedEventArgs e)
     {
         Session.Close();
         Explorer.Close();
-        if (e.Command == ApplicationCommands.New) NewSession();
-        else if (e.Command == ApplicationCommands.Open) OpenSession();
-        else if (e.Command == ApplicationCommands.Save) TrySaveSession();
         e.Handled = true;
+        if (e.Command == ApplicationCommands.New) await NewSessionAsync();
+        else if (e.Command == ApplicationCommands.Open) await OpenSessionAsync();
+        else if (e.Command == ApplicationCommands.Save) await TrySaveSessionAsync();
+        else if (e.Command == ApplicationCommands.SaveAs) await TrySaveSessionAsync(saveAs: true);
     }
 
     private void InitializeSession(SessionDialogs? dialogs)
@@ -44,7 +49,7 @@ public partial class MainWindow
                 var dialog = new SaveFileDialog
                 {
                     Filter = "Explorer session (*.ec)|*.ec", DefaultExt = ".ec", AddExtension = true,
-                    FileName = path ?? "session.ec", Title = "Save session", OverwritePrompt = true
+                    FileName = path ?? "session.ec", Title = "Save session as", OverwritePrompt = true
                 };
                 return dialog.ShowDialog(this) == true ? dialog.FileName : null;
             },
@@ -59,41 +64,63 @@ public partial class MainWindow
             },
             (title, message) => ConfirmationWindow.ShowMessage(this, title, message));
         MarkSessionClean();
+        InitializeSessionStatus();
     }
 
-    internal bool HasUnsavedChanges => cleanSession != null &&
-        (Workbench.IsBusy || ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid
+    internal bool HasUnsavedChanges => Workbench.IsBusy || HasSessionEdits;
+    private bool HasSessionEdits => cleanSession != null &&
+        (ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid
          || !SessionChanges.Equal(cleanSession, ReadSession()));
 
     private void MarkSessionClean()
     {
         cleanSession = ReadSession();
         cleanSessionVersion++;
+        QueueSessionStatusRefresh();
     }
 
-    private bool ConfirmSessionChange()
+    private async Task<bool> ConfirmSessionChangeAsync()
     {
         if (!HasUnsavedChanges) return true;
         var result = sessionDialogs.ConfirmUnsaved(sessionPath == null ? "session.ec" : Path.GetFileName(sessionPath));
         return result.Choice switch
         {
-            SaveChangesChoice.Save => TrySaveSession(result.FileName),
+            SaveChangesChoice.Save => await SaveSessionCoreAsync(false, result.FileName) && !HasSessionEdits,
             SaveChangesChoice.Discard => true,
             _ => false
         };
     }
 
-    internal bool NewSession()
+    private Task<bool> RunSessionOperation(Func<Task<bool>> action)
     {
-        if (!Workbench.CanRun || !ConfirmSessionChange()) return false;
-        RestoreSession(ExplorerSession.New());
-        sessionPath = null;
-        return true;
+        if (sessionActionInProgress || sessionClosed) return Task.FromResult(false);
+        return PendingSessionOperation = RunAsync();
+
+        async Task<bool> RunAsync()
+        {
+            sessionActionInProgress = true;
+            RefreshSessionStatus();
+            try { return await action(); }
+            finally
+            {
+                sessionActionInProgress = false;
+                RefreshSessionStatus();
+            }
+        }
     }
 
-    internal bool OpenSession()
+    internal Task<bool> NewSessionAsync() => RunSessionOperation(async () =>
     {
-        if (!Workbench.CanRun || !ConfirmSessionChange()) return false;
+        if (!Workbench.CanRun || !await ConfirmSessionChangeAsync()) return false;
+        RestoreSession(ExplorerSession.New());
+        sessionPath = null;
+        sessionSaveFailed = false;
+        return true;
+    });
+
+    internal Task<bool> OpenSessionAsync() => RunSessionOperation(async () =>
+    {
+        if (!Workbench.CanRun || !await ConfirmSessionChangeAsync()) return false;
         var path = sessionDialogs.ChooseOpenPath();
         if (path == null) return false;
         try
@@ -101,6 +128,7 @@ public partial class MainWindow
             var saved = SessionFile.Load(path);
             RestoreSession(saved);
             sessionPath = Path.GetFullPath(path);
+            sessionSaveFailed = false;
             return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
@@ -108,14 +136,20 @@ public partial class MainWindow
             sessionDialogs.ShowError("Open session", "The session could not be opened.\n\n" + error.Message);
             return false;
         }
-    }
+    });
 
-    internal bool TrySaveSession(string? fileName = null)
+    internal Task<bool> TrySaveSessionAsync(bool saveAs = false, string? fileName = null) =>
+        RunSessionOperation(() => saveAs || sessionPath != null
+            ? SaveSessionCoreAsync(saveAs, fileName) : Task.FromResult(false));
+
+    private async Task<bool> SaveSessionCoreAsync(bool saveAs, string? fileName)
     {
         ExplorerSession saved;
         try { saved = CaptureSession(); }
         catch (InvalidOperationException error)
         {
+            sessionSaveFailed = true;
+            RefreshSessionStatus();
             sessionDialogs.ShowError("Save session", error.Message);
             return false;
         }
@@ -126,14 +160,19 @@ public partial class MainWindow
             if (!fileName.EndsWith(".ec", StringComparison.OrdinalIgnoreCase)) fileName += ".ec";
             suggestedPath = sessionPath == null ? fileName : Path.Combine(Path.GetDirectoryName(sessionPath)!, fileName);
         }
-        var path = sessionDialogs.ChooseSavePath(suggestedPath);
+        var choosePath = saveAs || sessionPath == null || !string.Equals(suggestedPath, sessionPath, StringComparison.OrdinalIgnoreCase);
+        var path = choosePath ? sessionDialogs.ChooseSavePath(suggestedPath) : sessionPath;
         if (path == null) return false;
         try
         {
-            // Capture again after the file dialog: an active calculation may have
-            // completed while it was open.
+            // Capture on the UI thread, then write an immutable snapshot off it.
+            // Later edits remain dirty and must not be lost to a pending New/Open/Close.
             saved = CaptureSession();
-            SessionFile.Save(path, saved);
+            isSavingSession = true;
+            sessionSaveFailed = false;
+            RefreshSessionStatus();
+            if (sessionDialogs.WriteSession is { } write) await write(path, saved);
+            else await Task.Run(() => SessionFile.Save(path, saved));
             sessionPath = Path.GetFullPath(path);
             cleanSession = saved;
             cleanSessionVersion++;
@@ -141,9 +180,26 @@ public partial class MainWindow
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
+            sessionSaveFailed = true;
+            isSavingSession = false;
+            RefreshSessionStatus();
             sessionDialogs.ShowError("Save session", "The session could not be saved.\n\n" + error.Message);
             return false;
         }
+        finally
+        {
+            isSavingSession = false;
+            RefreshSessionStatus();
+        }
+    }
+
+    private async Task<bool> FinishSessionCloseAsync(Task<bool> confirmation)
+    {
+        if (!await confirmation) return false;
+        allowSessionClose = true;
+        try { Close(); }
+        finally { allowSessionClose = false; }
+        return sessionClosed;
     }
 
     internal ExplorerSession CaptureSession()

@@ -35,11 +35,18 @@ and the checks to run before publishing a release.
 ## Sessions
 
 **Session**, immediately before **Explorer** in the title bar, contains **New**,
-**Open**, **Save** and **Exit**. New starts with the classic curve, empty history
+**Open**, **Save**, **Save as** and **Exit**. New starts with the classic curve, empty history
 and default visualization and panel settings. Open and Save use `.ec` session files;
 Exit closes Explorer.
-Use **Ctrl+N**, **Ctrl+O** and **Ctrl+S** for New, Open and Save; the shortcuts
-are also displayed beside their menu items and use the same save confirmation.
+Use **Ctrl+N**, **Ctrl+O**, **Ctrl+S** and **Ctrl+Shift+S** for New, Open, Save and
+Save as; the shortcuts are also displayed beside their menu items. Save and Ctrl+S
+are available only after opening or saving a file. Use Save as for the first save of
+a new session. Save writes to the current file without a picker. Save as always
+opens the file picker and makes the chosen file the current session after a successful save.
+The title bar shows its file name (the full path appears on hover), an asterisk for
+unsaved changes, and **New session**, **Unsaved changes**, **Saving…**, **Saved** or
+**Save failed**. File writing runs in the background; edits made during a save remain
+unsaved. Other session commands are disabled while writing.
 The menu uses the same header and popup styling as Explorer, with a single vertical
 list. Both menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
@@ -69,9 +76,11 @@ a temporary file before replacing the destination. Session files are limited to
 256 MB. Before New, Open or closing the application (including the window close
 button and Alt+F4), unsaved changes prompt **Save**, **Discard** or **Cancel** in
 the application's dark dialog. Open shows this confirmation before the file picker.
-The file name in this confirmation is editable. Save passes it to the file picker,
-adds `.ec` when needed and preserves the current session's folder. Cancelling does
-not change the session's name or location.
+The file name in this confirmation is editable. An unchanged name saves directly to
+the current file. New or renamed sessions open the file picker with `.ec` added when
+needed and the current session's folder preserved. Cancelling does not change the
+session's name or location. If new edits arrive during saving, the pending New,
+Open or Close is cancelled so those edits remain available.
 Enter, Escape and the dialog close button cancel.
 Cancelling the file picker or failing to save also cancels the pending action.
 An untouched session or an unchanged saved/opened session does not prompt.

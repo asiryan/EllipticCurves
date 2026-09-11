@@ -41,6 +41,8 @@ internal static partial class Program
             CheckSessionNavigation();
             CheckSessionSaveName();
             CheckSessionShortcuts();
+            CheckSessionSaveStatus();
+            CheckSessionSavingConcurrency();
             CheckSaveChangesDialog();
             CheckExplorerSelection();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
@@ -281,16 +283,17 @@ internal static partial class Program
             menu.NewRequested += () => actions.Add("New");
             menu.OpenRequested += () => actions.Add("Open");
             menu.SaveRequested += () => actions.Add("Save");
+            menu.SaveAsRequested += () => actions.Add("Save as");
             menu.ExitRequested += () => actions.Add("Exit");
             var buttons = Descendants(popup.Child).OfType<Button>().ToArray();
-            Require(buttons.Select(button => button.Content).SequenceEqual(new[] { "New", "Open", "Save", "Exit" }),
-                "Session must contain exactly New, Open, Save and Exit, in English.");
+            Require(buttons.Select(button => button.Content).SequenceEqual(new[] { "New", "Open", "Save", "Save as", "Exit" }),
+                "Session must contain New, Open, Save, Save as and Exit, in English.");
             var menuRoot = (FrameworkElement)popup.Child;
-            menuRoot.Measure(new Size(200, double.PositiveInfinity));
+            menuRoot.Measure(new Size(220, double.PositiveInfinity));
             menuRoot.Arrange(new Rect(menuRoot.DesiredSize));
             menuRoot.UpdateLayout();
             var shortcutRights = new List<double>();
-            foreach (var (button, shortcut) in buttons.Take(3).Zip(new[] { "Ctrl+N", "Ctrl+O", "Ctrl+S" }))
+            foreach (var (button, shortcut) in buttons.Take(4).Zip(new[] { "Ctrl+N", "Ctrl+O", "Ctrl+S", "Ctrl+Shift+S" }))
             {
                 var texts = Descendants(button).OfType<TextBlock>().ToArray();
                 var label = texts.Single(text => text.Text == (string)button.Content);
@@ -308,7 +311,7 @@ internal static partial class Program
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Require(menuToggle.IsChecked == false, "A session action left its popup open.");
             }
-            Require(actions.SequenceEqual(new[] { "New", "Open", "Save", "Exit" }), "Session actions were not dispatched exactly once.");
+            Require(actions.SequenceEqual(new[] { "New", "Open", "Save", "Save as", "Exit" }), "Session actions were not dispatched exactly once.");
 
             if (Environment.GetEnvironmentVariable("EC_SESSION_PREVIEW") is { Length: > 0 } preview)
             {
@@ -320,7 +323,7 @@ internal static partial class Program
                 System.Windows.Data.BindingOperations.ClearBinding(sessionPopup, Popup.IsOpenProperty);
                 toggle.IsChecked = true;
                 var dropdown = (FrameworkElement)sessionPopup.Child;
-                dropdown.Measure(new Size(200, double.PositiveInfinity));
+                dropdown.Measure(new Size(220, double.PositiveInfinity));
                 dropdown.Arrange(new Rect(dropdown.DesiredSize));
                 dropdown.UpdateLayout();
                 var drawing = new DrawingVisual();

@@ -47,10 +47,11 @@ public partial class MainWindow : Window
         DataContext = ViewModel;
         Results.DataContext = Workbench;
         ResultsTab.DataContext = Workbench;
-        Session.DataContext = Workbench;
+        Session.DataContext = SessionStatus;
         Session.NewRequested += () => ApplicationCommands.New.Execute(null, this);
         Session.OpenRequested += () => ApplicationCommands.Open.Execute(null, this);
         Session.SaveRequested += () => ApplicationCommands.Save.Execute(null, this);
+        Session.SaveAsRequested += () => ApplicationCommands.SaveAs.Execute(null, this);
         Session.ExitRequested += Close;
         Explorer.OperationRequested += OpenCalculation;
         Results.HideRequested += () => SetResultsVisible(false);
@@ -86,6 +87,7 @@ public partial class MainWindow : Window
         ResultsColumn.MaxWidth = Math.Max(resultsSidebar.MinimumWidth, available - equationWidth);
         var resultsWidth = Math.Min(ResultsColumn.Width.Value, ResultsColumn.MaxWidth);
         EquationColumn.MaxWidth = Math.Max(equationSidebar.MinimumWidth, available - resultsWidth);
+        QueueSessionStatusRefresh();
     }
 
     private void WindowLoaded(object sender, RoutedEventArgs e)
@@ -96,11 +98,21 @@ public partial class MainWindow : Window
     protected override void OnClosing(CancelEventArgs e)
     {
         base.OnClosing(e);
-        if (!e.Cancel) e.Cancel = !ConfirmSessionChange();
+        if (e.Cancel || allowSessionClose) return;
+        if (sessionActionInProgress) { e.Cancel = true; return; }
+        if (!HasUnsavedChanges) return;
+        var confirmation = RunSessionOperation(ConfirmSessionChangeAsync);
+        if (confirmation.IsCompleted) e.Cancel = !confirmation.GetAwaiter().GetResult();
+        else
+        {
+            e.Cancel = true;
+            PendingSessionOperation = FinishSessionCloseAsync(confirmation);
+        }
     }
 
     private void WindowClosed(object? sender, EventArgs e)
     {
+        DisposeSessionStatus();
         Workbench.Dispose();
         TorusView.Model.PropertyChanged -= TorusStateChanged;
         TorusView.Dispose();
@@ -162,6 +174,7 @@ public partial class MainWindow : Window
         var to = visible ? Math.Min(state.ExpandedWidth, column.MaxWidth) : SidebarTabWidth;
         var version = ++state.AnimationVersion;
         state.IsVisible = visible;
+        QueueSessionStatusRefresh();
         column.BeginAnimation(ColumnDefinition.WidthProperty, null);
         column.MinWidth = SidebarTabWidth;
         column.Width = new GridLength(to);
@@ -207,6 +220,7 @@ public partial class MainWindow : Window
         FitViewButton.ToolTip = IsComplexView ? "Reset torus camera (Ctrl+F)" : "Reset real plot view (Ctrl+F)";
         if (!IsComplexView && realViewResetPending) QueueRealViewReset();
         UpdateExportState();
+        QueueSessionStatusRefresh();
     }
 
     private void TorusStateChanged(object? sender, PropertyChangedEventArgs e)

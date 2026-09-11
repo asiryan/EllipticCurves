@@ -14,6 +14,28 @@ using EllipticCurves.Explorer.ViewModels;
 
 internal static partial class Program
 {
+    private static Task<bool> StartSession(Func<Task<bool>> action)
+    {
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+        try { return action(); }
+        finally { SynchronizationContext.SetSynchronizationContext(previous); }
+    }
+
+    private static bool CompleteSession(Func<Task<bool>> action) => WaitForSession(StartSession(action));
+
+    private static bool WaitForSession(Task<bool> task)
+    {
+        if (!task.IsCompleted)
+        {
+            var dispatcher = Dispatcher.CurrentDispatcher;
+            var frame = new DispatcherFrame();
+            _ = task.ContinueWith(_ => dispatcher.BeginInvoke(new Action(() => frame.Continue = false)), TaskScheduler.Default);
+            Dispatcher.PushFrame(frame);
+        }
+        return task.GetAwaiter().GetResult();
+    }
+
     private static void SettleSession(MainWindow window, double width = 1438, double height = 918)
     {
         var root = (FrameworkElement)window.Content;
@@ -71,8 +93,8 @@ internal static partial class Program
                     window.Workbench.Selected = window.Workbench.Jobs[0];
                     ((CurvePlot)window.FindName("Plot")).Zoom(0.7);
                     Require(window.HasUnsavedChanges, "Editing a session did not require a save warning.");
-                    bool CloseWindow() { window.Close(); return closed; }
-                    var proceeded = action == "New" ? window.NewSession() : action == "Open" ? window.OpenSession() : CloseWindow();
+                    bool CloseWindow() { CompleteSession(() => { window.Close(); return window.PendingSessionOperation; }); return closed; }
+                    var proceeded = action == "New" ? CompleteSession(window.NewSessionAsync) : action == "Open" ? CompleteSession(window.OpenSessionAsync) : CloseWindow();
                     var expected = option is "Discard" or "Save";
                     Require(proceeded == expected && prompts == 1,
                         $"{action} / {option} did not obey the unsaved-changes choice.");
@@ -103,15 +125,15 @@ internal static partial class Program
                 _ => input, () => input, (title, message) => throw new Exception(title + ": " + message)));
             try
             {
-                Require(sameFile.OpenSession() && confirmations == 0, "Opening from a clean session unnecessarily prompted.");
+                Require(CompleteSession(sameFile.OpenSessionAsync) && confirmations == 0, "Opening from a clean session unnecessarily prompted.");
                 SettleSession(sameFile);
                 Require(!sameFile.HasUnsavedChanges, "The loaded baseline did not survive layout.");
                 sameFile.ViewModel.Equation.Text = edited;
-                Require(sameFile.OpenSession(), "Save followed by opening the same file failed.");
+                Require(CompleteSession(sameFile.OpenSessionAsync), "Save followed by opening the same file failed.");
                 Require(sameFile.ViewModel.Equation.Text == edited && !sameFile.HasUnsavedChanges,
                     "Opening the same file restored the stale copy from before Save.");
                 ((CurvePlot)sameFile.FindName("Plot")).Zoom(0.8);
-                Require(!sameFile.HasUnsavedChanges && sameFile.TrySaveSession() && !sameFile.HasUnsavedChanges,
+                Require(!sameFile.HasUnsavedChanges && CompleteSession(() => sameFile.TrySaveSessionAsync()) && !sameFile.HasUnsavedChanges,
                     "Graph navigation must not dirty the session, and an explicit save must still work.");
                 sameFile.ViewModel.Equation.Text = "y^2 =";
                 Require(sameFile.HasUnsavedChanges && sameFile.ViewModel.Equation.Error == "",
@@ -153,7 +175,7 @@ internal static partial class Program
                 window.Closed += (_, _) => closed = true;
                 try
                 {
-                    Require(window.OpenSession(), "Could not open the legacy graph session.");
+                    Require(CompleteSession(window.OpenSessionAsync), "Could not open the legacy graph session.");
                     SettleSession(window);
                     var plot = (CurvePlot)window.FindName("Plot");
                     var torus = (ComplexTorusView)window.FindName("TorusView");
@@ -184,7 +206,7 @@ internal static partial class Program
                     var navigatedPlot = plot.CaptureView();
                     var navigatedTorus = torus.CaptureCamera();
                     Require(!window.HasUnsavedChanges, "Panning, zooming or rotating a graph triggered unsaved changes.");
-                    Require(window.TrySaveSession(), "An explicit save after graph navigation failed.");
+                    Require(CompleteSession(() => window.TrySaveSessionAsync(saveAs: true)), "An explicit save after graph navigation failed.");
                     var saved = SessionFile.Load(output);
                     Require(System.Text.Json.JsonSerializer.Serialize(saved.History) == System.Text.Json.JsonSerializer.Serialize(legacy.History)
                         && window.Workbench.Selected == window.Workbench.Jobs[1],
@@ -214,8 +236,8 @@ internal static partial class Program
                     }
                     finally { restored.Close(); }
 
-                    bool CloseWindow() { window.Close(); return closed; }
-                    Require(action == "New" ? window.NewSession() : action == "Open" ? window.OpenSession() : CloseWindow(),
+                    bool CloseWindow() { CompleteSession(() => { window.Close(); return window.PendingSessionOperation; }); return closed; }
+                    Require(action == "New" ? CompleteSession(window.NewSessionAsync) : action == "Open" ? CompleteSession(window.OpenSessionAsync) : CloseWindow(),
                         $"{action} was blocked after graph or result navigation only.");
                     Require(prompts == 0, $"{action} asked to save temporary graph or result navigation.");
                 }
@@ -244,21 +266,21 @@ internal static partial class Program
                     (title, message) => throw new Exception(title + ": " + message)));
                 try
                 {
-                    Require(window.OpenSession(), "Could not load the named session fixture.");
+                    Require(CompleteSession(window.OpenSessionAsync), "Could not load the named session fixture.");
                     SettleSession(window);
                     window.ViewModel.Equation.Text = "y^2 = x^3 + 7";
                     openPath = null;
-                    Require(!window.OpenSession() && window.HasUnsavedChanges, "Cancelling the renamed save must preserve unsaved edits.");
+                    Require(!CompleteSession(window.OpenSessionAsync) && window.HasUnsavedChanges, "Cancelling the renamed save must preserve unsaved edits.");
                     var expectedName = name.EndsWith(".ec", StringComparison.OrdinalIgnoreCase) ? name : name + ".ec";
                     Require(suggestedPath == Path.Combine(Path.GetDirectoryName(input)!, expectedName),
                         "Renaming must retain the current folder and include exactly one .ec extension.");
-                    Require(!window.TrySaveSession() && suggestedPath == input,
+                    Require(!CompleteSession(() => window.TrySaveSessionAsync(saveAs: true)) && suggestedPath == input,
                         "Cancelling the save picker must not rename the current session.");
                     savePath = output;
-                    Require(!window.OpenSession() && !window.HasUnsavedChanges && SessionFile.Load(output).Equation == "y^2 = x^3 + 7",
+                    Require(!CompleteSession(window.OpenSessionAsync) && !window.HasUnsavedChanges && SessionFile.Load(output).Equation == "y^2 = x^3 + 7",
                         "The final path chosen in the save picker must receive the session even if Open is then cancelled.");
                     savePath = null;
-                    Require(!window.TrySaveSession() && suggestedPath == output,
+                    Require(!CompleteSession(() => window.TrySaveSessionAsync(saveAs: true)) && suggestedPath == output,
                         "A subsequent Save must use the actual saved path, not the proposed name.");
                 }
                 finally { choice = SaveChangesChoice.Discard; window.Close(); }
@@ -287,23 +309,32 @@ internal static partial class Program
             var equation = Descendants((FrameworkElement)window.Content).OfType<TextBox>().Single(text =>
                 System.Windows.Automation.AutomationProperties.GetName(text) == "Curve equation");
             var origins = new IInputElement[] { window, equation, (Button)session.FindName("NewButton"), (TextBox)explorer.FindName("SearchBox") };
-            foreach (var (command, key) in new[] { (ApplicationCommands.New, Key.N), (ApplicationCommands.Open, Key.O), (ApplicationCommands.Save, Key.S) })
+            foreach (var (command, key) in new[] { (ApplicationCommands.New, Key.N), (ApplicationCommands.Open, Key.O), (ApplicationCommands.Save, Key.S), (ApplicationCommands.SaveAs, Key.S) })
             {
+                var modifiers = command == ApplicationCommands.SaveAs ? ModifierKeys.Control | ModifierKeys.Shift : ModifierKeys.Control;
+                var saving = command == ApplicationCommands.Save || command == ApplicationCommands.SaveAs;
                 Require(window.InputBindings.OfType<KeyBinding>().Any(binding =>
-                    binding.Command == command && binding.Key == key && binding.Modifiers == ModifierKeys.Control),
+                    binding.Command == command && binding.Key == key && binding.Modifiers == modifiers),
                     $"The Ctrl+{key} session shortcut is missing.");
                 foreach (var origin in origins)
                 {
                     window.ViewModel.Equation.Text = "y^2 = x^3 + 7";
                     var oldPrompts = prompts;
                     var oldSaves = saves;
+                    if (command == ApplicationCommands.Save)
+                    {
+                        Require(!command.CanExecute(null, origin), $"Save must be disabled for new sessions from {origin.GetType().Name}.");
+                        command.Execute(null, origin);
+                        Require(prompts == oldPrompts && saves == oldSaves, "Disabled Save opened a dialog.");
+                        continue;
+                    }
                     sessionToggle.IsChecked = explorerToggle.IsChecked = true;
                     Require(command.CanExecute(null, origin), $"{command.Name} cannot route from {origin.GetType().Name}.");
-                    command.Execute(null, origin);
+                    CompleteSession(() => { command.Execute(null, origin); return window.PendingSessionOperation; });
                     Require(sessionToggle.IsChecked == false && explorerToggle.IsChecked == false,
                         "A session shortcut must dismiss either open title-bar menu.");
-                    Require(prompts - oldPrompts == (command == ApplicationCommands.Save ? 0 : 1)
-                        && saves - oldSaves == (command == ApplicationCommands.Save ? 1 : 0),
+                    Require(prompts - oldPrompts == (saving ? 0 : 1)
+                        && saves - oldSaves == (saving ? 1 : 0),
                         "A session shortcut bypassed confirmation or executed more than once.");
                     Require(window.HasUnsavedChanges && window.ViewModel.Equation.Text == "y^2 = x^3 + 7",
                         "Cancelling a shortcut's dialog discarded the current session.");
@@ -311,7 +342,8 @@ internal static partial class Program
             }
             window.Workbench.Dispose();
             Require(!ApplicationCommands.New.CanExecute(null, window) && !ApplicationCommands.Open.CanExecute(null, window)
-                && ApplicationCommands.Save.CanExecute(null, window), "Session shortcuts must respect the same CanRun restriction as the menu.");
+                && !ApplicationCommands.Save.CanExecute(null, window) && ApplicationCommands.SaveAs.CanExecute(null, window),
+                "Session shortcuts must respect the same CanRun restriction as the menu.");
         }
         finally { choice = SaveChangesChoice.Discard; window.Close(); }
     }

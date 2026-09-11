@@ -10,6 +10,7 @@ public partial class SessionMenu : UserControl
     public event Action? NewRequested;
     public event Action? OpenRequested;
     public event Action? SaveRequested;
+    public event Action? SaveAsRequested;
     public event Action? ExitRequested;
 
     public SessionMenu()
@@ -23,10 +24,11 @@ public partial class SessionMenu : UserControl
     private void NewClick(object sender, RoutedEventArgs e) { menu.Close(); NewRequested?.Invoke(); }
     private void OpenClick(object sender, RoutedEventArgs e) { menu.Close(); OpenRequested?.Invoke(); }
     private void SaveClick(object sender, RoutedEventArgs e) { menu.Close(); SaveRequested?.Invoke(); }
+    private void SaveAsClick(object sender, RoutedEventArgs e) { menu.Close(); SaveAsRequested?.Invoke(); }
     private void ExitClick(object sender, RoutedEventArgs e) { menu.Close(); ExitRequested?.Invoke(); }
     private void PopupOpened(object? sender, EventArgs e) =>
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
-            if (MenuPopup.IsOpen) (NewButton.IsEnabled ? NewButton : SaveButton).Focus();
+            if (MenuPopup.IsOpen) (NewButton.IsEnabled ? NewButton : SaveAsButton).Focus();
         }));
 }

@@ -28,22 +28,28 @@
         <Popup x:Name="MenuPopup" Placement="Bottom" PlacementTarget="{Binding ElementName=Toggle}"
                IsOpen="{Binding IsChecked, ElementName=Toggle, Mode=TwoWay}" StaysOpen="True"
                AllowsTransparency="True" PopupAnimation="Fade" Opened="PopupOpened">
-            <Border Style="{StaticResource Card}" Width="200" Padding="8" Margin="0,6,0,0">
+            <Border Style="{StaticResource Card}" Width="220" Padding="8" Margin="0,6,0,0">
                 <StackPanel KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle">
-                    <Button x:Name="NewButton" Content="New" Click="NewClick" IsEnabled="{Binding CanRun}"
+                    <Button x:Name="NewButton" Content="New" Click="NewClick" IsEnabled="{Binding CanReplace}"
                             Tag="Ctrl+N" AutomationProperties.AcceleratorKey="Ctrl+N"
                             Style="{StaticResource SessionAction}"
                             ToolTip="Start a new session. Stop the active calculation first."
                             ToolTipService.ShowOnDisabled="True" />
-                    <Button x:Name="OpenButton" Content="Open" Click="OpenClick" IsEnabled="{Binding CanRun}"
+                    <Button x:Name="OpenButton" Content="Open" Click="OpenClick" IsEnabled="{Binding CanReplace}"
                             Tag="Ctrl+O" AutomationProperties.AcceleratorKey="Ctrl+O"
                             Style="{StaticResource SessionAction}"
                             ToolTip="Open a session (.ec). Stop the active calculation before opening."
                             ToolTipService.ShowOnDisabled="True" />
                     <Button x:Name="SaveButton" Content="Save" Click="SaveClick"
                             Tag="Ctrl+S" AutomationProperties.AcceleratorKey="Ctrl+S"
-                            Style="{StaticResource SessionAction}" />
-                    <Button x:Name="ExitButton" Content="Exit" Click="ExitClick"
+                            Style="{StaticResource SessionAction}" IsEnabled="{Binding CanSave}"
+                            ToolTip="Save changes to the current session file. Use Save as for a new session."
+                            ToolTipService.ShowOnDisabled="True" />
+                    <Button x:Name="SaveAsButton" Content="Save as" Click="SaveAsClick"
+                            Tag="Ctrl+Shift+S" AutomationProperties.AcceleratorKey="Ctrl+Shift+S"
+                            Style="{StaticResource SessionAction}" IsEnabled="{Binding CanSaveAs}"
+                            ToolTip="Save this session with a different name or in another folder" />
+                    <Button x:Name="ExitButton" Content="Exit" Click="ExitClick" IsEnabled="{Binding CanExit}"
                             Style="{StaticResource SessionAction}" />
                 </StackPanel>
             </Border>
