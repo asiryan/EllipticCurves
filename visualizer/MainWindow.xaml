@@ -12,6 +12,19 @@
         <KeyBinding Key="F" Modifiers="Control" Command="{Binding FitCommand}" />
     </Window.InputBindings>
     <Window.Resources>
+        <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource QuietButton}">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style x:Key="CaptionIcon" TargetType="Path">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Stretch" Value="None" />
+            <Setter Property="Stroke" Value="{StaticResource TextBrush}" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
         <Style x:Key="SidebarSplitter" TargetType="GridSplitter">
             <Setter Property="Width" Value="4" />
             <Setter Property="HorizontalAlignment" Value="Center" />
@@ -56,9 +69,15 @@
                     <TextBlock Grid.Column="1" Text="NATIVE · LOCAL" Foreground="{StaticResource MutedBrush}" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Content="─" Width="44" Style="{StaticResource QuietButton}" Click="MinimizeClick" AutomationProperties.Name="Minimize" />
-                    <Button Content="□" Width="44" Style="{StaticResource QuietButton}" Click="MaximizeClick" AutomationProperties.Name="Maximize or restore" />
-                    <Button Content="✕" Width="44" Style="{StaticResource QuietButton}" Click="CloseClick" AutomationProperties.Name="Close" />
+                    <Button Style="{StaticResource CaptionButton}" Click="MinimizeClick" AutomationProperties.Name="Minimize">
+                        <Path Style="{StaticResource CaptionIcon}" Data="M0.5,5 H9.5" />
+                    </Button>
+                    <Button Style="{StaticResource CaptionButton}" Click="MaximizeClick" AutomationProperties.Name="Maximize or restore">
+                        <Path Style="{StaticResource CaptionIcon}" Data="M0.5,0.5 H9.5 V9.5 H0.5 Z" />
+                    </Button>
+                    <Button Style="{StaticResource CaptionButton}" Click="CloseClick" AutomationProperties.Name="Close">
+                        <Path Style="{StaticResource CaptionIcon}" Data="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
