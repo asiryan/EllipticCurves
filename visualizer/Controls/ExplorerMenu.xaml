@@ -30,7 +30,8 @@
                                  AutomationProperties.Name="Calculation categories">
                             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" /></DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
-                        <ListBox Grid.Column="2" ItemsSource="{Binding Operations}" Style="{StaticResource WorkbenchList}"
+                        <ListBox x:Name="OperationsList" Grid.Column="2" ItemsSource="{Binding Operations}" Style="{StaticResource WorkbenchList}"
+                                 PreviewMouseDown="OperationMouseDown"
                                  AutomationProperties.Name="Available calculations" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemTemplate><DataTemplate>
                                 <Button Click="OperationClick" Tag="{Binding}" Style="{StaticResource QuietButton}" HorizontalContentAlignment="Stretch" Padding="8,8"

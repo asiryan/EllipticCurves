@@ -1,10 +1,13 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Automation;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using System.Windows.Interop;
 using EllipticCurves.Visualizer.Models;
 using EllipticCurves.Visualizer.Windowing;
 using EllipticCurves.Visualizer;
@@ -22,6 +25,7 @@ internal static class Program
             // Load the actual compiled BAML and theme, without Show() or an app event loop.
             var app = new App();
             app.InitializeComponent();
+            CheckExplorerSelection();
             using var workbench = new WorkbenchViewModel();
             var request = new CalculationRequest("Q.TorsionStructure", "y^2 = x^3 - x", new());
             var selected = new CalculationJobViewModel(request, "Displayed");
@@ -62,7 +66,7 @@ internal static class Program
             CheckConfirmationDialogs();
             CheckDockAnimation();
             CheckPlotRendering();
-            Console.WriteLine("PASS: compiled XAML loads; history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, title indicator, PNG rendering, navigation placement and both full-height sidebars checked. No windows opened.");
+            Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, title indicator, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
         }
@@ -70,6 +74,86 @@ internal static class Program
     }
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+    private static void CheckExplorerSelection()
+    {
+        var menu = new ExplorerMenu();
+        var popup = (Popup)menu.FindName("MenuPopup");
+        var root = (FrameworkElement)popup.Child;
+        popup.Child = null;
+        root.DataContext = menu.DataContext;
+        // Attach a presentation source so WPF loads the virtualized list's item
+        // sizes. Without one, BringIntoView cannot reproduce the scrolling bug.
+        // WS_VISIBLE is absent: this host is never shown or activated.
+        using var source = new HwndSource(new HwndSourceParameters("Explorer headless layout")
+            { WindowStyle = 0, Width = 680, Height = 540 }) { RootVisual = root };
+        void Layout()
+        {
+            root.Measure(new Size(680, double.PositiveInfinity));
+            root.Arrange(new Rect(new Point(), root.DesiredSize));
+            root.UpdateLayout();
+        }
+        void Flush()
+        {
+            Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(Layout));
+        }
+        Layout();
+        Flush();
+        var list = Descendants(root).OfType<ListBox>().Single(b => AutomationProperties.GetName(b) == "Available calculations");
+        var scroll = Descendants(list).OfType<ScrollViewer>().Single();
+        var viewport = Descendants(scroll).OfType<ScrollContentPresenter>().Single();
+        Rect Bounds(FrameworkElement element) => element.TransformToAncestor(viewport).TransformBounds(new Rect(element.RenderSize));
+        var requested = new List<CalculationOperation>();
+        menu.OperationRequested += requested.Add;
+        foreach (var clickTarget in new[] { "button", "text", "row padding" })
+        {
+            scroll.ScrollToTop();
+            Flush();
+            var button = Descendants(viewport).OfType<Button>().First(b => Bounds(b).Top < viewport.ActualHeight && Bounds(b).Bottom > viewport.ActualHeight);
+            var row = (ListBoxItem)ItemsControl.ContainerFromElement(list, button);
+            var target = clickTarget == "button" ? (UIElement)button : clickTarget == "text"
+                ? Descendants(button).OfType<TextBlock>().First() : row;
+            var offset = scroll.VerticalOffset;
+            var bounds = Bounds(button);
+            target.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = Mouse.PreviewMouseDownEvent });
+            // Exercise both immediate and deferred focus requests before release.
+            button.BringIntoView();
+            row.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => row.BringIntoView()));
+            Flush();
+            Require(scroll.VerticalOffset == offset && Bounds(button) == bounds,
+                $"Clicking Explorer {clickTarget} moved the operation before mouse-up: offset {offset} -> {scroll.VerticalOffset}.");
+
+            target.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = Mouse.PreviewMouseUpEvent });
+            if (clickTarget != "row padding")
+            {
+                var count = requested.Count;
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Require(requested.Count == count + 1 && requested[^1] == button.Tag,
+                    "An Explorer click must request the original operation exactly once.");
+            }
+            // Keyboard/programmatic focus must still reveal a clipped operation
+            // after the mouse input turn has finished.
+            Require(button.Focusable && button.IsTabStop, "Explorer operations lost keyboard focus support.");
+            button.BringIntoView();
+            Flush();
+            Require(scroll.VerticalOffset > offset, "Explorer focus scrolling remained blocked after the click.");
+        }
+
+        scroll.ScrollToTop();
+        Flush();
+        var wheel = new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, -120) { RoutedEvent = Mouse.MouseWheelEvent };
+        viewport.RaiseEvent(wheel);
+        Flush();
+        Require(wheel.Handled && scroll.VerticalOffset > 0, "Explorer mouse-wheel scrolling is broken.");
+        var wheelOffset = scroll.VerticalOffset;
+        var scrollbar = Descendants(scroll).OfType<ScrollBar>().Single(b => b.Orientation == Orientation.Vertical);
+        scrollbar.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            { RoutedEvent = Mouse.PreviewMouseDownEvent });
+        ScrollBar.PageDownCommand.Execute(null, scroll);
+        Flush();
+        Require(scroll.VerticalOffset > wheelOffset, "Explorer scrollbar clicks no longer scroll.");
+    }
     private static void CheckConfirmationDialogs()
     {
         foreach (var reset in new[] { false, true })
