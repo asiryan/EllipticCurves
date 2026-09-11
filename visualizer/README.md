@@ -41,7 +41,7 @@ Run `EllipticCurves.Visualizer.exe` from that folder. Use `win-arm64` instead of
 - Enter exact decimals (`8.325` or `8,325`), fractions (`-2/7`) or scientific
   notation (`1e-5`). There is no ±100 coefficient limit or one-decimal-place
   restriction. Input is parsed directly into rational numbers, without rounding.
-- Open **Experiment** for optional sliders. Each slider moves up to 50 exact
+- Open **Coefficients** for optional sliders. Each slider moves up to 50 exact
   steps on either side of its anchor. Set a positive **Slider step** there, or
   choose `1`, `0.1` or `0.01`. Changing a coefficient in the formula or changing
   the step recenters its range. Sliders update the formula using exact arithmetic.
@@ -146,7 +146,7 @@ panel into a narrow, full-height tab on its own side, freeing space for the plot
 The folded and expanded versions share the same top, bottom and outer edge,
 including the window margin. Either panel can be folded independently; click its
 tab to restore it. Both panels retain their resized width, and Equation keeps its
-settings and Experiment state. Folding uses a short animation when Windows allows
+settings and Coefficients state. Folding uses a short animation when Windows allows
 interface animations. A dot on the folded Results tab indicates a running
 calculation; the result selection and history remain intact.
 

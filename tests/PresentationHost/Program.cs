@@ -150,14 +150,35 @@ internal static class Program
             var equationColumn = (ColumnDefinition)window.FindName("EquationColumn");
             var equationTab = (Button)window.FindName("EquationTab");
             var equationCollapse = (Button)window.FindName("EquationCollapseButton");
-            var experiment = Descendants(equation).OfType<Expander>().Single();
-            experiment.IsExpanded = true;
+            var coefficients = Descendants(equation).OfType<Expander>().Single();
+            var equationScroll = (ScrollViewer)window.FindName("EquationScroll");
+            var equationIntro = (TextBlock)window.FindName("EquationIntro");
+            Require(equationScroll.ScrollableHeight == 0, "The collapsed controls should fit at the default window size.");
+            var textBounds = Bounds(equationIntro);
+            var viewportWidth = equationScroll.ViewportWidth;
+            equationScroll.Height = 280;
+            Layout();
+            Require(equationScroll.ScrollableHeight > 0, "The overflow layout did not enable scrolling.");
+            Require(Math.Abs(equationScroll.ViewportWidth - viewportWidth) < 1 && equationIntro.RenderSize == textBounds.Size,
+                "The sidebar scrollbar narrowed the text and changed its wrapping.");
+            var scrollBar = Descendants(equationScroll).OfType<System.Windows.Controls.Primitives.ScrollBar>().Single();
+            Require(Bounds(scrollBar).Left >= textBounds.Right,
+                $"The sidebar scrollbar overlaps the text column: bar {Bounds(scrollBar)}, text {textBounds}, padding {equationScroll.Padding}.");
+            equationScroll.ScrollToBottom();
+            Layout();
+            Require(equationScroll.VerticalOffset > 0, "The sidebar content no longer scrolls.");
+            equationScroll.Height = double.NaN;
+            equationScroll.ScrollToTop();
+            Layout();
+            coefficients.IsExpanded = true;
+            Layout();
+            Require(equationIntro.RenderSize == textBounds.Size, "Expanding Coefficients changed the help text wrapping.");
             Require(Descendants(plotCard).Contains(export), "Export must be on the plot panel.");
             Require(window.FindName("NativeIndicator") != null, "Native status indicator is missing.");
             Require(window.FindName("ResultsToggle") == null, "The old Results toolbar button remains.");
             Require(!Descendants(root).OfType<TextBlock>().Any(t => t.Text.Contains("A little change")), "The slogan remains.");
             Require(Math.Abs(results.ActualWidth - 300) < 1, "Results must start compact.");
-            Require(Math.Abs(equation.ActualWidth - 230) < 1, "Equation must start compact.");
+            Require(Math.Abs(equation.ActualWidth - 238) < 1, "Equation must start compact.");
 
             var saved = new CalculationJobViewModel(request, "Preserved while folded");
             window.Workbench.Jobs.Add(saved);
@@ -184,11 +205,11 @@ internal static class Program
             Require(Math.Abs(column.ActualWidth - 470) < 1, "The resized results width was not retained.");
             Click(equationTab);
             Require(equation.Visibility == Visibility.Visible && equationTab.Visibility == Visibility.Collapsed, "The side tab did not reopen Equation.");
-            Require(Math.Abs(equation.ActualWidth - 320) < 1 && experiment.IsExpanded, "Folding lost the resized Equation width or Experiment state.");
+            Require(Math.Abs(equation.ActualWidth - 320) < 1 && coefficients.IsExpanded, "Folding lost the resized Equation width or Coefficients state.");
             Require(window.Workbench.Selected == saved, "Folding lost the selected result.");
 
             column.Width = new GridLength(300);
-            equationColumn.Width = new GridLength(230);
+            equationColumn.Width = new GridLength(238);
             foreach (var windowSize in new[] { new Size(1118, 758), new Size(1438, 918), new Size(1918, 1078) })
             {
                 size = windowSize;

@@ -67,8 +67,9 @@ public static class CalculationCatalog
             var title = Title(method.Name);
             if (methods.Count(other => other.Name == method.Name) > 1)
             {
-                var inputs = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken));
-                title += " (" + string.Join(", ", inputs.Select(p => p.IsOut ? "with details" : p.ParameterType.Name.EndsWith("Options") ? "work limits" : CalculationOperation.Humanize(p.Name!))) + ")";
+                var inputs = method.GetParameters().Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
+                if (inputs.Length > 0)
+                    title += " (" + string.Join(", ", inputs.Select(p => p.IsOut ? "with details" : p.ParameterType.Name.EndsWith("Options") ? "work limits" : CalculationOperation.Humanize(p.Name!))) + ")";
             }
             var group = context switch
             {

@@ -20,7 +20,7 @@ public partial class MainWindow : Window
     public MainViewModel ViewModel { get; } = new();
     public WorkbenchViewModel Workbench { get; } = new();
     private const double SidebarTabWidth = 32;
-    private readonly SidebarState equationSidebar = new(230);
+    private readonly SidebarState equationSidebar = new(238);
     private readonly SidebarState resultsSidebar = new(300);
 
     private sealed class SidebarState(double minimumWidth)

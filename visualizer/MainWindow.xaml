@@ -12,6 +12,26 @@
         <KeyBinding Key="F" Modifiers="Control" Command="{Binding FitCommand}" />
     </Window.InputBindings>
     <Window.Resources>
+        <Style x:Key="EquationScrollViewer" TargetType="ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}"
+                                                    Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                    CanContentScroll="{TemplateBinding CanContentScroll}" />
+                            <ScrollBar x:Name="PART_VerticalScrollBar" Style="{StaticResource {x:Type ScrollBar}}" Orientation="Vertical" HorizontalAlignment="Right" Width="10" MinWidth="0" Margin="0,10,4,10"
+                                       Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="SidebarSplitter" TargetType="GridSplitter">
             <Setter Property="Width" Value="4" />
             <Setter Property="HorizontalAlignment" Value="Center" />
@@ -63,10 +83,10 @@
             </Grid>
         </Border>
         <Grid x:Name="Workspace" Grid.Row="1" Margin="20,16,20,0" ClipToBounds="True">
-            <Grid.ColumnDefinitions><ColumnDefinition x:Name="EquationColumn" Width="230" MinWidth="230" /><ColumnDefinition Width="12" /><ColumnDefinition x:Name="PlotColumn" Width="*" MinWidth="400" /><ColumnDefinition Width="12" /><ColumnDefinition x:Name="ResultsColumn" Width="300" MinWidth="300" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition x:Name="EquationColumn" Width="238" MinWidth="238" /><ColumnDefinition Width="12" /><ColumnDefinition x:Name="PlotColumn" Width="*" MinWidth="400" /><ColumnDefinition Width="12" /><ColumnDefinition x:Name="ResultsColumn" Width="300" MinWidth="300" /></Grid.ColumnDefinitions>
             <Grid x:Name="EquationHost" ClipToBounds="True">
             <Border x:Name="EquationPanel" Style="{StaticResource Card}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20">
+                <ScrollViewer x:Name="EquationScroll" Style="{StaticResource EquationScrollViewer}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -75,21 +95,25 @@
                             <Button Grid.Column="2" Content="Reset" Command="{Binding ResetCommand}" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" />
                         </Grid>
                         <TextBlock Text="{Binding FormDescription}" Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="Enter the whole curve equation. Simple and general Weierstrass forms are recognized automatically." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="19" />
+                        <TextBlock x:Name="EquationIntro" Text="Enter a Weierstrass equation." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="Enter the whole curve equation above. Simple and general Weierstrass forms are recognized automatically." />
                         <TextBlock Text="y^2 = x^3 - 106.16x - 0.32" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
                         <TextBlock Text="y^2 + xy + y = x^3 - x" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" FontSize="11" Margin="0,7,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="Enter powers with ^. Multiplication may be written as * or omitted; decimal commas and fractions work too." Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" LineHeight="19" />
-                        <Expander Header="Experiment" Foreground="{StaticResource TextBrush}" Margin="0,22,0,0" HorizontalContentAlignment="Stretch">
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="Powers: ^" Style="{StaticResource Muted}" LineHeight="18" />
+                            <TextBlock Text="Multiply: * or omit" Style="{StaticResource Muted}" LineHeight="18" />
+                            <TextBlock Text="Numbers: 8.325 · 8,325 · 2/7" Style="{StaticResource Muted}" LineHeight="18" ToolTip="Decimals, decimal commas, fractions and scientific notation are accepted." />
+                        </StackPanel>
+                        <Expander Header="Coefficients" Foreground="{StaticResource TextBrush}" Margin="0,22,0,0" HorizontalContentAlignment="Stretch">
                             <StackPanel Margin="0,12,0,0">
                                 <TextBlock Text="SLIDER STEP" Style="{StaticResource Eyebrow}" Margin="0,0,0,9" />
                                 <TextBox DataContext="{Binding Step}" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}" MinHeight="34" AutomationProperties.Name="Slider step" LostKeyboardFocus="CoefficientEditFinished" PreviewKeyDown="CoefficientKeyDown" />
                                 <UniformGrid Columns="3" Margin="0,7,0,12"><Button Content="1" Command="{Binding SetStepCommand}" CommandParameter="1" Padding="0,6" Margin="0,0,4,0" /><Button Content="0.1" Command="{Binding SetStepCommand}" CommandParameter="0.1" Padding="0,6" Margin="0,0,4,0" /><Button Content="0.01" Command="{Binding SetStepCommand}" CommandParameter="0.01" Padding="0,6" /></UniformGrid>
-                                <TextBlock Text="Drag up to 50 steps each way. Right-click a slider to reset to 0. Editing its coefficient in the formula or changing the step recenters the range." Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,12" />
+                                <TextBlock Text="Range: ±50 steps.&#10;Right-click to reset to 0." Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,12" ToolTip="Editing a coefficient in the equation or changing the step recenters its slider range." />
                                 <ItemsControl ItemsSource="{Binding ActiveCoefficients}">
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <StackPanel Margin="0,0,0,15">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding Name}" FontFamily="Cambria Math" FontSize="18" /><TextBlock Grid.Column="1" Text="{Binding Text}" FontFamily="Consolas" HorizontalAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Text}" /></Grid>
-                                            <Slider Value="{Binding SliderOffset, Mode=TwoWay}" Minimum="-50" Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" Margin="0,4,0,0" PreviewMouseRightButtonDown="ResetSlider" AutomationProperties.Name="{Binding Name, StringFormat=Experiment {0}; right-click to reset to zero}">
+                                            <Slider Value="{Binding SliderOffset, Mode=TwoWay}" Minimum="-50" Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="5" Margin="0,4,0,0" PreviewMouseRightButtonDown="ResetSlider" AutomationProperties.Name="{Binding Name, StringFormat=Coefficient {0}; right-click to reset to zero}">
                                                 <Slider.Style><Style TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}"><Style.Triggers><DataTrigger Binding="{Binding IsValid}" Value="False"><Setter Property="Opacity" Value="0.4" /></DataTrigger></Style.Triggers></Style></Slider.Style>
                                             </Slider>
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding SliderMinimum}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SliderMinimum}" /><TextBlock Grid.Column="2" Text="{Binding SliderMaximum}" FontSize="10" Foreground="{StaticResource MutedBrush}" TextAlignment="Right" TextTrimming="CharacterEllipsis" ToolTip="{Binding SliderMaximum}" /></Grid>
@@ -102,7 +126,7 @@
                         <TextBlock Text="START SOMEWHERE" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
                         <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name" AutomationProperties.Name="Curve preset" />
                         <TextBlock Text="{Binding PresetDescription}" Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="The graph updates after a short pause. Your zoom stays in place; use Fit curve to recenter." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="19" />
+                        <TextBlock Text="Your zoom stays in place.&#10;Fit curve recenters the view." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="The graph updates automatically after a short pause when you edit the equation." />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
