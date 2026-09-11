@@ -74,6 +74,7 @@ internal static class Program
             CheckExportBounds();
             CheckPlotRendering();
             CheckViewSwitching();
+            CheckTorusCycleColors();
             CheckComplexTorusView();
             Console.WriteLine("PASS: compiled XAML loads; Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
@@ -151,6 +152,27 @@ internal static class Program
             }
         }
         finally { window.Close(); }
+    }
+
+    private static void CheckTorusCycleColors()
+    {
+        var torus = new TorusViewport { ShowGrid = false };
+        torus.Zoom(0.75);
+        var host = new Border { Background = new SolidColorBrush(Color.FromRgb(0x12, 0x19, 0x20)), Child = torus };
+        host.Measure(new Size(600, 440));
+        host.Arrange(new Rect(0, 0, 600, 440));
+        host.UpdateLayout();
+        var bitmap = PlotImageExporter.Render(host);
+        var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
+        bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+        foreach (var color in new[] { Color.FromRgb(0x63, 0xE6, 0xCF), Color.FromRgb(0x84, 0xAA, 0xFF) })
+        {
+            var matches = 0;
+            for (var i = 0; i < pixels.Length; i += 4)
+                if (Math.Abs(pixels[i] - color.B) <= 12 && Math.Abs(pixels[i + 1] - color.G) <= 12
+                    && Math.Abs(pixels[i + 2] - color.R) <= 12) matches++;
+            Require(matches > 200, "A torus cycle lost its legend color against the surface: " + color);
+        }
     }
 
     private static void CheckComplexTorusView()

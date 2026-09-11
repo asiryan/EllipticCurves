@@ -62,7 +62,17 @@ internal static class TorusMesh
     public static Material Material(string hex, bool emissive = false)
     {
         var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
-        Material material = emissive ? new EmissiveMaterial(brush) : new DiffuseMaterial(brush);
+        Material material;
+        if (emissive)
+        {
+            // Emission alone adds to the already rendered surface color. An opaque
+            // black base makes cycles and markers match their legend colors.
+            var unlit = new MaterialGroup();
+            unlit.Children.Add(new DiffuseMaterial(Brushes.Black));
+            unlit.Children.Add(new EmissiveMaterial(brush));
+            material = unlit;
+        }
+        else material = new DiffuseMaterial(brush);
         material.Freeze();
         return material;
     }
