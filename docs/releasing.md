@@ -1,0 +1,116 @@
+# Release preparation
+
+Run the commands below from the repository root. They build, test or package the
+current checkout; they do not upload a NuGet package or publish a GitHub release.
+Use the .NET 8 SDK. A newer SDK can also target these projects, but running the
+tests and framework-dependent applications still requires the .NET 8 runtime;
+WPF requires the Windows Desktop runtime. Explorer and its presentation check
+run on Windows.
+
+## Components and versions
+
+| Component | Project | Target | Distribution |
+| --- | --- | --- | --- |
+| Library | [sources/EllipticCurves.csproj](../sources/EllipticCurves.csproj) | .NET Standard 2.0 | NuGet package |
+| Console example | [console/EllipticCurves.Console.csproj](../console/EllipticCurves.Console.csproj) | .NET 8 | Source or published application |
+| Desktop Explorer | [explorer/EllipticCurves.Explorer.csproj](../explorer/EllipticCurves.Explorer.csproj) | .NET 8, Windows | Complete publish folder in a ZIP |
+
+The library currently sets `Version`, `AssemblyVersion` and `FileVersion` to
+`3.1.0`. Use its project file as the source of truth for the NuGet version.
+The Console and Explorer projects currently have no explicit version settings
+and use the SDK's default `Version` of `1.0.0`. A project reference does not
+inherit the library's version. If all release artifacts should share a version,
+set the applications' version properties explicitly before packaging them.
+
+The NuGet README is [docs/nuget-readme.md](nuget-readme.md), not the root README.
+The library project packs it as `README.md`, together with `LICENSE.md`,
+`ec_logo.png`, the library and its generated XML API documentation.
+Explorer is excluded from NuGet packaging. Pack the library project explicitly
+rather than packing the entire solution.
+
+## Validation
+
+Run all arithmetic and portable Explorer tests:
+
+```powershell
+dotnet test tests/EllipticCurves.Tests.csproj -c Release
+```
+
+On Windows, also run the WPF presentation check:
+
+```powershell
+dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release
+```
+
+The second command checks compiled XAML, layout and selected interaction paths;
+it is not part of the solution's `dotnet test` run and does not show application
+windows. Tests use committed fixtures and simulated HTTP responses. Restoring
+SDK/NuGet dependencies can require internet access; the arithmetic tests do not
+call LMFDB. The console example, by contrast, performs a live LMFDB lookup.
+
+## NuGet package
+
+```powershell
+dotnet pack sources/EllipticCurves.csproj -c Release -p:GeneratePackageOnBuild=false -o artifacts/nuget
+```
+
+This command builds and explicitly packs the library. Disabling automatic packing
+for this invocation avoids coupling the pack operation to the project's normal
+`GeneratePackageOnBuild` behavior. At the current version, the output is
+`artifacts/nuget/EllipticCurves.3.1.0.nupkg`.
+
+Before uploading, inspect the package archive for the `lib/netstandard2.0` DLL
+and XML documentation, the README, license and icon. Confirm that the `.nuspec`
+version and dependency declarations match the project. Package inspection and a
+successful install in a consumer project are separate from the source tests.
+
+## Explorer archive
+
+Use a fresh output directory for each release and architecture so that files
+from an older publish are not included in the archive.
+
+```powershell
+dotnet publish explorer/EllipticCurves.Explorer.csproj -c Release -r win-x64 --self-contained true -o artifacts/explorer-win-x64
+Copy-Item -LiteralPath LICENSE -Destination artifacts/explorer-win-x64/EllipticCurves.LICENSE.txt
+Compress-Archive -Path artifacts/explorer-win-x64/* -DestinationPath artifacts/EllipticCurves.Explorer-win-x64.zip
+```
+
+The ZIP must contain the entire publish folder, including runtime files and
+`EllipticCurves.dll`. This is a self-contained folder deployment, not a standalone
+single-file executable. Unpack it and run `EllipticCurves.Explorer.exe` on Windows.
+For ARM64, replace `win-x64` with `win-arm64` in the runtime, output directory and
+archive name, and validate that build on an appropriate Windows machine.
+
+Check the published application itself before uploading: open Explorer and run
+a torsion calculation, verify that its result appears, stop a running calculation,
+save a report and export a PNG. Also check panel resizing/folding and the Clear
+and Reset confirmations. Exercise live LMFDB fetching separately when internet
+access is available. Testing the packaged executable verifies the calculation
+worker's startup and published dependencies as well as the UI.
+
+## Optional console distribution
+
+```powershell
+dotnet publish console/EllipticCurves.Console.csproj -c Release --self-contained false -o artifacts/console
+Copy-Item -LiteralPath LICENSE -Destination artifacts/console/EllipticCurves.LICENSE.txt
+```
+
+Keep the entire output folder. With the .NET 8 runtime installed, run
+`dotnet EllipticCurves.Console.dll` from that folder. The example prints native
+arithmetic results and compares them with live LMFDB metadata, so it requires
+internet access. It is not the Explorer UI.
+
+## Publication order
+
+Publish the corresponding source and documentation before uploading the package.
+The packaged README currently links to the repository's `main` branch, including
+`explorer/README.md`. Those paths must exist publicly when the package is released;
+files present only in a local checkout or development branch do not make the links
+work. Alternatively, use links to the published release tag in the packaged README.
+
+Publish the package and archives only after their checks pass. An unversioned
+`dotnet add package EllipticCurves` installs the latest published stable package,
+which can be older than the checkout being documented. Release notes should name
+the component versions, distinguish numerical estimates and stored database values
+from certified results, and retain the documented limits on rank determination,
+point searches and saturation.

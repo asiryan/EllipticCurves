@@ -31,10 +31,20 @@ Build **EllipticCurves** from source or install the NuGet package in your projec
 |-------------|:-------------:|:-------------:|:--------------:|:--------------:|
 | [EllipticCurves](sources) | .NET Standard 2.0 | Cross-platform | [Release](https://github.com/asiryan/EllipticCurves/releases/) | [NuGet](https://www.nuget.org/packages/EllipticCurves/) | 
 
+The NuGet package contains the library. The [console example](console) targets
+.NET 8; the [desktop Explorer](explorer/README.md) targets .NET 8 on Windows and is
+distributed separately. See [release preparation](docs/releasing.md) for version
+settings, validation and packaging commands.
+
 # Installation
 ```shell
 dotnet add package EllipticCurves
 ```
+
+This installs the latest published stable package. The examples below describe
+the current source checkout, which may be newer. For changes not yet published
+to NuGet, reference the library project or build a local package using
+[the packaging instructions](docs/releasing.md#nuget-package).
 
 Import the namespace in your C# code:
 ```csharp
@@ -302,16 +312,19 @@ Counting and enumeration check all q^2 affine coordinate pairs; the default limi
 is 1000000 pairs. Field presentations must agree before their elements can be mixed.
 See [Faltings-height conventions and finite-extension limits](docs/faltings-and-finite-fields.md).
 
-Run the example and regression tests with:
+From the repository root, with the .NET 8 SDK installed, run the console example
+and the portable regression tests with:
 
 ```sh
 dotnet run --project console/EllipticCurves.Console.csproj
-dotnet test EllipticCurves.sln
+dotnet test tests/EllipticCurves.Tests.csproj -c Release
 ```
 
 The example retains its LMFDB lookup and checks the native results against it,
 so running the example requires internet access. The native API and regression
-tests work offline.
+tests work offline after dependencies have been restored. The Windows-only WPF
+regression check is a separate command documented in
+[the Explorer development guide](explorer/README.md#development).
 
 ## Desktop Explorer (Windows)
 

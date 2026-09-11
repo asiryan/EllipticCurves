@@ -25,22 +25,29 @@ To produce a folder that runs without an installed .NET runtime:
 dotnet publish explorer/EllipticCurves.Explorer.csproj -c Release -r win-x64 --self-contained true -o artifacts/explorer-win-x64
 ```
 
-Run `EllipticCurves.Explorer.exe` from that folder. Use `win-arm64` instead of
-`win-x64` for an ARM64 build.
+Run `EllipticCurves.Explorer.exe` from that folder. Distribute the entire publish
+folder, including its libraries and runtime files; the executable alone is not
+self-contained. For an ARM64 build, use `-r win-arm64` and a separate output
+folder such as `artifacts/explorer-win-arm64`.
+See [release preparation](../docs/releasing.md) for version settings, packaging
+and the checks to run before publishing a release.
 
 ## Explore
 
 - Type the entire equation in one field, for example
   `y^2 = x^3 - 106.16*x - 0.32` or `y^2 + xy + y = x^3 - x`.
   Simple and general Weierstrass forms are recognized automatically.
-- Enter powers only with `^`, such as `x^3` and `y^2`. Multiplication can be
-  explicit (`2*x*y`) or implicit (`2xy`). Parentheses, rational constant division,
+- Enter powers only with `^` and integer exponents from 0 to 3, such as `x^3`
+  and `y^2`. Intermediate polynomials must also have degree at most 3.
+  Multiplication can be explicit (`2*x*y`) or implicit (`2xy`). Parentheses, rational constant division,
   and rearranged polynomial equations are supported. The result must reduce to
   `y^2 + a1*xy + a3*y = x^3 + a2*x^2 + a4*x + a6`; variables in denominators,
   other curve families, and named functions are rejected with an explanation.
 - Enter exact decimals (`8.325` or `8,325`), fractions (`-2/7`) or scientific
   notation (`1e-5`). There is no ±100 coefficient limit or one-decimal-place
   restriction. Input is parsed directly into rational numbers, without rounding.
+  **EQUATION OVER ℚ** shows the applied equation with exact rational coefficients,
+  for example `3/2` for an input coefficient of `1.5`.
 - Open **Coefficients** for optional sliders. Each slider moves up to 50 exact
   steps on either side of its anchor. Set a positive **Slider step** there, or
   choose `1`, `0.1` or `0.01`. Changing a coefficient in the formula or changing
@@ -75,7 +82,8 @@ Inputs outside the numerical plot's representable range retain exact invariants
 and show a plot precision message. To bound input processing, text is limited to
 4096 characters and scientific exponents to ±4096. Numerators and denominators
 of intermediate expressions and normalized coefficients are limited to 32768 bits
-(roughly 9800 decimal digits), so nested numeric powers cannot freeze the editor.
+(roughly 9800 decimal digits); parser nesting is also limited to 64 levels.
+These checks bound expression growth during input processing.
 
 Gold markers are exact affine rational points found with `RationalPoints(12, 4)`:
 their x-coordinates are `m/n`, with `|m| ≤ 12` and `1 ≤ n ≤ 4`. This is a bounded
@@ -125,10 +133,14 @@ polynomials use coefficients in ascending powers of t separated by semicolons:
 coefficients; the separate reduction operations use a **global minimal model**.
 
 Open **Precision and work limits** for each algorithm's options. Every run also has
-a wall-clock time limit (120 seconds by default; 0 means unlimited) and an output
-item limit. Lists exceeding the output limit are explicitly marked as truncated.
-The text report is capped at 2 million characters. These limits do not convert
-partial searches into completeness claims.
+a wall-clock time limit (120 seconds by default; 0 means unlimited, with a maximum
+nonzero setting of 86,400 seconds) and an output item limit (1,000 by default,
+configurable from 1 to 100,000). The item limit applies separately to each list
+or matrix in the result. Lists exceeding it are explicitly marked as truncated.
+The formatted result has an additional fixed budget of approximately 2 million
+characters; the report header, input parameters and truncation notice are extra.
+Increasing the item limit does not raise that text budget. These limits do not
+convert partial searches into completeness claims.
 
 The progress bar shows the current stage and elapsed time. Where the library
 does not report completed work, the bar remains indeterminate; item formatting
@@ -140,8 +152,11 @@ Results retain their input curve, parameters and proof/certification status.
 Height results include exact enclosure bounds; database decimals are labelled
 as approximations. A completed calculation does not imply a proved rank or a
 complete Mordell–Weil basis: the library's status and reason are preserved.
-Use **Copy**, **Save** or **Repeat** on the displayed result. To remove a result, right-click
-its entry in the history dropdown and choose **Delete**. This deletes that entry,
+Use **Copy** or **Save** to export the displayed text report. **Repeat** reopens
+the parameter window with that result's original curve, inputs and limits; it
+does not start another calculation until you choose **Run calculation**.
+To remove a result, right-click its entry in the history dropdown and choose
+**Delete**. This deletes that entry,
 even when another result is displayed; stop an active calculation before deleting it. History keeps the last
 50 calculations for the current session; save reports before closing the app.
 **Clear** in the Results header removes the entire session history after
@@ -163,11 +178,15 @@ calculation; the result selection and history remain intact.
 The XAML theme, plot control, immutable calculation snapshots and view models are
 separate files. No external charting or UI package is required. The portable model
 and view-model sources are linked into the existing test project, so their tests
-also run without WPF on non-Windows systems:
+also run without WPF on non-Windows systems. To run only the Explorer-related tests:
 
 ```powershell
 dotnet test tests/EllipticCurves.Tests.csproj -c Release --filter "FullyQualifiedName~Explorer"
 ```
+
+Omit the filter to run all arithmetic and portable Explorer tests. After the
+initial dependency restore, these tests use local fixtures and simulated HTTP
+responses rather than live LMFDB requests.
 
 The calculation catalog covers public mathematical methods on rational curves,
 Fp/Fq curves, finite fields and rational numbers; explicit entries cover computed
@@ -181,10 +200,12 @@ terminates it on cancellation, timeout or app shutdown. The worker also exits if
 the host disconnects. A portable test host exercises this protocol, errors,
 non-cooperative cancellation and disconnect behavior without opening any UI.
 
-On Windows, also run the compiled-XAML regression check. It loads the real theme
-and main workspace, verifies history-menu deletion, acceptance/rejection of Clear
-and Reset, Repeat, both sidebars' folding,
-aligned bounds at different window sizes, the animation and PNG rendering, and never opens a window:
+On Windows, also run the compiled-XAML regression check. This standalone host is
+not included in `dotnet test EllipticCurves.sln`. It loads the real theme and main
+workspace and verifies Explorer click/focus scrolling, history-menu deletion,
+acceptance/rejection of Clear and Reset, the presence of Repeat, both sidebars'
+folding, aligned bounds at different window sizes, animation and PNG rendering.
+It uses an invisible native layout host and shows no application windows:
 
 ```powershell
 dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release

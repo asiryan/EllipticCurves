@@ -53,7 +53,7 @@ New-Item -ItemType Directory -Force artifacts/native-validation | Out-Null
 foreach ($name in 'root-numbers', 'analytic', 'coefficients', 'derivatives', 'special-functions') {
     Copy-Item -LiteralPath "artifacts/native-validation/$name.csv" -Destination "tests/Fixtures/$name.csv"
 }
-dotnet test EllipticCurves.sln
+dotnet test tests/EllipticCurves.Tests.csproj -c Release
 ```
 
 The scripts fix the PARI random seed. A different PARI version may change its

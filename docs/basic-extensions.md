@@ -121,8 +121,9 @@ Counting and enumeration visit every x-coordinate; the default limit is 1000000
 x-coordinate steps. Odd-characteristic enumeration uses Tonelli-Shanks square
 roots. `GetPointOrder` first counts the group, then factors its order and removes
 prime factors by exact scalar multiplication. The counter is not a bound on
-individual modular operations, elapsed time or factorization. These are basic
-algorithms, with no SEA or extension-field support.
+individual modular operations, elapsed time or factorization. These prime-field
+algorithms do not implement SEA. For extension fields, use the separate
+[`EllipticCurveFq` API](faltings-and-finite-fields.md).
 
 On `EllipticCurveQ`, `ReduceModuloPrime(p)` reduces the global minimal model at a
 good prime. `ReducePointModuloPrime(P,p)` first maps P onto that model, then reduces

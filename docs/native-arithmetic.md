@@ -193,8 +193,12 @@ Coefficient demand grows approximately as sqrt(N) times the logarithm of the
 requested accuracy. Direct point counting costs O(M^2/log M); the coefficient
 and residue arrays use O(M) storage. Integration evaluates the finite Fourier
 polynomial in O(M) time per sample. The method is intended for modest conductors,
-not cryptographic-size curves. Work limits return `Inconclusive`; invalid options
-and singular curves throw. Cancellation propagates as `OperationCanceledException`.
+not cryptographic-size curves. Exhausting the numerical coefficient or integration
+budget returns `Inconclusive`. If a numerical rank is resolved but low-rank
+certification is disabled or its interval still contains zero (for example because
+too few certificate terms were allowed), the result is `NumericalEstimate`, with
+`ProvenRank = null`. Invalid options and singular curves throw. Cancellation
+propagates as `OperationCanceledException`.
 The earlier minimization and factorization steps can dominate the cost and are
 not bounded by these numerical work limits. This is not a complete BSD leading-term
 formula implementation: the analytic-rank routine does not assemble a BSD quotient.

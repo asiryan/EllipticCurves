@@ -120,8 +120,10 @@ gap. `ExactRank` requires equal proved bounds. No numerical analytic result modi
 these bounds. No BSD, GRH, parity or Sha-finiteness assumption is used.
 
 Full Selmer computation does not guarantee an exact rank: a nontrivial Sha[2] or
-unfound rational points can leave a gap. Cassels-Tate pairings, higher descents,
-height/regulator computation and a saturated Mordell-Weil basis are outside this API.
+unfound rational points can leave a gap. Cassels-Tate pairings, higher descents
+and construction of a full saturated Mordell-Weil basis are not implemented.
+Heights, subgroup regulators and saturation at requested primes have
+[separate APIs](heights-and-saturation.md); `GetRankBounds` does not compute them.
 
 ## Independent validation
 
@@ -138,4 +140,7 @@ coordinate changes. The Cremona–Fisher counterexample and zero-sextic speciali
 are regression tests. Local tests include exhaustive modular obstructions, deep
 p-adic coordinate changes and the everywhere locally soluble Reichardt–Lind covering.
 
-Run the complete suite with `dotnet test EllipticCurves.sln -c Release`.
+Run the arithmetic and portable Explorer regression suite from the repository
+root with `dotnet test tests/EllipticCurves.Tests.csproj -c Release`.
+The separate Windows WPF check is described in
+[the Explorer development guide](../explorer/README.md#development).
