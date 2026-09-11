@@ -12,7 +12,7 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding}" />
                             <TextBlock Grid.Column="1" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       Foreground="{StaticResource MutedBrush}" Margin="24,0,0,0" />
+                                       Foreground="{StaticResource MutedBrush}" FontSize="12" VerticalAlignment="Center" Margin="24,0,0,0" />
                         </Grid>
                     </DataTemplate>
                 </Setter.Value>

@@ -28,7 +28,7 @@
                                         ToolTip="{Binding Description}">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="13" />
-                                        <TextBlock Text="{Binding Group}" Style="{StaticResource Muted}" FontSize="10" Margin="0,4,0,0" />
+                                        <TextBlock Text="{Binding Group}" Style="{StaticResource Muted}" FontSize="12" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </Button>
                             </DataTemplate></ListBox.ItemTemplate>
