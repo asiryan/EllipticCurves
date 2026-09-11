@@ -93,7 +93,12 @@ division fallback. Pollard rho supplies candidate factors; no probable-prime
 result is accepted as a proof. Large integers can still be prohibitively expensive
 to factor or prove prime. APIs accepting a cancellation token check it in the
 factorization and search loops; a single BigInteger operation cannot be interrupted
-midway. The torsion API does not currently accept a cancellation token.
+midway. Rational torsion uses a short integral model with denominator scaling
+weighted by the fourth and sixth powers. Lutz–Nagell candidates are found by
+exact cubic bisection, without factoring each candidate's constant term; the
+search stops once its good-reduction upper bound is attained. Factoring the
+model's discriminant may still be expensive when that bound is not attained.
+The torsion API does not currently accept a cancellation token.
 
 The convenience properties recompute their results; callers doing repeated work
 can retain the returned minimal model, conductor and rank bounds.
