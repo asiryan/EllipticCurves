@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using EllipticCurves.Explorer.Computations;
@@ -11,7 +12,12 @@ namespace EllipticCurves.Explorer.Controls;
 
 public partial class ExplorerMenu : UserControl
 {
+    private const int WmNcLButtonDown = 0x00A1;
+    private const int WmNcRButtonDown = 0x00A4;
+    private const int WmNcMButtonDown = 0x00A7;
+    private const int WmNcXButtonDown = 0x00AB;
     private Window? popupOwner;
+    private HwndSource? popupOwnerSource;
     public event Action<CalculationOperation>? OperationRequested;
     public ExplorerMenu()
     {
@@ -30,10 +36,15 @@ public partial class ExplorerMenu : UserControl
         owner.Deactivated += CloseFromOwner;
         owner.LocationChanged += CloseFromOwner;
         owner.SizeChanged += CloseFromOwner;
+        var handle = new WindowInteropHelper(owner).Handle;
+        popupOwnerSource = handle == IntPtr.Zero ? null : HwndSource.FromHwnd(handle);
+        popupOwnerSource?.AddHook(OwnerWindowMessage);
     }
 
     private void DetachPopupOwner()
     {
+        popupOwnerSource?.RemoveHook(OwnerWindowMessage);
+        popupOwnerSource = null;
         if (popupOwner == null) return;
         popupOwner.PreviewMouseDown -= OwnerMouseDown;
         popupOwner.Deactivated -= CloseFromOwner;
@@ -49,6 +60,16 @@ public partial class ExplorerMenu : UserControl
             (source == Toggle || Toggle.IsAncestorOf(source) ||
              source == MenuPopup.Child || MenuPopup.Child.IsAncestorOf(source))) return;
         Toggle.IsChecked = false;
+    }
+
+    private IntPtr OwnerWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        // WindowChrome routes title-bar and resize-border clicks through native
+        // messages instead of PreviewMouseDown. Dismiss without consuming the
+        // message, so dragging, resizing and the system menu still work.
+        if (message is WmNcLButtonDown or WmNcRButtonDown or WmNcMButtonDown or WmNcXButtonDown)
+            Toggle.IsChecked = false;
+        return IntPtr.Zero;
     }
 
     private void CloseFromOwner(object? sender, EventArgs e) => Toggle.IsChecked = false;

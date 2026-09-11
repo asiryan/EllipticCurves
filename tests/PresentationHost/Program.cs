@@ -9,6 +9,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Interop;
+using System.Runtime.InteropServices;
 using EllipticCurves;
 using EllipticCurves.Explorer.Models;
 using EllipticCurves.Explorer.Windowing;
@@ -31,6 +32,7 @@ internal static class Program
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
                 { Source = new Uri("/EllipticCurves.Explorer;component/Themes/Theme.xaml", UriKind.Relative) });
             CheckExplorerToggle();
+            CheckExplorerCaptionDismissal();
             CheckExplorerSelection();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();
@@ -232,6 +234,64 @@ internal static class Program
         var scroll = Descendants(view).OfType<ScrollViewer>().First();
         Require(scroll.ScrollableHeight > 0, "The compact complex view must scroll instead of crushing the diagrams.");
     }
+
+    private static void CheckExplorerCaptionDismissal()
+    {
+        var owner = new MainWindow();
+        var menu = (ExplorerMenu)owner.FindName("Explorer");
+        var toggle = (ToggleButton)menu.FindName("Toggle");
+        var popup = (Popup)menu.FindName("MenuPopup");
+        // Keep both windows hidden, but send real native messages through the
+        // same HWND and WindowChrome hooks used by the application.
+        System.Windows.Data.BindingOperations.ClearBinding(popup, Popup.IsOpenProperty);
+        try
+        {
+            var handle = new WindowInteropHelper(owner).EnsureHandle();
+            var source = HwndSource.FromHwnd(handle);
+            var expectedMessage = 0;
+            var forwarded = false;
+            var openWhenForwarded = false;
+            IntPtr ObserveMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+            {
+                if (message != expectedMessage) return IntPtr.Zero;
+                forwarded = true;
+                openWhenForwarded = toggle.IsChecked == true;
+                // Stop only in the test, before Windows starts a modal move or
+                // resize loop. The menu's hook must pass the message through.
+                handled = true;
+                return IntPtr.Zero;
+            }
+            source.AddHook(ObserveMessage);
+            try
+            {
+                void Send(int message)
+                {
+                    expectedMessage = message;
+                    forwarded = false;
+                    // HTCAPTION, plus XBUTTON1 for the extended-button message.
+                    var hitTest = message == 0x00AB ? 0x00010002 : 2;
+                    SendMessage(handle, message, new IntPtr(hitTest), IntPtr.Zero);
+                    Require(forwarded, "Explorer swallowed a native message needed by WindowChrome.");
+                }
+
+                foreach (var message in new[] { 0x00A1, 0x00A4, 0x00A7, 0x00AB })
+                {
+                    toggle.IsChecked = true;
+                    Send(0x00A0); // WM_NCMOUSEMOVE
+                    Require(openWhenForwarded, "Hovering over the title bar dismissed Explorer.");
+                    Send(message); // WM_NC[L/R/M/X]BUTTONDOWN
+                    Require(!openWhenForwarded && toggle.IsChecked == false,
+                        $"Title-bar click 0x{message:X} did not dismiss Explorer before native window handling.");
+                }
+                Require(!owner.IsVisible && !popup.IsOpen, "Native input checks must not show windows.");
+            }
+            finally { source.RemoveHook(ObserveMessage); }
+        }
+        finally { owner.Close(); }
+    }
+
+    [DllImport("user32.dll", EntryPoint = "SendMessageW")]
+    private static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
 
     private static void CheckExplorerToggle()
     {
