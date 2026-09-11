@@ -83,7 +83,7 @@
                     <controls:EditMenu x:Name="Edit" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <controls:ExplorerMenu x:Name="Explorer" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                 </StackPanel>
-                <Grid x:Name="SessionFileIndicator" Grid.Column="1" MaxWidth="460" Margin="24,0" VerticalAlignment="Center" HorizontalAlignment="Center" ClipToBounds="True"
+                <Grid x:Name="SessionFileIndicator" Grid.Column="1" MaxWidth="240" Margin="24,0" VerticalAlignment="Center" HorizontalAlignment="Center" ClipToBounds="True"
                       DataContext="{Binding SessionStatus, RelativeSource={RelativeSource AncestorType=Window}}"
                       ToolTip="{Binding FileLocation}" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
