@@ -72,7 +72,7 @@
         <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
         <Setter Property="SelectionBrush" Value="#39776F" />
         <Setter Property="Padding" Value="8,4" />
-        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+        <Setter Property="FontFamily" Value="Consolas" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
