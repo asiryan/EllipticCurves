@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Automation;
@@ -22,10 +23,14 @@ internal static class Program
     {
         try
         {
-            // Load the actual compiled BAML and theme, without Show() or an app event loop.
-            var app = new App();
-            app.InitializeComponent();
+            // Load the actual compiled controls and theme. App.OnStartup calls
+            // MainWindow.Show(), so use a resource-only Application for tests
+            // that pump the dispatcher, including its queued Startup event.
+            var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary
+                { Source = new Uri("/EllipticCurves.Visualizer;component/Themes/Theme.xaml", UriKind.Relative) });
             CheckExplorerSelection();
+            Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();
             var request = new CalculationRequest("Q.TorsionStructure", "y^2 = x^3 - x", new());
             var selected = new CalculationJobViewModel(request, "Displayed");
@@ -240,9 +245,14 @@ internal static class Program
             root.Measure(new Size(1438, 918));
             root.Arrange(new Rect(0, 0, 1438, 918));
             root.UpdateLayout();
+            var plotted = Descendants(root).OfType<TextBlock>().Single(t => t.Inlines.OfType<Run>().Any(r => r.Text == "PLOTTED: "));
+            var equationPreview = plotted.Inlines.OfType<Run>().Last();
+            Require(equationPreview.Text == window.ViewModel.Snapshot.Equation, "The initial plotted equation is missing.");
             window.ViewModel.ShowPoints = false;
             window.ViewModel.Equation.Text = "y^2 + y = x^3 - x";
             window.ViewModel.FlushUpdate();
+            root.UpdateLayout();
+            Require(equationPreview.Text == window.ViewModel.Snapshot.Equation, "The plotted equation did not update after editing.");
             window.Workbench.Jobs.Add(first);
             window.Workbench.Selected = first;
             var snapshot = window.ViewModel.Snapshot;
@@ -257,6 +267,8 @@ internal static class Program
             reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Require(resetConfirmations == 2 && window.ViewModel.Equation.Text == "y^2 = x^3 - x" && resets == 1,
                 "Accepting Reset did not restore and recenter the classic curve.");
+            root.UpdateLayout();
+            Require(equationPreview.Text == window.ViewModel.Snapshot.Equation, "The plotted equation did not update after Reset.");
             Require(window.Workbench.Selected == first && window.Workbench.Jobs.Count == 1,
                 "Reset must preserve calculation history.");
         }

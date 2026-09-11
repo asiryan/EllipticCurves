@@ -67,7 +67,7 @@
     <Style TargetType="TextBox">
         <Setter Property="ToolTip" Value="{Binding Text}" />
         <Setter Property="Background" Value="#11171E" />
-        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
         <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
         <Setter Property="SelectionBrush" Value="#39776F" />

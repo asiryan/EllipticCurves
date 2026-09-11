@@ -38,7 +38,7 @@
             <TextBlock Text="{Binding Operation.Description}" Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" Margin="0,9,0,12" />
             <Border Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="10" Visibility="{Binding Operation.UsesPlot, Converter={StaticResource BooleanVisibility}}">
                 <StackPanel><TextBlock Text="CAPTURED PLOT" Style="{StaticResource Eyebrow}" FontSize="9" />
-                    <TextBlock Text="{Binding Equation}" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" Margin="0,5,0,0" MaxHeight="50" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Equation}" />
+                    <TextBlock Text="{Binding Equation}" FontFamily="Consolas" Foreground="{StaticResource TextBrush}" Margin="0,5,0,0" MaxHeight="50" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Equation}" />
                 </StackPanel>
             </Border>
         </StackPanel>

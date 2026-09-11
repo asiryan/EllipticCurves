@@ -15,7 +15,7 @@ public sealed class CurvePlot : FrameworkElement
     public static readonly DependencyProperty ShowPointsProperty = DependencyProperty.Register(nameof(ShowPoints), typeof(bool), typeof(CurvePlot), new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
     private static readonly Brush CurveBrush = Brush("#63E6CF");
     private static readonly Brush PointBrush = Brush("#F7CC7C");
-    private static readonly Brush LabelBrush = Brush("#7F94A8");
+    private static readonly Brush LabelBrush = Brush("#EDF3F7");
     private static readonly Typeface LabelTypeface = new("Consolas");
     private readonly List<(StreamGeometry Upper, StreamGeometry Lower, StreamGeometry Fill)> geometry = new();
     private bool geometryDirty = true;

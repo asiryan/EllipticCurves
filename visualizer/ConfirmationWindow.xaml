@@ -47,7 +47,7 @@
                 <TextBlock x:Name="Message" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" LineHeight="20" />
                 <Border x:Name="DetailPanel" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}"
                         BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,16,0,0" Visibility="Collapsed">
-                    <TextBlock x:Name="Detail" FontFamily="Consolas" FontSize="16" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="Detail" FontFamily="Consolas" FontSize="16" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" />
                 </Border>
             </StackPanel>
             <Border Grid.Row="2" Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}"

@@ -96,8 +96,8 @@
                         </Grid>
                         <TextBlock Text="{Binding FormDescription}" Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" />
                         <TextBlock x:Name="EquationIntro" Text="Enter a Weierstrass equation." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="Enter the whole curve equation above. Simple and general Weierstrass forms are recognized automatically." />
-                        <TextBlock Text="y^2 = x^3 - 106.16x - 0.32" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="y^2 + xy + y = x^3 - x" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" FontSize="11" Margin="0,7,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="y^2 = x^3 - 106.16x - 0.32" FontFamily="Consolas" Foreground="{StaticResource TextBrush}" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="y^2 + xy + y = x^3 - x" FontFamily="Consolas" Foreground="{StaticResource TextBrush}" FontSize="11" Margin="0,7,0,0" TextWrapping="Wrap" />
                         <StackPanel Margin="0,12,0,0">
                             <TextBlock Text="Powers: ^" Style="{StaticResource Muted}" LineHeight="18" />
                             <TextBlock Text="Multiply: * or omit" Style="{StaticResource Muted}" LineHeight="18" />
@@ -154,7 +154,9 @@
                                 <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Error}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                             </TextBlock>
                         </StackPanel>
-                        <TextBlock Grid.Row="2" Text="{Binding Snapshot.Equation, StringFormat=Plotted: {0}}" FontFamily="Cambria Math" FontSize="14" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Equation}" />
+                        <TextBlock Grid.Row="2" Style="{StaticResource Eyebrow}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Equation}">
+                            <Run Text="PLOTTED: " /><Run Text="{Binding Snapshot.Equation, Mode=OneWay}" FontFamily="Cambria Math" FontSize="14" FontWeight="Normal" />
+                        </TextBlock>
                     </Grid>
                 </Border>
                 <Border x:Name="PlotCard" Grid.Row="2" Style="{StaticResource Card}" Background="#121920" ClipToBounds="True">
@@ -163,7 +165,9 @@
                         <Grid Margin="16,10" MinHeight="32">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <WrapPanel VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Height="28" Margin="0,0,24,0"><TextBlock Text="Real locus" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" /><TextBlock Text="E(ℝ)" FontFamily="Cambria Math" FontSize="15" Foreground="{StaticResource MutedBrush}" Margin="10,0,0,0" VerticalAlignment="Center" /></StackPanel>
+                                <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <Run Text="Real locus" FontWeight="SemiBold" /><Run Text="&#160;&#160;&#160;E(ℝ)" FontFamily="Cambria Math" FontSize="15" Foreground="{StaticResource MutedBrush}" BaselineAlignment="Baseline" />
+                                </TextBlock>
                                 <CheckBox Content="Grid" IsChecked="{Binding ShowGrid}" Height="28" VerticalContentAlignment="Center" Margin="0,0,16,0" />
                                 <CheckBox Content="Rational samples" IsChecked="{Binding ShowPoints}" Height="28" VerticalContentAlignment="Center" />
                             </WrapPanel>
@@ -188,7 +192,7 @@
                 </Border>
                 <Grid Grid.Row="4">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <Border Style="{StaticResource Card}" Padding="16,13"><StackPanel><TextBlock Text="DISCRIMINANT  Δ" Style="{StaticResource Eyebrow}" /><TextBlock Text="{Binding Snapshot.Discriminant}" FontSize="24" FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource AccentBrush}" Margin="0,7,0,5" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Discriminant}" /><TextBlock Text="Exact rational value" Style="{StaticResource Muted}" FontSize="10" /></StackPanel></Border>
+                    <Border Style="{StaticResource Card}" Padding="16,13"><StackPanel><TextBlock Text="DISCRIMINANT  Δ" Style="{StaticResource Eyebrow}" /><TextBlock Text="{Binding Snapshot.Discriminant}" FontSize="24" FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource TextBrush}" Margin="0,7,0,5" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.Discriminant}" /><TextBlock Text="Exact rational value" Style="{StaticResource Muted}" FontSize="10" /></StackPanel></Border>
                     <Border Grid.Column="2" Style="{StaticResource Card}" Padding="16,13"><StackPanel><TextBlock Text="j-INVARIANT" Style="{StaticResource Eyebrow}" /><TextBlock Text="{Binding Snapshot.JInvariant}" FontSize="24" FontFamily="Cascadia Mono, Consolas" Margin="0,7,0,5" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.JInvariant}" /><TextBlock Text="Exact rational value" Style="{StaticResource Muted}" FontSize="10" /></StackPanel></Border>
                     <Border Grid.Column="4" Style="{StaticResource Card}" Padding="16,13"><StackPanel><TextBlock Text="REAL COMPONENTS" Style="{StaticResource Eyebrow}" /><TextBlock Text="{Binding Snapshot.Components}" FontSize="24" FontFamily="Cascadia Mono, Consolas" Margin="0,7,0,5" /><TextBlock Text="{Binding Snapshot.ComponentNote}" Style="{StaticResource Muted}" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip="{Binding Snapshot.ComponentNote}" /></StackPanel></Border>
                     <Border Grid.Column="6" Style="{StaticResource Card}" Padding="16,13"><StackPanel><TextBlock Text="GEOMETRY" Style="{StaticResource Eyebrow}" /><TextBlock Text="{Binding Snapshot.Status}" FontSize="18" FontWeight="SemiBold" Margin="0,11,0,9"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource TextBrush}" /><Style.Triggers><DataTrigger Binding="{Binding Snapshot.IsSingular}" Value="True"><Setter Property="Foreground" Value="{StaticResource WarningBrush}" /></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock><TextBlock Text="General Weierstrass model" Style="{StaticResource Muted}" FontSize="10" /></StackPanel></Border>
