@@ -187,7 +187,8 @@
                         <Grid x:Name="RealPlotHost" Grid.Row="1">
                             <controls:CurvePlot x:Name="Plot" Snapshot="{Binding Snapshot}" Samples="{Binding Samples}" ShowGrid="{Binding ShowGrid}" ShowPoints="{Binding ShowPoints}" Margin="8,0" AutomationProperties.Name="Real elliptic curve plot. Drag to pan, scroll to zoom. Control F to fit." />
                             <Border HorizontalAlignment="Center" VerticalAlignment="Center" Background="#222B35" CornerRadius="8" Padding="18" Visibility="{Binding Snapshot.IsPlotUnavailable, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="These coefficients exceed the plot's numerical precision.&#10;Your equation and invariants are still exact." TextAlignment="Center" TextWrapping="Wrap" MaxWidth="400" /></Border>
-                            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,8,0,0" Background="#332B1E" CornerRadius="6" Padding="10,6" IsHitTestVisible="False" Visibility="{Binding Snapshot.IsSingular, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="Δ = 0 · singular cubic" Foreground="{StaticResource WarningBrush}" FontSize="11" /></Border>
+                            <!-- Place the badge inside the plot grid, beyond CurvePlot's axis-label gutter. -->
+                            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="72,28,0,0" Background="#332B1E" CornerRadius="6" Padding="10,6" IsHitTestVisible="False" Visibility="{Binding Snapshot.IsSingular, Converter={StaticResource BooleanVisibility}}"><TextBlock Text="Δ = 0 · singular cubic" Foreground="{StaticResource WarningBrush}" FontSize="11" /></Border>
                         </Grid>
                         <controls:ComplexTorusView x:Name="TorusView" Grid.Row="1" Snapshot="{Binding Snapshot}" Samples="{Binding Samples}"
                                                    ShowGrid="{Binding ShowGrid}" Visibility="Collapsed" />
