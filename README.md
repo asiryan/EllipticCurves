@@ -324,7 +324,7 @@ Parameter windows feed a results panel with session history, progress, cancellat
 and time limits. Native computations run locally; only the explicit LMFDB fetch
 commands require internet access.
 
-![Elliptic Curves Explorer](docs/png/visualizer.png)
+![Elliptic Curves Explorer](docs/png/explorer.png)
 
 ```powershell
 dotnet run --project explorer/EllipticCurves.Explorer.csproj -c Release
