@@ -27,10 +27,10 @@ internal static partial class Program
         var errors = 0;
         var writes = 0;
         var window = new MainWindow(null, new SessionDialogs(_ => new(SaveChangesChoice.Discard),
-            _ => { pickers++; return choosePath; }, () => first, (_, _) => errors++, (path, snapshot, createCopy) =>
+            _ => { pickers++; return choosePath; }, () => first, (_, _) => errors++, (path, snapshot) =>
             {
                 writes++;
-                return Task.Run(() => SessionFile.Save(path, snapshot, createCopy));
+                return Task.Run(() => SessionFile.Save(path, snapshot));
             }));
         try
         {
@@ -86,16 +86,20 @@ internal static partial class Program
             Require(window.SessionStatus.FileLocation == first && SessionFile.Load(first).Equation == "y^2 = x^3 + 7",
                 "Saving must display the real file path and write the edited session.");
             window.ViewModel.Step.Text = "0.2";
-            CheckStatus("Unsaved changes", "curve-study.ec *");
-            CheckSaveAvailability(true);
+            CheckStatus("Saved", "curve-study.ec");
+            CheckSaveAvailability(false);
             window.ViewModel.Step.Text = "0.01";
             CheckStatus("Saved", "curve-study.ec");
             CheckSaveAvailability(false);
-            window.ViewModel.Step.Text = "0.2";
+            window.ViewModel.Step.Text = "invalid step";
+            CheckStatus("Saved", "curve-study.ec");
+            CheckSaveAvailability(false);
+            window.ViewModel.Equation.Text = "y^2 = x^3 + 9";
             CheckStatus("Unsaved changes", "curve-study.ec *");
             CheckSaveAvailability(true);
             Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 1
-                && SessionFile.Load(first).SliderStep == "0.2", "Ctrl+S must overwrite the current file without a picker.");
+                && SessionFile.Load(first).Equation == "y^2 = x^3 + 9" && window.ViewModel.Step.Text == "invalid step",
+                "Saving curve data must ignore an invalid local slider step and leave the editor setting unchanged.");
             CheckStatus("Saved", "curve-study.ec");
             CheckSaveAvailability(false);
             window.ViewModel.ShowGrid = false;
@@ -103,7 +107,7 @@ internal static partial class Program
             ((ComboBox)window.FindName("ViewMode")).SelectedIndex = 1;
             CheckStatus("Saved", "curve-study.ec");
             CheckSaveAvailability(false);
-            Require(SessionFile.Load(first).ShowGrid, "Disabled Save must leave the stored visual settings unchanged.");
+            Require(SessionFile.Load(first).ShowGrid, "Files must load with default display settings.");
             var original = File.ReadAllBytes(first);
 
             choosePath = null;
@@ -117,8 +121,9 @@ internal static partial class Program
             CheckStatus("Saved", "curve-study-copy.ec");
             CheckSaveAvailability(false);
             var visual = SessionFile.Load(second);
-            Require(visual.ComplexView && !visual.ShowGrid && !visual.ShowPoints,
-                "Save as must still write visual changes while the session shows Saved.");
+            Require(!visual.ComplexView && visual.ShowGrid && visual.ShowPoints
+                && ((ComboBox)window.FindName("ViewMode")).SelectedIndex == 1 && !window.ViewModel.ShowGrid && !window.ViewModel.ShowPoints,
+                "Save as must omit presentation without changing the current window's display.");
             window.ViewModel.Equation.Text = "y^2 = x^3 - 5*x + 3";
             Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && pickers == 3
                 && SessionFile.Load(second).Equation == "y^2 = x^3 - 5*x + 3" && File.ReadAllBytes(first).SequenceEqual(original),
@@ -187,7 +192,7 @@ internal static partial class Program
         }
     }
 
-    private static void CheckSessionSaveAsCopies()
+    private static void CheckSessionSaveAsOverwrite()
     {
         var directory = Path.Combine(Path.GetTempPath(), "ec-session-copy-" + Guid.NewGuid());
         Directory.CreateDirectory(directory);
@@ -195,19 +200,18 @@ internal static partial class Program
         var occupied = Path.Combine(directory, "session(1).ec");
         SessionFile.Save(original, ExplorerSession.New());
         File.WriteAllText(occupied, "Existing file");
-        var originalBytes = File.ReadAllBytes(original);
         string? chosen = original;
         var window = new MainWindow(null, new SessionDialogs(_ => new(SaveChangesChoice.Discard),
             _ => chosen, () => original, (title, message) => throw new Exception(title + ": " + message)));
         try
         {
             var dialog = MainWindow.CreateSessionSaveDialog(original);
-            Require(dialog.FileName == "session(2).ec" && dialog.InitialDirectory == directory,
-                "Save as must immediately display an available file name, with its folder configured separately.");
-            Require(!dialog.OverwritePrompt && dialog.AddExtension && dialog.DefaultExt == "ec",
-                "Save as must retain the session extension and avoid overwrite prompts when creating numbered copies.");
-            Require(MainWindow.CreateSessionSaveDialog(occupied).FileName == "session(2).ec",
-                "The picker suggestion must continue an existing numeric suffix.");
+            Require(dialog.FileName == "session.ec" && dialog.InitialDirectory == directory,
+                "Save as must display the current file name, with its folder configured separately.");
+            Require(dialog.OverwritePrompt && dialog.AddExtension && dialog.DefaultExt == "ec",
+                "Save as must retain the session extension and ask before overwriting an existing file.");
+            Require(MainWindow.CreateSessionSaveDialog(occupied).FileName == "session(1).ec",
+                "An explicitly numbered name must remain unchanged.");
             var unused = MainWindow.CreateSessionSaveDialog(Path.Combine(directory, "another study.ec"));
             Require(unused.FileName == "another study.ec" && unused.InitialDirectory == directory,
                 "An unused file name must not receive a suffix.");
@@ -220,31 +224,40 @@ internal static partial class Program
                 "Preparing a Save as dialog must not reserve a file that would remain after cancellation.");
             Require(CompleteSession(window.OpenSessionAsync), "Could not open the original session.");
             window.ViewModel.ShowGrid = false;
-            Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs), "Save as with an occupied name failed.");
-            var copy = Path.Combine(directory, "session(2).ec");
-            SettleSession(window);
-            Require(window.SessionStatus.FileLocation == copy && window.SessionStatus.FileName == "session(2).ec"
-                && window.SessionStatus.Status == "Saved" && !SessionFile.Load(copy).ShowGrid,
-                "Save as must display the actual numbered file and save its visual settings.");
-            Require(File.ReadAllBytes(original).SequenceEqual(originalBytes) && File.ReadAllText(occupied) == "Existing file",
-                "Save as overwrote an existing file.");
-
             window.ViewModel.Equation.Text = "y^2 = x^3 + 7";
-            Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && SessionFile.Load(copy).Equation == "y^2 = x^3 + 7"
-                && Directory.GetFiles(directory).Length == 3, "Ctrl+S must update the current numbered file without making another copy.");
-            chosen = copy;
-            Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs), "Saving a copy of a numbered file failed.");
-            var nextCopy = Path.Combine(directory, "session(3).ec");
-            Require(window.SessionStatus.FileLocation == nextCopy && SessionFile.Load(nextCopy).Equation == "y^2 = x^3 + 7",
-                "Save as must increment the existing suffix and select that new file.");
+            // Returning a path models the native dialog's successful acceptance,
+            // including its overwrite confirmation. Cancellation returns null.
+            Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs), "Confirmed overwrite failed.");
+            SettleSession(window);
+            Require(window.SessionStatus.FileLocation == original && window.SessionStatus.FileName == "session.ec"
+                && window.SessionStatus.Status == "Saved" && SessionFile.Load(original).Equation == "y^2 = x^3 + 7"
+                && !window.ViewModel.ShowGrid && Directory.GetFiles(directory).Length == 2,
+                "Save as must overwrite the chosen file, keep its name and leave the current display unchanged.");
+            Require(File.ReadAllText(occupied) == "Existing file", "Saving changed an unselected file.");
+
+            window.ViewModel.Equation.Text = "y^2 = x^3 - 5*x + 3";
+            Require(ExecuteSessionCommand(window, ApplicationCommands.Save) && SessionFile.Load(original).Equation == "y^2 = x^3 - 5*x + 3"
+                && Directory.GetFiles(directory).Length == 2, "Ctrl+S must update the same file without making a copy.");
+            var originalBytes = File.ReadAllBytes(original);
+            chosen = occupied;
+            Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs), "Overwriting an explicitly numbered file failed.");
+            Require(window.SessionStatus.FileLocation == occupied && SessionFile.Load(occupied).Equation == "y^2 = x^3 - 5*x + 3"
+                && File.ReadAllBytes(original).SequenceEqual(originalBytes) && Directory.GetFiles(directory).Length == 2,
+                "Save as must replace only the exact selected path, even when its name contains a number.");
+            var occupiedBytes = File.ReadAllBytes(occupied);
+            window.ViewModel.Equation.Text = "y^2 = x^3 + 9";
             chosen = null;
-            Require(!ExecuteSessionCommand(window, ApplicationCommands.SaveAs) && window.SessionStatus.FileLocation == nextCopy
-                && Directory.GetFiles(directory).Length == 4, "Cancelling Save as must not create a copy or change the current path.");
-            Require(CompleteSession(window.NewSessionAsync), "Could not start a new session after saving a copy.");
+            Require(!ExecuteSessionCommand(window, ApplicationCommands.SaveAs) && window.SessionStatus.FileLocation == occupied
+                && window.HasUnsavedChanges && window.ViewModel.Equation.Text == "y^2 = x^3 + 9"
+                && File.ReadAllBytes(occupied).SequenceEqual(occupiedBytes) && File.ReadAllBytes(original).SequenceEqual(originalBytes)
+                && Directory.GetFiles(directory).Length == 2, "Cancelling Save as must preserve files, current path and unsaved edits.");
+            Require(CompleteSession(window.NewSessionAsync), "Could not start a new session after cancelling Save as.");
             chosen = original;
+            window.ViewModel.Equation.Text = "y^2 = x^3 + 11";
             Require(ExecuteSessionCommand(window, ApplicationCommands.SaveAs)
-                && window.SessionStatus.FileName == "session(4).ec" && File.ReadAllBytes(original).SequenceEqual(originalBytes),
-                "The first save must also avoid existing names.");
+                && window.SessionStatus.FileName == "session.ec" && SessionFile.Load(original).Equation == "y^2 = x^3 + 11"
+                && File.ReadAllBytes(occupied).SequenceEqual(occupiedBytes) && Directory.GetFiles(directory).Length == 2,
+                "The first save must also honor the exact destination accepted in the picker.");
         }
         finally
         {
@@ -264,11 +277,11 @@ internal static partial class Program
             var writes = 0;
             var window = new MainWindow(null, new SessionDialogs(_ => new(choice), _ => path,
                 () => throw new Exception("New edits must cancel the pending Open before its picker."),
-                (title, message) => throw new Exception(title + ": " + message), async (destination, snapshot, createCopy) =>
+                (title, message) => throw new Exception(title + ": " + message), async (destination, snapshot) =>
                 {
                     writes++;
                     await gate.Task;
-                    return SessionFile.Save(destination, snapshot, createCopy);
+                    return SessionFile.Save(destination, snapshot);
                 }));
             var closed = false;
             window.Closed += (_, _) => closed = true;

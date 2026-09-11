@@ -44,13 +44,12 @@ are available only for an existing file with unsaved changes or a failed save to
 They are disabled while the status is **Saved**. Use Save as for the first save of
 a new session. Save writes to the current file without a picker. Save as always
 opens the file picker and makes the chosen file the current session after a successful save.
-For an existing session, the picker opens in its folder and immediately suggests an
-available name, such as `name(1).ec`; the name field contains only the file name.
-If the chosen name exists, Save as creates `name(1).ec`, `name(2).ec`, and so on
-without replacing an existing file. A name already ending in a number continues
-that sequence. The title bar shows the actual file name, and subsequent Save writes
-to that file. This also applies to the first save or a renamed session from the
-unsaved-changes dialog; saving to the unchanged current name still updates that file.
+For an existing session, the picker opens in its folder with its current file name.
+Selecting an existing file asks for overwrite confirmation. Confirming replaces
+that exact file; cancelling leaves it untouched. Explorer never adds a numeric suffix
+automatically. To keep a separate copy, choose a different name. The title bar and
+subsequent Save commands use the exact path selected in the picker. This also applies
+to the first save and to a renamed session from the unsaved-changes dialog.
 The title bar shows its file name (the full path appears on hover), an asterisk for
 unsaved changes, and **New session**, **Unsaved changes**, **Saving…**, **Saved** or
 **Save failed**. File writing runs in the background; edits made during a save remain
@@ -59,26 +58,28 @@ The menu uses the same header and popup styling as Explorer, with a single verti
 list. All three menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
 
-A session preserves the exact equation, slider step and positions, selected
-example, grid and sample visibility, active visualization, selected torus point,
-sidebar widths and collapsed states, Coefficients
-expansion, scroll positions, and up to 50 calculation reports with their original
+A session file preserves the exact equation and up to 50 calculation reports with their original
 inputs, limits and timestamps. Opening a session selects the newest result;
 browsing other results does not trigger an unsaved-changes warning. Adding,
 deleting or changing results still does. Samples and periods are recomputed
 locally as needed. Open calculation parameter windows are not saved and close when
 another session is opened.
-The real plot and torus camera are saved at **Reset view**. Opening a session,
-including an older file, fits the curve to the current plot size. Panning, zooming,
+Slider step and positions, the preset name, visualization mode, cameras, grid and sample visibility, selected torus point,
+panel layout and scroll positions belong to the current window and its undo history;
+they are not written to the file. Opening a session starts in **Real locus** with default display settings and fits the
+curve to the current plot size. Panning, zooming,
 rotating the torus and resetting the view do not trigger an unsaved-changes warning.
 Saving does not move or reset the graph currently on screen.
+Coefficients and a matching preset are recovered from the equation. The slider step
+starts at **0.01**, with every slider centered at **0** around its coefficient.
 
 New and Open are disabled during a calculation; stop it first. Save can capture a running
 calculation, which reopens as **Interrupted**, without automatically starting work
 or network requests. Use **Repeat** to reopen its parameters. Finish an incomplete
-equation or slider step before saving.
+equation before saving; a local slider-step error does not block saving curve data.
 
-Files contain versioned JSON and are validated before replacing the workspace.
+Files contain version 1 JSON with only `Format`, `Version`, `Equation` and `History`.
+Data is validated before replacing the workspace; no format migrations are performed.
 An invalid or unsupported file leaves the current session intact. Saving writes
 a temporary file before replacing the destination. Session files are limited to
 256 MB. Before New, Open or closing the application (including the window close
@@ -92,10 +93,10 @@ Open or Close is cancelled so those edits remain available.
 Enter, Escape and the dialog close button cancel.
 Cancelling the file picker or failing to save also cancels the pending action.
 An untouched session or an unchanged saved/opened session does not prompt.
-Changes to the equation, editing parameters and results are tracked. Switching
+Changes to the equation and results are tracked. Changing the slider step or switching
 between 2D and 3D, toggling the grid or samples, selecting a torus point, scrolling
-or rearranging panels does not count as an edit or enable Save. These visual settings
-are written when saving data changes; use **Save as** to save visual settings alone.
+or rearranging panels does not count as a data edit or enable Save. Save and Save as
+write the document data and leave the current visualization unchanged.
 Background sample generation does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
 The Results panel's **Export** exports an individual text report.

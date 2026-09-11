@@ -229,7 +229,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public void RestoreSession(ExplorerSession session)
     {
-        Step.Text = session.SliderStep;
+        Step.Text = ExplorerSession.DefaultSliderStep;
         Step.CommitEdit();
         Equation.Text = session.Equation;
         Equation.CommitEdit();
@@ -238,13 +238,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         try
         {
             for (var i = 0; i < ActiveCoefficients.Count; i++)
-                ActiveCoefficients[i].RestoreSliderOffset(session.SliderOffsets.Length == 0 ? 0 : session.SliderOffsets[i]);
+                ActiveCoefficients[i].RestoreSliderOffset(0);
         }
         finally { updating = false; }
         ShowGrid = session.ShowGrid;
         ShowPoints = session.ShowPoints;
-        selectedPreset = CurvePreset.All.FirstOrDefault(preset => preset.Name == session.Preset
-            && Snapshot.Curve.Equals(new EllipticCurveQ(preset.A1, preset.A2, preset.A3, preset.A4, preset.A6)));
+        selectedPreset = CurvePreset.All.FirstOrDefault(preset => Snapshot.Curve.Equals(preset.CreateCurve()));
         OnPropertyChanged(nameof(SelectedPreset));
         OnPropertyChanged(nameof(PresetDescription));
     }

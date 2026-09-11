@@ -19,6 +19,7 @@ public sealed record CalculationSession(CalculationRequest Request, DateTime Sta
 public sealed record ExplorerSession
 {
     public const int HistoryLimit = 50;
+    public const string DefaultSliderStep = "0.01";
     [JsonRequired] public string Format { get; init; } = SessionFile.FormatName;
     [JsonRequired] public int Version { get; init; } = SessionFile.CurrentVersion;
     public required string Equation { get; init; }
@@ -39,9 +40,17 @@ public sealed record ExplorerSession
     public required SidebarSession ResultsPanel { get; init; }
     public required List<CalculationSession> History { get; init; }
 
+    // Files restore data into a fresh workspace. Presentation belongs to the
+    // current window and its undo history, not to the document.
+    internal ExplorerSession DataOnly() => New() with
+    {
+        Format = Format, Version = Version, Equation = Equation, History = History,
+        Preset = null, SliderOffsets = Array.Empty<int>()
+    };
+
     public static ExplorerSession New() => new()
     {
-        Equation = CurvePreset.ClassicEquation, SliderStep = "0.01", Preset = CurvePreset.Classic.Name, SliderOffsets = new[] { 0, 0 },
+        Equation = CurvePreset.ClassicEquation, SliderStep = DefaultSliderStep, Preset = CurvePreset.Classic.Name, SliderOffsets = new[] { 0, 0 },
         Plot = PlotViewState.Default, FitRealViewWhenShown = true, TorusCamera = TorusCameraState.Default,
         SelectedTorusPoint = EllipticCurvePoint.Infinity.ToString(),
         EquationPanel = new(true, 238), ResultsPanel = new(true, 300), History = new()

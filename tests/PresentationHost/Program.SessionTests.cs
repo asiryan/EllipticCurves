@@ -155,7 +155,7 @@ internal static partial class Program
             foreach (var action in new[] { "New", "Open", "Close" })
             {
                 File.Delete(output);
-                // Legacy files containing camera positions must also reopen fitted.
+                // Documents contain curve data regardless of the current visualization.
                 var legacy = ExplorerSession.New() with
                 {
                     Equation = "y^2 + x*y + y = x^3 - 5*x + 3", Preset = null, SliderOffsets = Array.Empty<int>(),
@@ -177,20 +177,20 @@ internal static partial class Program
                 window.Closed += (_, _) => closed = true;
                 try
                 {
-                    Require(CompleteSession(window.OpenSessionAsync), "Could not open the legacy graph session.");
+                    ((ComboBox)window.FindName("ViewMode")).SelectedIndex = complex ? 1 : 0;
+                    Require(CompleteSession(window.OpenSessionAsync), "Could not open the curve document.");
                     SettleSession(window);
                     var plot = (CurvePlot)window.FindName("Plot");
                     var torus = (ComplexTorusView)window.FindName("TorusView");
-                    if (!complex)
-                    {
-                        var opened = plot.CaptureView();
-                        plot.Fit();
-                        Require(opened == plot.CaptureView() && opened != legacy.Plot,
-                            "An old file must open at Reset view, not at its stored pan and zoom.");
-                    }
+                    var openedView = plot.CaptureView();
+                    plot.Fit();
+                    Require(openedView == plot.CaptureView() && openedView != legacy.Plot,
+                        "The document must open fitted to the current graph size.");
                     Require(torus.CaptureCamera() == TorusCameraState.Default && !window.HasUnsavedChanges,
                         "Opening/resetting a graph must leave a clean session and a default torus camera.");
                     var mode = (ComboBox)window.FindName("ViewMode");
+                    Require(mode.SelectedIndex == 0 && !torus.Model.IsBusy,
+                        "Every file must open in Real locus without starting torus preparation.");
                     foreach (var index in new[] { 1, 0, 1 })
                     {
                         mode.SelectedIndex = index;
@@ -221,7 +221,6 @@ internal static partial class Program
                     Require(!window.HasUnsavedChanges && window.SessionStatus.Status == "Saved",
                         "Background torus preparation must leave the session saved.");
                     torus.Model.SelectedPoint = torus.Model.Points.First(point => !point.Point.IsInfinity);
-                    var selectedPoint = torus.Model.SessionSelection;
                     var coefficients = (Expander)window.FindName("CoefficientsExpander");
                     coefficients.IsExpanded = true;
                     ((ColumnDefinition)window.FindName("EquationColumn")).Width = new GridLength(320);
@@ -244,7 +243,6 @@ internal static partial class Program
                         Require(window.Workbench.Selected == window.Workbench.Jobs[index] && !window.HasUnsavedChanges,
                             "Browsing the Results list must update the report without marking the session dirty.");
                     }
-                    var fitted = plot.GetResetView();
                     plot.RestoreView(new(1e18, -1e18, 1e8));
                     plot.Zoom(0.7);
                     torus.RestoreCamera(legacy.TorusCamera);
@@ -257,12 +255,10 @@ internal static partial class Program
                     Require(System.Text.Json.JsonSerializer.Serialize(saved.History) == System.Text.Json.JsonSerializer.Serialize(legacy.History)
                         && window.Workbench.Selected == window.Workbench.Jobs[1],
                         "Saving must preserve every result, default to the newest and leave the displayed report unchanged.");
-                    Require(saved.Plot == fitted && saved.FitRealViewWhenShown && saved.TorusCamera == TorusCameraState.Default && saved.ComplexView,
-                        "The file must contain Reset view regardless of the user's current graph navigation.");
-                    Require(!saved.ShowGrid && saved.ShowPoints && saved.SelectedTorusPoint == selectedPoint
-                        && saved.CoefficientsExpanded && saved.EquationPanel.Width == 320 && saved.ResultsPanel.Width == 410
-                        && saved.EquationScrollOffset == equationScroll.VerticalOffset,
-                        "Save as must preserve visual settings and layout even when they did not mark the session dirty.");
+                    var document = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(output))!.AsObject();
+                    foreach (var field in new[] { "SliderStep", "Preset", "SliderOffsets", "ComplexView", "Plot", "TorusCamera", "ShowGrid", "ShowPoints", "SelectedTorusPoint",
+                        "CoefficientsExpanded", "EquationPanel", "ResultsPanel", "EquationScrollOffset", "TorusScrollOffset", "FitRealViewWhenShown" })
+                        Require(!document.ContainsKey(field), $"The document must not store presentation field {field}.");
                     Require(plot.CaptureView() == navigatedPlot && torus.CaptureCamera() == navigatedTorus && !window.HasUnsavedChanges,
                         "Saving must not move the visible graph or leave the session dirty.");
 
@@ -271,16 +267,15 @@ internal static partial class Program
                     {
                         restored.RestoreSession(saved);
                         SettleSession(restored, 1120, 760);
-                        var restoredVisuals = restored.CaptureSession();
-                        Require(restoredVisuals.ComplexView && !restoredVisuals.ShowGrid && restoredVisuals.ShowPoints
-                            && restoredVisuals.SelectedTorusPoint == selectedPoint && restoredVisuals.CoefficientsExpanded
-                            && !restored.HasUnsavedChanges,
-                            "Opening must restore the saved visual settings without marking the session dirty.");
+                        Require(((ComboBox)restored.FindName("ViewMode")).SelectedIndex == 0
+                            && restored.ViewModel.ShowGrid && restored.ViewModel.ShowPoints
+                            && !((Expander)restored.FindName("CoefficientsExpander")).IsExpanded && !restored.HasUnsavedChanges,
+                            "Opening must start with default presentation and clean document data.");
                         Require(restored.Workbench.Jobs.Count == 2 && restored.Workbench.Selected == restored.Workbench.Jobs[0]
                             && restored.Workbench.Selected.Result == "Newest result",
                             "Reopening must restore the whole history and display its newest result.");
                         var restoredPlot = (CurvePlot)restored.FindName("Plot");
-                        // A file saved with the real plot hidden must fit it on first display.
+                        // A file saved while the torus was shown must open fitted in Real locus.
                         ((ComboBox)restored.FindName("ViewMode")).SelectedIndex = 0;
                         SettleSession(restored, 1120, 760);
                         var opened = restoredPlot.CaptureView();

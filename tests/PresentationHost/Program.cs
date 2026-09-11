@@ -45,7 +45,7 @@ internal static partial class Program
             CheckSessionSaveName();
             CheckSessionShortcuts();
             CheckSessionSaveStatus();
-            CheckSessionSaveAsCopies();
+            CheckSessionSaveAsOverwrite();
             CheckSessionSavingConcurrency();
             CheckSaveChangesDialog();
             CheckExplorerSelection();
@@ -400,13 +400,15 @@ internal static partial class Program
             Layout(restored);
             Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => Layout(restored)));
             var actual = restored.CaptureSession();
-            Require(actual.Equation == saved.Equation && actual.SliderStep == saved.SliderStep
-                && actual.SliderOffsets.SequenceEqual(saved.SliderOffsets), "The session lost exact editor state.");
-            Require(actual.FitRealViewWhenShown && actual.TorusCamera == TorusCameraState.Default && actual.ComplexView,
-                "The session must reopen at Reset view while preserving the active visualization.");
-            Require(actual.EquationPanel == saved.EquationPanel && actual.ResultsPanel == saved.ResultsPanel
-                && actual.CoefficientsExpanded && !actual.ShowGrid && !actual.ShowPoints,
-                "The session did not restore sidebar layout and visualization settings.");
+            Require(actual.Equation == saved.Equation && restored.ViewModel.Step.Text == ExplorerSession.DefaultSliderStep
+                && restored.ViewModel.ActiveCoefficients.All(coefficient => coefficient.SliderOffset == 0)
+                && original.ViewModel.Step.Text == "1/7", "Opening must recover the equation with default sliders; saving must leave local settings unchanged.");
+            Require(((ComboBox)restored.FindName("ViewMode")).SelectedIndex == 0
+                && ((ComplexTorusView)restored.FindName("TorusView")).CaptureCamera() == TorusCameraState.Default,
+                "The session must reopen in Real locus with default cameras.");
+            Require(restored.ViewModel.ShowGrid && restored.ViewModel.ShowPoints
+                && !((Expander)restored.FindName("CoefficientsExpander")).IsExpanded,
+                "The document must not restore the previous window's visual settings.");
             Require(restored.Workbench.Selected?.Report == original.Workbench.Selected.Report,
                 "The session lost calculation results or repeat parameters.");
             var before = System.Text.Json.JsonSerializer.Serialize(actual);

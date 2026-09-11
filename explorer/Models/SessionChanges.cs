@@ -1,13 +1,12 @@
 #nullable enable
 namespace EllipticCurves.Explorer.Models;
 
-// Visual settings are saved with the session, but only edits to its data need
-// an unsaved-changes warning. Compare without serializing reports or committing edits.
+// Presentation is local to the window; only document data needs an unsaved-changes
+// warning. Compare without serializing reports or committing edits.
 public static class SessionChanges
 {
     public static bool Equal(ExplorerSession left, ExplorerSession right) =>
-        left.Equation == right.Equation && left.SliderStep == right.SliderStep && left.Preset == right.Preset
-        && left.SliderOffsets.SequenceEqual(right.SliderOffsets)
+        left.Equation == right.Equation
         && left.History.Count == right.History.Count
         && left.History.Zip(right.History).All(pair => SameCalculation(pair.First, pair.Second));
 

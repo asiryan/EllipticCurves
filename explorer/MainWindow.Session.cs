@@ -10,7 +10,7 @@ namespace EllipticCurves.Explorer;
 
 internal sealed record SessionDialogs(Func<string, SaveChangesResult> ConfirmUnsaved,
     Func<string?, string?> ChooseSavePath, Func<string?> ChooseOpenPath, Action<string, string> ShowError,
-    Func<string, ExplorerSession, bool, Task<string>>? WriteSession = null);
+    Func<string, ExplorerSession, Task<string>>? WriteSession = null);
 
 public partial class MainWindow
 {
@@ -69,20 +69,18 @@ public partial class MainWindow
         var dialog = new SaveFileDialog
         {
             Filter = SessionFile.DialogFilter, DefaultExt = SessionFile.Extension, AddExtension = true,
-            FileName = SessionFile.GetFileName(path), Title = SessionMessages.SaveAsTitle, OverwritePrompt = false
+            FileName = SessionFile.GetFileName(path), Title = SessionMessages.SaveAsTitle, OverwritePrompt = true
         };
         if (path != null && Path.IsPathFullyQualified(path))
         {
-            var availablePath = SessionFile.GetAvailablePath(path);
-            dialog.InitialDirectory = Path.GetDirectoryName(availablePath)!;
-            dialog.FileName = Path.GetFileName(availablePath);
+            dialog.InitialDirectory = Path.GetDirectoryName(path)!;
         }
         return dialog;
     }
 
     internal bool HasUnsavedChanges => Workbench.IsBusy || HasSessionEdits;
     private bool HasSessionEdits => cleanSession != null &&
-        (ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid
+        (ViewModel.HasIncompleteInput
          || !SessionChanges.Equal(cleanSession, ReadSession()));
 
     private void MarkSessionClean()
@@ -181,8 +179,8 @@ public partial class MainWindow
             sessionSaveFailed = false;
             RefreshSessionStatus();
             path = sessionDialogs.WriteSession is { } write
-                ? await write(path, saved, choosePath)
-                : await Task.Run(() => SessionFile.Save(path, saved, createCopy: choosePath));
+                ? await write(path, saved)
+                : await Task.Run(() => SessionFile.Save(path, saved));
             sessionPath = Path.GetFullPath(path);
             cleanSession = saved;
             return true;
@@ -214,15 +212,10 @@ public partial class MainWindow
     internal ExplorerSession CaptureSession()
     {
         ViewModel.Equation.CommitEdit();
-        ViewModel.Step.CommitEdit();
         ViewModel.FlushUpdate();
-        if (ViewModel.HasIncompleteInput || !ViewModel.Step.IsValid)
-            throw new InvalidOperationException("Finish the curve equation and enter a valid slider step before saving the session.");
-        // Save the reset view without changing the graph the user is exploring.
-        return ReadSession() with
-        {
-            Plot = Plot.GetResetView(), TorusCamera = TorusCameraState.Default, FitRealViewWhenShown = true
-        };
+        if (ViewModel.HasIncompleteInput)
+            throw new InvalidOperationException("Finish the curve equation before saving the session.");
+        return ReadSession().DataOnly();
     }
 
     private ExplorerSession ReadSession()
@@ -251,6 +244,7 @@ public partial class MainWindow
 
     internal void RestoreSession(ExplorerSession saved)
     {
+        saved = saved.DataOnly();
         SessionFile.Validate(saved);
         if (!Workbench.CanRun) throw new InvalidOperationException(SessionMessages.StopCalculationBeforeOpen);
         restoringHistory = true;
@@ -258,10 +252,11 @@ public partial class MainWindow
         try
         {
             foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
+            // Every document opens in Real locus, fitted to the current layout.
+            // Hide the torus before changing its inputs to avoid starting period work.
+            ViewMode.SelectedIndex = 0;
             ViewModel.RestoreSession(saved);
             Workbench.RestoreHistory(saved.History);
-            // Older files may contain a panned/zoomed view. Refit at the current layout
-            // when the real plot becomes visible, including after opening in torus mode.
             realViewResetPending = true;
             RestoreSidebar(equationSidebar, saved.EquationPanel, EquationColumn, EquationPanel, EquationTab, EquationSplitter);
             RestoreSidebar(resultsSidebar, saved.ResultsPanel, ResultsColumn, Results, ResultsTab, ResultsSplitter);
@@ -269,8 +264,7 @@ public partial class MainWindow
             Plot.RestoreView(Plot.GetResetView());
             TorusView.Fit();
             TorusView.RestoreSelection(saved.SelectedTorusPoint);
-            ViewMode.SelectedIndex = saved.ComplexView ? 1 : 0;
-            if (realViewResetPending && !IsComplexView) QueueRealViewReset();
+            QueueRealViewReset();
             UpdateSidebarBounds();
             var version = ++sessionRestoreVersion;
             MarkSessionClean();

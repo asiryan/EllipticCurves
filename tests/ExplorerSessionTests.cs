@@ -10,7 +10,7 @@ namespace EllipticCurves.Tests;
 public sealed class ExplorerSessionTests
 {
     [Fact]
-    public void ChangeComparisonIncludesEquationEditingParametersAndResults()
+    public void ChangeComparisonIncludesEquationAndResults()
     {
         var baseline = ExplorerSession.New();
         SessionFile.Validate(baseline);
@@ -18,9 +18,6 @@ public sealed class ExplorerSessionTests
         var changes = new[]
         {
             baseline with { Equation = "y^2 = x^3 + x" },
-            baseline with { SliderStep = "1/7" },
-            baseline with { SliderOffsets = new[] { 1, 0 } },
-            baseline with { Preset = null },
             baseline with { History = Example().History }
         };
         Assert.All(changes, changed => Assert.False(SessionChanges.Equal(baseline, changed)));
@@ -44,6 +41,10 @@ public sealed class ExplorerSessionTests
         var baseline = ExplorerSession.New();
         var visualChanges = new[]
         {
+            baseline with { SliderStep = "1/7" },
+            baseline with { SliderStep = "invalid step" },
+            baseline with { SliderOffsets = new[] { 1, 0 } },
+            baseline with { Preset = null },
             baseline with { ComplexView = true },
             baseline with { ShowGrid = false },
             baseline with { ShowPoints = false },
@@ -103,15 +104,30 @@ public sealed class ExplorerSessionTests
     }
 
     [Fact]
-    public void RestoringSessionWithoutSliderOffsetsRecentersTheSliders()
+    public void RestoringSessionDerivesCoefficientsAndRecentersTheSliders()
     {
         using var model = new MainViewModel();
         model.ActiveCoefficients[0].SliderOffset = 7;
         model.FlushUpdate();
-        var saved = ExplorerSession.New() with { Equation = model.Equation.Text, SliderOffsets = Array.Empty<int>() };
+        var saved = ExplorerSession.New() with { Equation = model.Equation.Text, SliderStep = "1/7", SliderOffsets = new[] { 10, 20 } };
         SessionFile.Validate(saved);
         model.RestoreSession(saved);
+        Assert.Equal(ExplorerSession.DefaultSliderStep, model.Step.Text);
+        Assert.Equal(new BigRational(-93, 100), model.ActiveCoefficients[0].ExactValue);
         Assert.All(model.ActiveCoefficients, coefficient => Assert.Equal(0, coefficient.SliderOffset));
+    }
+
+    [Theory]
+    [InlineData("y^2 = x^3 - x", "The classic")]
+    [InlineData("y^2 = x^3", "The cusp")]
+    [InlineData("y^2 + y = x^3 - x", "37.a1")]
+    [InlineData("y^2 = x^3 - 17*x^2 + 72*x", "48.a3")]
+    [InlineData("y^2 = x^3 + 7", null)]
+    public void RestoringSessionRecognizesThePresetFromItsEquation(string equation, string preset)
+    {
+        using var model = new MainViewModel();
+        model.RestoreSession(ExplorerSession.New() with { Equation = equation, Preset = "Wrong name" });
+        Assert.Equal(preset, model.SelectedPreset?.Name);
     }
 
     [Fact]
@@ -132,29 +148,25 @@ public sealed class ExplorerSessionTests
     }
 
     [Theory]
-    [InlineData("session.ec", "session(1).ec")]
-    [InlineData("session(1).ec", "session(2).ec")]
-    [InlineData("curve.study.EC", "curve.study(1).EC")]
-    [InlineData("curve (sample).ec", "curve (sample)(1).ec")]
-    public void SavingACopyAddsANumberAndPreservesTheExistingFile(string name, string expected)
+    [InlineData("session.ec")]
+    [InlineData("session(1).ec")]
+    [InlineData("curve.study.EC")]
+    [InlineData("curve (sample).ec")]
+    public void SavingReplacesTheExactSelectedFileWithoutAddingASuffix(string name)
     {
         var directory = Path.Combine(Path.GetTempPath(), "ec-save-copy-" + Guid.NewGuid());
         Directory.CreateDirectory(directory);
         var original = Path.Combine(directory, name);
         try
         {
-            Assert.Equal(original, SessionFile.GetAvailablePath(original));
             SessionFile.Save(original, ExplorerSession.New());
             var bytes = File.ReadAllBytes(original);
-            var suggested = SessionFile.GetAvailablePath(original);
-            Assert.Equal(Path.Combine(directory, expected), suggested);
-            Assert.Equal(new[] { original }, Directory.GetFiles(directory));
             var edited = ExplorerSession.New() with { Equation = "y^2 = x^3 + 7", Preset = null };
-            var actual = SessionFile.Save(original, edited, createCopy: true);
-            Assert.Equal(suggested, actual);
-            Assert.Equal(bytes, File.ReadAllBytes(original));
+            var actual = SessionFile.Save(original, edited);
+            Assert.Equal(original, actual);
+            Assert.False(bytes.SequenceEqual(File.ReadAllBytes(original)));
             Assert.Equal(edited.Equation, SessionFile.Load(actual).Equation);
-            Assert.Equal(2, Directory.GetFiles(directory).Length);
+            Assert.Equal(new[] { original }, Directory.GetFiles(directory));
         }
         finally
         {
@@ -164,7 +176,7 @@ public sealed class ExplorerSessionTests
     }
 
     [Fact]
-    public void SavingACopyRechecksTheNameSuggestedBeforeTheDialogOpened()
+    public void SavingToADifferentNamePreservesTheOriginalAndOtherFiles()
     {
         var directory = Path.Combine(Path.GetTempPath(), "ec-save-suggestion-" + Guid.NewGuid());
         Directory.CreateDirectory(directory);
@@ -172,13 +184,16 @@ public sealed class ExplorerSessionTests
         try
         {
             SessionFile.Save(original, ExplorerSession.New());
-            var suggested = SessionFile.GetAvailablePath(original);
-            Assert.Equal(Path.Combine(directory, "session(1).ec"), suggested);
-            File.WriteAllText(suggested, "Created while the dialog was open");
-            var actual = SessionFile.Save(suggested, ExplorerSession.New(), createCopy: true);
-            Assert.Equal(Path.Combine(directory, "session(2).ec"), actual);
-            Assert.Equal("Created while the dialog was open", File.ReadAllText(suggested));
-            Assert.Equal("y^2 = x^3 - x", SessionFile.Load(actual).Equation);
+            var bytes = File.ReadAllBytes(original);
+            var other = Path.Combine(directory, "session(1).ec");
+            File.WriteAllText(other, "Keep this file");
+            var chosen = Path.Combine(directory, "another study.ec");
+            var actual = SessionFile.Save(chosen, ExplorerSession.New() with { Equation = "y^2 = x^3 + 7", Preset = null });
+            Assert.Equal(chosen, actual);
+            Assert.Equal(bytes, File.ReadAllBytes(original));
+            Assert.Equal("Keep this file", File.ReadAllText(other));
+            Assert.Equal("y^2 = x^3 + 7", SessionFile.Load(actual).Equation);
+            Assert.Equal(3, Directory.GetFiles(directory).Length);
         }
         finally
         {
@@ -188,7 +203,7 @@ public sealed class ExplorerSessionTests
     }
 
     [Fact]
-    public void SavingACopySkipsFilesAndDirectoriesButUsesAGapInTheNumbers()
+    public void SavingToAnOccupiedDirectoryFailsWithoutRenamingTheDestination()
     {
         var directory = Path.Combine(Path.GetTempPath(), "ec-save-gap-" + Guid.NewGuid());
         var occupiedFolder = Path.Combine(directory, "session(2).ec");
@@ -197,43 +212,16 @@ public sealed class ExplorerSessionTests
         {
             foreach (var name in new[] { "session.ec", "session(1).ec", "session(4).ec" })
                 File.WriteAllText(Path.Combine(directory, name), "Keep this file");
-            var actual = SessionFile.Save(Path.Combine(directory, "session.ec"), ExplorerSession.New(), createCopy: true);
-            Assert.Equal(Path.Combine(directory, "session(3).ec"), actual);
-            Assert.Equal("y^2 = x^3 - x", SessionFile.Load(actual).Equation);
+            var error = Record.Exception(() => SessionFile.Save(occupiedFolder, ExplorerSession.New()));
+            Assert.True(error is IOException or UnauthorizedAccessException);
+            Assert.Equal(3, Directory.GetFiles(directory).Length);
+            Assert.Empty(Directory.GetFiles(occupiedFolder));
             Assert.Equal("Keep this file", File.ReadAllText(Path.Combine(directory, "session(4).ec")));
         }
         finally
         {
             foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
             Directory.Delete(occupiedFolder);
-            Directory.Delete(directory);
-        }
-    }
-
-    [Fact]
-    public async Task ConcurrentCopiesKeepEverySnapshotAndDoNotOverwriteEachOther()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), "ec-save-concurrent-" + Guid.NewGuid());
-        Directory.CreateDirectory(directory);
-        var original = Path.Combine(directory, "session.ec");
-        try
-        {
-            SessionFile.Save(original, ExplorerSession.New());
-            var bytes = File.ReadAllBytes(original);
-            var copies = await Task.WhenAll(Enumerable.Range(1, 8).Select(index => Task.Run(() =>
-            {
-                var equation = $"y^2 = x^3 + {index}";
-                var path = SessionFile.Save(original, ExplorerSession.New() with { Equation = equation, Preset = null }, createCopy: true);
-                return (path, equation);
-            })));
-            Assert.Equal(8, copies.Select(copy => copy.path).Distinct().Count());
-            Assert.All(copies, copy => Assert.Equal(copy.equation, SessionFile.Load(copy.path).Equation));
-            Assert.Equal(bytes, File.ReadAllBytes(original));
-            Assert.Equal(9, Directory.GetFiles(directory).Length);
-        }
-        finally
-        {
-            foreach (var file in Directory.GetFiles(directory)) File.Delete(file);
             Directory.Delete(directory);
         }
     }
@@ -255,7 +243,7 @@ public sealed class ExplorerSessionTests
     };
 
     [Fact]
-    public void FileRoundTripRestoresExactCurveSlidersHistoryAndRequestWithoutRunningWork()
+    public void FileRoundTripRestoresExactCurveHistoryAndRequestWithoutRunningWork()
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ec");
         try
@@ -264,20 +252,22 @@ public sealed class ExplorerSessionTests
             SessionFile.Save(path, original);
             var loaded = SessionFile.Load(path);
             Assert.Equal("EllipticCurves.Explorer.Session", loaded.Format);
-            Assert.Equal(1, loaded.Version);
+            Assert.Equal(SessionFile.CurrentVersion, loaded.Version);
             Assert.DoesNotContain("\"SelectedResult\"", File.ReadAllText(path));
-            Assert.Equal(JsonSerializer.Serialize(original), JsonSerializer.Serialize(loaded));
+            Assert.Equal(JsonSerializer.Serialize(original.DataOnly()), JsonSerializer.Serialize(loaded));
+            var fields = JsonNode.Parse(File.ReadAllText(path)).AsObject().Select(pair => pair.Key).OrderBy(key => key);
+            Assert.Equal(new[] { "Format", "Version", "Equation", "History" }.OrderBy(key => key), fields);
             Assert.True(SessionChanges.Equal(original, loaded));
             using var model = new MainViewModel();
             model.RestoreSession(loaded);
             Assert.Equal(original.Equation, model.Equation.Text);
             Assert.Equal(new BigRational(-7, 11), model.Snapshot.Curve.A4);
-            Assert.Equal(new BigRational(1, 7), model.Step.ExactValue);
-            Assert.Equal(original.SliderOffsets, model.ActiveCoefficients.Select(c => (int)c.SliderOffset));
+            Assert.Equal(new BigRational(1, 100), model.Step.ExactValue);
+            Assert.All(model.ActiveCoefficients, coefficient => Assert.Equal(0, coefficient.SliderOffset));
             var coefficient = model.ActiveCoefficients[3];
             var minimum = coefficient.SliderMinimum;
             coefficient.SliderOffset++;
-            Assert.Equal(new BigRational(-7, 11) + new BigRational(1, 7), coefficient.ExactValue);
+            Assert.Equal(new BigRational(-7, 11) + new BigRational(1, 100), coefficient.ExactValue);
             Assert.Equal(minimum, coefficient.SliderMinimum);
             using var workbench = new WorkbenchViewModel();
             workbench.RestoreHistory(loaded.History);
@@ -301,12 +291,10 @@ public sealed class ExplorerSessionTests
     [Theory]
     [InlineData("invalid-json")]
     [InlineData("version")]
+    [InlineData("unsupported-version")]
     [InlineData("missing-version")]
     [InlineData("format")]
     [InlineData("curve")]
-    [InlineData("step")]
-    [InlineData("plot")]
-    [InlineData("panel")]
     [InlineData("history")]
     [InlineData("unknown-operation")]
     [InlineData("null-arguments")]
@@ -319,12 +307,10 @@ public sealed class ExplorerSessionTests
             switch (defect)
             {
                 case "version": json["Version"] = 999; break;
+                case "unsupported-version": json["Version"] = 2; break;
                 case "missing-version": json.AsObject().Remove("Version"); break;
                 case "format": json["Format"] = "Other app"; break;
                 case "curve": json["Equation"] = "garbage"; break;
-                case "step": json["SliderStep"] = "0"; break;
-                case "plot": json["Plot"]["VerticalSpan"] = 0; break;
-                case "panel": json["EquationPanel"]["Width"] = -1; break;
                 case "history": json["History"] = null; break;
                 case "unknown-operation": json["History"][0]["Request"]["OperationId"] = "missing"; break;
                 case "null-arguments": json["History"][0]["Request"]["Arguments"] = null; break;
