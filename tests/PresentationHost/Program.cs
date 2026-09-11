@@ -30,6 +30,7 @@ internal static class Program
             var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.Resources.MergedDictionaries.Add(new ResourceDictionary
                 { Source = new Uri("/EllipticCurves.Explorer;component/Themes/Theme.xaml", UriKind.Relative) });
+            CheckExplorerToggle();
             CheckExplorerSelection();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();
@@ -231,6 +232,85 @@ internal static class Program
         var scroll = Descendants(view).OfType<ScrollViewer>().First();
         Require(scroll.ScrollableHeight > 0, "The compact complex view must scroll instead of crushing the diagrams.");
     }
+
+    private static void CheckExplorerToggle()
+    {
+        var menu = new ExplorerMenu();
+        var toggle = (ToggleButton)menu.FindName("Toggle");
+        var popup = (Popup)menu.FindName("MenuPopup");
+        Require(popup.StaysOpen, "Automatic popup dismissal must not preempt the Explorer toggle's closing click.");
+        // Exercise routed input and the real ToggleButton click without showing
+        // either the owner window or its popup.
+        System.Windows.Data.BindingOperations.ClearBinding(popup, Popup.IsOpenProperty);
+        var outside = new Button { Content = "Outside Explorer" };
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Children = { menu, outside } };
+        var owner = new Window { Content = panel };
+        const System.Reflection.BindingFlags methods = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var click = typeof(ToggleButton).GetMethod("OnClick", methods)!;
+        MouseButtonEventArgs MouseEvent(UIElement target, RoutedEvent routedEvent)
+        {
+            var input = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                { RoutedEvent = routedEvent };
+            target.RaiseEvent(input);
+            return input;
+        }
+        try
+        {
+            using var source = new HwndSource(new HwndSourceParameters("Explorer toggle headless layout")
+                { WindowStyle = 0, Width = 300, Height = 44 }) { RootVisual = panel };
+            panel.Measure(new Size(300, 44));
+            panel.Arrange(new Rect(0, 0, 300, 44));
+            panel.UpdateLayout();
+            var chevron = (FrameworkElement)toggle.Template.FindName("Chevron", toggle);
+            var points = new[]
+            {
+                toggle.TranslatePoint(new Point(3, toggle.ActualHeight / 2), menu),
+                toggle.TranslatePoint(new Point(toggle.ActualWidth / 2, toggle.ActualHeight / 2), menu),
+                chevron.TranslatePoint(new Point(chevron.ActualWidth / 2, chevron.ActualHeight / 2), menu)
+            };
+            foreach (var point in points)
+            {
+                var target = (UIElement)menu.InputHitTest(point);
+                for (var i = 0; i < 4; i++)
+                {
+                    var wasOpen = toggle.IsChecked == true;
+                    MouseEvent(target, Mouse.PreviewMouseDownEvent);
+                    Require((toggle.IsChecked == true) == wasOpen, "Explorer closed before its header click completed.");
+                    MouseEvent(target, Mouse.PreviewMouseUpEvent);
+                    click.Invoke(toggle, null);
+                    Require((toggle.IsChecked == true) != wasOpen, "Repeated Explorer clicks must alternate open and closed.");
+                }
+            }
+            toggle.IsChecked = true;
+            MouseEvent(popup.Child, Mouse.PreviewMouseDownEvent);
+            Require(toggle.IsChecked == true, "Clicking inside Explorer must not dismiss it.");
+            var outsideClick = MouseEvent(outside, Mouse.PreviewMouseDownEvent);
+            Require(toggle.IsChecked == false && !outsideClick.Handled, "An outside click must close Explorer without swallowing the click.");
+            foreach (var ownerEvent in new[] { "OnDeactivated", "OnLocationChanged" })
+            {
+                toggle.IsChecked = true;
+                typeof(Window).GetMethod(ownerEvent, methods)!.Invoke(owner, new object[] { EventArgs.Empty });
+                Require(toggle.IsChecked == false, $"Explorer remained open after {ownerEvent}.");
+            }
+            toggle.IsChecked = true;
+            Require(toggle.Focusable && toggle.IsTabStop && toggle.IsEnabled,
+                "The open Explorer toggle lost keyboard support.");
+            var escape = new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, Key.Escape)
+                { RoutedEvent = Keyboard.PreviewKeyDownEvent };
+            popup.Child.RaiseEvent(escape);
+            Require(escape.Handled && toggle.IsChecked == false && toggle.IsHitTestVisible,
+                "Escape must close Explorer and restore its opening button.");
+            toggle.IsChecked = true;
+            menu.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            Require(toggle.IsChecked == false, "Unloading Explorer must close the popup.");
+        }
+        finally
+        {
+            owner.Content = null;
+            owner.Close();
+        }
+    }
+
     private static void CheckExplorerSelection()
     {
         var menu = new ExplorerMenu();

@@ -86,7 +86,9 @@
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <Button x:Name="EquationCollapseButton" Content="‹" Click="CollapseEquationClick" Style="{StaticResource QuietButton}" Width="24" Padding="0,2" Margin="-6,0,6,0" FontSize="20" ToolTip="Collapse equation panel" AutomationProperties.Name="Collapse equation panel" />
+                            <Button x:Name="EquationCollapseButton" Click="CollapseEquationClick" Style="{StaticResource QuietButton}" Width="24" Height="32" Padding="0,2" Margin="-6,0,6,0" ToolTip="Collapse equation panel" AutomationProperties.Name="Collapse equation panel">
+                                <Path Style="{StaticResource DisclosureChevron}" Data="{StaticResource ChevronLeftGeometry}" />
+                            </Button>
                             <TextBlock Grid.Column="1" Text="Equation" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <Button Grid.Column="2" Content="Reset" Click="ResetEquationClick" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" />
                         </Grid>
@@ -129,7 +131,7 @@
             <Button x:Name="EquationTab" Style="{StaticResource SidebarTab}" Visibility="Collapsed"
                     Click="ExpandEquationClick" ToolTip="Expand equation panel" AutomationProperties.Name="Expand equation panel">
                 <StackPanel HorizontalAlignment="Center">
-                    <TextBlock Text="›" FontSize="18" HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,10" />
+                    <Grid Height="24" Margin="0,0,0,10"><Path Style="{StaticResource DisclosureChevron}" Data="{StaticResource ChevronRightGeometry}" Stroke="{StaticResource AccentBrush}" /></Grid>
                     <TextBlock Text="EQUATION" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center">
                         <TextBlock.LayoutTransform><RotateTransform Angle="-90" /></TextBlock.LayoutTransform>
                     </TextBlock>
@@ -218,7 +220,7 @@
                 <Button x:Name="ResultsTab" Style="{StaticResource SidebarTab}" Visibility="Collapsed"
                         Click="ExpandResultsClick" ToolTip="{Binding Summary}" AutomationProperties.Name="Expand results panel">
                     <StackPanel HorizontalAlignment="Center">
-                        <TextBlock Text="‹" FontSize="18" HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,10" />
+                        <Grid Height="24" Margin="0,0,0,10"><Path Style="{StaticResource DisclosureChevron}" Data="{StaticResource ChevronLeftGeometry}" Stroke="{StaticResource AccentBrush}" /></Grid>
                         <TextBlock Text="RESULTS" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center">
                             <TextBlock.LayoutTransform><RotateTransform Angle="-90" /></TextBlock.LayoutTransform>
                         </TextBlock>

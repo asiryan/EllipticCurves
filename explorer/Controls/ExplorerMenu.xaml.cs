@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using EllipticCurves.Explorer.Computations;
 using EllipticCurves.Explorer.ViewModels;
@@ -10,6 +11,7 @@ namespace EllipticCurves.Explorer.Controls;
 
 public partial class ExplorerMenu : UserControl
 {
+    private Window? popupOwner;
     public event Action<CalculationOperation>? OperationRequested;
     public ExplorerMenu()
     {
@@ -19,8 +21,49 @@ public partial class ExplorerMenu : UserControl
         DataContext = model;
     }
 
+    private void ToggleStateChanged(object sender, RoutedEventArgs e)
+    {
+        DetachPopupOwner();
+        if (Toggle.IsChecked != true || Window.GetWindow(this) is not { } owner) return;
+        popupOwner = owner;
+        owner.PreviewMouseDown += OwnerMouseDown;
+        owner.Deactivated += CloseFromOwner;
+        owner.LocationChanged += CloseFromOwner;
+        owner.SizeChanged += CloseFromOwner;
+    }
+
+    private void DetachPopupOwner()
+    {
+        if (popupOwner == null) return;
+        popupOwner.PreviewMouseDown -= OwnerMouseDown;
+        popupOwner.Deactivated -= CloseFromOwner;
+        popupOwner.LocationChanged -= CloseFromOwner;
+        popupOwner.SizeChanged -= CloseFromOwner;
+        popupOwner = null;
+    }
+
+    private void OwnerMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        // Let the toggle finish its own click without changing its state first.
+        if (e.OriginalSource is Visual source &&
+            (source == Toggle || Toggle.IsAncestorOf(source) ||
+             source == MenuPopup.Child || MenuPopup.Child.IsAncestorOf(source))) return;
+        Toggle.IsChecked = false;
+    }
+
+    private void CloseFromOwner(object? sender, EventArgs e) => Toggle.IsChecked = false;
+
+    private void MenuUnloaded(object sender, RoutedEventArgs e)
+    {
+        Toggle.IsChecked = false;
+        DetachPopupOwner();
+    }
+
     private void PopupOpened(object? sender, EventArgs e) =>
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => SearchBox.Focus()));
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (MenuPopup.IsOpen) SearchBox.Focus();
+        }));
 
     private void PopupKeyDown(object sender, KeyEventArgs e)
     {

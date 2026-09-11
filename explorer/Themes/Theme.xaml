@@ -10,6 +10,25 @@
     <SolidColorBrush x:Key="WarningBrush" Color="#F7C879" />
     <BooleanToVisibilityConverter x:Key="BooleanVisibility" />
 
+    <Geometry x:Key="ChevronDownGeometry">M1.5,3.25 L5,6.75 L8.5,3.25</Geometry>
+    <Geometry x:Key="ChevronUpGeometry">M1.5,6.75 L5,3.25 L8.5,6.75</Geometry>
+    <Geometry x:Key="ChevronLeftGeometry">M6.75,1.5 L3.25,5 L6.75,8.5</Geometry>
+    <Geometry x:Key="ChevronRightGeometry">M3.25,1.5 L6.75,5 L3.25,8.5</Geometry>
+    <Style x:Key="DisclosureChevron" TargetType="Path">
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Height" Value="10" />
+        <Setter Property="Stretch" Value="None" />
+        <Setter Property="Data" Value="{StaticResource ChevronDownGeometry}" />
+        <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}" />
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
     <Style x:Key="ScrollPageButton" TargetType="RepeatButton">
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RepeatButton">
@@ -147,6 +166,38 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
     </Style>
+    <Style TargetType="Expander">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
+            <StackPanel>
+                <ToggleButton x:Name="HeaderSite" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                              ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" ContentStringFormat="{TemplateBinding HeaderStringFormat}"
+                              Foreground="{TemplateBinding Foreground}" HorizontalContentAlignment="Stretch"
+                              IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                              MinHeight="20" Cursor="Hand" FocusVisualStyle="{x:Null}">
+                    <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                        <Border Background="Transparent">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Path x:Name="Chevron" Style="{StaticResource DisclosureChevron}" Margin="4,0,8,0" />
+                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Chevron" Property="Data" Value="{StaticResource ChevronUpGeometry}" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource AccentBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate></ToggleButton.Template>
+                </ToggleButton>
+                <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </StackPanel>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsExpanded" Value="True"><Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.35" /></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style x:Key="CaptionIcon" TargetType="Path">
         <Setter Property="Width" Value="10" />
         <Setter Property="Height" Value="10" />
@@ -270,7 +321,14 @@
                 <ControlTemplate TargetType="ComboBox">
                     <Grid>
                         <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                            <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="{StaticResource RaisedBrush}" CornerRadius="7" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12,10"><TextBlock Text="⌄" HorizontalAlignment="Right" Foreground="{StaticResource MutedBrush}" /></Border></ControlTemplate></ToggleButton.Template>
+                            <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                                <Border Background="{StaticResource RaisedBrush}" CornerRadius="7" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12,10">
+                                    <Path x:Name="Chevron" Style="{StaticResource DisclosureChevron}" HorizontalAlignment="Right" Stroke="{StaticResource MutedBrush}" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsChecked" Value="True"><Setter TargetName="Chevron" Property="Data" Value="{StaticResource ChevronUpGeometry}" /></Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate></ToggleButton.Template>
                         </ToggleButton>
                         <ContentPresenter Margin="12,10,32,10" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" />
                         <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
