@@ -83,6 +83,26 @@ public sealed class ExplorerTorusTests
     }
 
     [Fact]
+    public async Task OpeningCalculationWithoutEditsKeepsTheTorusSelection()
+    {
+        using var workspace = new MainViewModel();
+        await workspace.PendingSamples;
+        using var torus = new ComplexTorusViewModel();
+        torus.Update(workspace.Snapshot.Curve, workspace.Samples, true);
+        await torus.PendingUpdate;
+        Assert.Equal(4, torus.Points.Count);
+        var lattice = torus.Lattice;
+        var selected = torus.SelectedPoint = torus.Points[2];
+
+        workspace.Equation.CommitEdit();
+        workspace.FlushUpdate();
+        torus.Update(workspace.Snapshot.Curve, workspace.Samples, true);
+        Assert.False(torus.IsBusy);
+        Assert.Same(lattice, torus.Lattice);
+        Assert.Same(selected, torus.SelectedPoint);
+    }
+
+    [Fact]
     public async Task InactiveAndSingularViewsDoNotStartPeriodCalculations()
     {
         var calls = 0;

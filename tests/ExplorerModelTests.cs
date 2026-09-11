@@ -81,6 +81,74 @@ public sealed class ExplorerModelTests
     }
 
     [Fact]
+    public async Task UnchangedInputKeepsThePresetSnapshotAndSamples()
+    {
+        using var model = new MainViewModel();
+        await model.PendingSamples;
+        var preset = model.SelectedPreset;
+        var snapshot = model.Snapshot;
+        var samples = model.Samples;
+        Assert.NotEmpty(samples);
+
+        // Opening a calculation commits the equation and flushes pending input.
+        model.Equation.CommitEdit();
+        model.FlushUpdate();
+        model.SimpleCoefficients[0].CommitEdit();
+        model.Equation.Text = "y^2=x^3-1.0*x";
+        model.Equation.CommitEdit();
+        model.ShowPoints = true;
+        await model.PendingUpdate;
+        model.FlushUpdate();
+
+        Assert.Same(preset, model.SelectedPreset);
+        Assert.Same(snapshot, model.Snapshot);
+        Assert.Same(samples, model.Samples);
+        Assert.Equal("y^2=x^3-1.0*x", model.Equation.Text);
+        Assert.DoesNotContain("Updating", model.InputStatus);
+    }
+
+    [Fact]
+    public async Task RevertingAnEditCancelsThePendingReplacement()
+    {
+        using var model = new MainViewModel();
+        await model.PendingSamples;
+        var snapshot = model.Snapshot;
+        var samples = model.Samples;
+        model.Equation.Text = "y^2=x^3+2*x";
+        var pending = model.PendingUpdate;
+        model.Equation.Text = "y^2=x^3-x";
+        await pending;
+        model.FlushUpdate();
+        Assert.Same(snapshot, model.Snapshot);
+        Assert.Same(samples, model.Samples);
+        Assert.DoesNotContain("Updating", model.InputStatus);
+    }
+
+    [Fact]
+    public void UnchangedStepDoesNotRecenterTheSliders()
+    {
+        using var model = new MainViewModel();
+        var coefficient = model.SimpleCoefficients[0];
+        coefficient.SliderOffset = 20;
+        var value = coefficient.ExactValue;
+        var minimum = coefficient.SliderMinimum;
+        var maximum = coefficient.SliderMaximum;
+        model.Step.CommitEdit();
+        model.Step.Text = "1/100";
+        model.Step.CommitEdit();
+        model.SetStepCommand.Execute("0.01");
+        Assert.Equal(20, coefficient.SliderOffset);
+        Assert.Equal(value, coefficient.ExactValue);
+        Assert.Equal(minimum, coefficient.SliderMinimum);
+        Assert.Equal(maximum, coefficient.SliderMaximum);
+
+        model.Step.Text = "0.1";
+        Assert.Equal(0, coefficient.SliderOffset);
+        coefficient.SliderOffset = 1;
+        Assert.Equal(value + new BigRational(1, 10), coefficient.ExactValue);
+    }
+
+    [Fact]
     public void StepsAndSlidersPreserveTheExactAnchorWithoutClampingCoefficients()
     {
         using var model = new MainViewModel();

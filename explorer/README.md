@@ -51,13 +51,17 @@ and the checks to run before publishing a release.
 - Open **Coefficients** for optional sliders. Each slider moves up to 50 exact
   steps on either side of its anchor. Set a positive **Slider step** there, or
   choose `1`, `0.1` or `0.01`. Changing a coefficient in the formula or changing
-  the step recenters its range. Sliders update the formula using exact arithmetic.
+  the step recenters its range. Leaving the step unchanged, including an equivalent
+  value such as `1/100` for `0.01`, preserves the slider positions and ranges.
+  Sliders update the formula using exact arithmetic.
   **Right-click a slider to reset its coefficient to 0**, including when the
   formula field contains invalid input.
 - See the discriminant, j-invariant, c₄, c₆, real component count and short model
   update after a 300 ms pause in valid input; **Enter** applies it immediately.
   The real-locus graph uses the entered coordinates; the short
-  model is shown separately in transformed coordinates.
+  model is shown separately in transformed coordinates. Confirming unchanged input
+  keeps the selected example and current samples. Equivalent equations reuse the
+  samples; opening a calculation for the same curve preserves the torus selection.
 - Drag the plot to pan and use the mouse wheel to zoom about the pointer. Both
   axes use the same scale. Edits preserve the viewport. **Reset view**, a double-click
   or **Ctrl+F** recenters the view around the real branch points and part of the

@@ -288,6 +288,24 @@ internal static class Program
         ScrollBar.PageDownCommand.Execute(null, scroll);
         Flush();
         Require(scroll.VerticalOffset > wheelOffset, "Explorer scrollbar clicks no longer scroll.");
+
+        var model = (ExplorerMenuViewModel)menu.DataContext;
+        var categories = Descendants(root).OfType<ListBox>().Single(b => AutomationProperties.GetName(b) == "Calculation categories");
+        foreach (var filter in new Action[]
+        {
+            () => model.Search = "curve",
+            () => model.Search = "",
+            () => categories.SelectedItem = "Ranks and arithmetic",
+            () => categories.SelectedIndex = 0
+        })
+        {
+            scroll.ScrollToEnd();
+            Flush();
+            Require(scroll.VerticalOffset > 0, "The filter regression must start with a scrolled list.");
+            filter();
+            Flush();
+            Require(scroll.VerticalOffset == 0, "Changing or clearing an Explorer filter retained the old scroll position.");
+        }
     }
     private static void CheckConfirmationDialogs()
     {

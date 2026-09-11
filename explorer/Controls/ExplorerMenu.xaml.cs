@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -13,7 +14,9 @@ public partial class ExplorerMenu : UserControl
     public ExplorerMenu()
     {
         InitializeComponent();
-        DataContext = new ExplorerMenuViewModel();
+        var model = new ExplorerMenuViewModel();
+        model.PropertyChanged += OperationsChanged;
+        DataContext = model;
     }
 
     private void PopupOpened(object? sender, EventArgs e) =>
@@ -29,10 +32,10 @@ public partial class ExplorerMenu : UserControl
         }
     }
 
-    private void CategorySelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OperationsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.Source != sender) return;
-        // Reset after the category binding has replaced and laid out the items.
+        if (e.PropertyName != nameof(ExplorerMenuViewModel.Operations)) return;
+        // Both category and search changes replace the list. Reset after binding/layout.
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ScrollOperationsToTop));
     }
 

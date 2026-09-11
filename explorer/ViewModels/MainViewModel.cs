@@ -11,6 +11,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private bool isSimpleForm = true, isUpdatePending;
     private CancellationTokenSource? updateCancellation;
     private CancellationTokenSource? sampleCancellation;
+    private BigRational? appliedSliderStep;
     private CurvePreset? selectedPreset;
     private IReadOnlyList<EllipticCurvePoint> samples = Array.Empty<EllipticCurvePoint>();
     private string sampleStatus = "";
@@ -61,6 +62,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         FitCommand = new RelayCommand(_ => ViewResetRequested?.Invoke(this, EventArgs.Empty));
         SetStepCommand = new RelayCommand(value => { Step.Text = value?.ToString() ?? ""; Step.CommitEdit(); });
         ApplyPreset(CurvePreset.All[0]);
+        // The initial snapshot already contains the classic curve.
+        RefreshSamples();
     }
 
     public bool IsSimpleForm => isSimpleForm;
@@ -113,6 +116,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void StepChanged()
     {
+        var nextStep = Step.IsValid ? Step.ExactValue : (BigRational?)null;
+        if (appliedSliderStep == nextStep) return;
+        appliedSliderStep = nextStep;
         foreach (var coefficient in Coefficients.Concat(SimpleCoefficients)) coefficient.RecenterSlider();
     }
 
@@ -131,7 +137,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public bool ShowPoints
     {
         get => showPoints;
-        set { showPoints = value; OnPropertyChanged(); RefreshSamples(); }
+        set
+        {
+            if (showPoints == value) return;
+            showPoints = value;
+            OnPropertyChanged();
+            RefreshSamples();
+        }
     }
 
     public IReadOnlyList<EllipticCurvePoint> Samples
@@ -180,11 +192,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private void ScheduleUpdate()
     {
+        CancelUpdate();
+        NotifyInput();
+        // Validation and equivalent text edits do not change the plotted curve.
+        if (!HasIncompleteInput && Snapshot.Curve.Equals(Equation.Curve)) return;
         selectedPreset = null;
         OnPropertyChanged(nameof(SelectedPreset));
         OnPropertyChanged(nameof(PresetDescription));
-        CancelUpdate();
-        NotifyInput();
         if (HasIncompleteInput) return;
         updateCancellation = new CancellationTokenSource();
         isUpdatePending = true;
@@ -229,7 +243,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private void Recalculate()
     {
         NotifyInput();
-        if (HasIncompleteInput || disposed) return;
+        if (HasIncompleteInput || disposed || Snapshot.Curve.Equals(Equation.Curve)) return;
         Snapshot = new CurveSnapshot(Equation.Curve);
         OnPropertyChanged(nameof(Snapshot));
         RefreshSamples();
