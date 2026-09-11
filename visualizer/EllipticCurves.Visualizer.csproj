@@ -14,6 +14,7 @@
     <ApplicationIcon>ec_logo.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="PresentationHost" />
     <None Remove="ec_logo.png" />
     <Resource Include="ec_logo.png" />
     <ProjectReference Include="../sources/EllipticCurves.csproj" />

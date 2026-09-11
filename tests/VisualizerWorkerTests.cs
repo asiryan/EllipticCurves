@@ -110,6 +110,64 @@ public sealed class VisualizerWorkerTests
     }
 
     [Fact]
+    public async Task ClearHistoryRemovesAllResultsAndAllowsNewCalculations()
+    {
+        using var workbench = new WorkbenchViewModel(new CalculationRunner(() => StartInfo()));
+        Assert.False(workbench.CanClearHistory);
+        var jobs = new[] { "Completed", "Failed", "Cancelled", "Timed out" }
+            .Select(status => new CalculationJobViewModel(Request(), status) { Status = status }).ToArray();
+        foreach (var job in jobs) workbench.Jobs.Add(job);
+        workbench.Selected = jobs[1];
+        var notifications = new List<string>();
+        workbench.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+        Assert.True(workbench.CanClearHistory);
+
+        workbench.ClearHistory();
+        Assert.Empty(workbench.Jobs);
+        Assert.Null(workbench.Selected);
+        Assert.False(workbench.HasResults);
+        Assert.False(workbench.HasSelection);
+        Assert.False(workbench.CanClearHistory);
+        Assert.Equal("Choose a calculation in Explorer", workbench.Summary);
+        Assert.Contains(nameof(workbench.CanClearHistory), notifications);
+        Assert.Contains(nameof(workbench.HasResults), notifications);
+        Assert.Contains(nameof(workbench.HasSelection), notifications);
+        workbench.ClearHistory(); // Clearing an empty history is harmless.
+
+        await workbench.RunAsync(Request()).WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal("Completed", Assert.Single(workbench.Jobs).Status);
+        Assert.True(workbench.CanClearHistory);
+    }
+
+    [Fact]
+    public async Task ClearHistoryDoesNotRemoveOrCancelAnActiveCalculation()
+    {
+        using var workbench = new WorkbenchViewModel(new CalculationRunner(() => StartInfo("--unresponsive")));
+        var older = new CalculationJobViewModel(Request(), "Older") { Status = "Completed" };
+        workbench.Jobs.Add(older);
+        var calculation = workbench.RunAsync(Request());
+        var active = workbench.Active;
+        try
+        {
+            Assert.False(workbench.CanClearHistory);
+            workbench.ClearHistory();
+            Assert.Equal(new[] { active, older }, workbench.Jobs);
+            Assert.Same(active, workbench.Selected);
+            Assert.True(workbench.IsBusy);
+            Assert.Equal("Running", active.Status);
+        }
+        finally
+        {
+            workbench.Cancel();
+            await calculation.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        Assert.True(workbench.CanClearHistory);
+        workbench.ClearHistory();
+        Assert.Empty(workbench.Jobs);
+        Assert.Null(workbench.Selected);
+    }
+
+    [Fact]
     public async Task DeleteProtectsTheActiveCalculationButAllowsOlderResults()
     {
         using var workbench = new WorkbenchViewModel(new CalculationRunner(() => StartInfo("--unresponsive")));

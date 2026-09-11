@@ -60,6 +60,9 @@ Run `EllipticCurves.Visualizer.exe` from that folder. Use `win-arm64` instead of
   to see an exact rational point.
 - Choose one of four built-in examples, including a singular cubic. Preset names
   such as `37.a1` are static labels and do not trigger database lookups.
+- **Reset** in the Equation header asks for confirmation before restoring
+  `y^2 = x^3 - x` and recentering the plot. The custom dark dialog opens centered
+  on the main window with **Cancel** focused; Escape or the close button cancels.
 - Copy the equation and exact invariants, or export the current plot to PNG.
 
 ## Calculation scope
@@ -141,6 +144,9 @@ Use **Copy**, **Save** or **Repeat** on the displayed result. To remove a result
 its entry in the history dropdown and choose **Delete**. This deletes that entry,
 even when another result is displayed; stop an active calculation before deleting it. History keeps the last
 50 calculations for the current session; save reports before closing the app.
+**Clear** in the Results header removes the entire session history after
+confirmation in the same dark dialog, with **Cancel** focused by default. It is disabled while a calculation
+is running or the history is empty. Saved report files are unaffected.
 Both side panels start at their minimum widths. Drag either divider to resize its
 panel; matching gaps and dividers keep the two sides aligned.
 The **Equation** and **Results** panels each have a header chevron that folds the
@@ -176,7 +182,8 @@ the host disconnects. A portable test host exercises this protocol, errors,
 non-cooperative cancellation and disconnect behavior without opening any UI.
 
 On Windows, also run the compiled-XAML regression check. It loads the real theme
-and main workspace, verifies history-menu deletion, Repeat, both sidebars' folding,
+and main workspace, verifies history-menu deletion, acceptance/rejection of Clear
+and Reset, Repeat, both sidebars' folding,
 aligned bounds at different window sizes, the animation and PNG rendering, and never opens a window:
 
 ```powershell

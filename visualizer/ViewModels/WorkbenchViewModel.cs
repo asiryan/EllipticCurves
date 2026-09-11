@@ -53,6 +53,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     public bool CanRun => !IsBusy && !disposed;
     public bool HasSelection => Selected != null;
     public bool HasResults => Jobs.Count > 0;
+    public bool CanClearHistory => CanRun && HasResults;
     public bool CanDelete(CalculationJobViewModel? job) => job != null && job != Active && Jobs.Contains(job);
     public string Summary => IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Explorer" : Jobs.Count + " calculations this session";
     public RelayCommand CancelCommand => new(_ => Cancel());
@@ -64,6 +65,14 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         var wasSelected = job == Selected;
         Jobs.RemoveAt(index);
         if (wasSelected) Selected = Jobs.Count == 0 ? null : Jobs[Math.Min(index, Jobs.Count - 1)];
+        NotifyState();
+    }
+
+    public void ClearHistory()
+    {
+        if (!CanClearHistory) return;
+        Jobs.Clear();
+        Selected = null;
         NotifyState();
     }
 
@@ -116,6 +125,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     private void NotifyState()
     {
         OnPropertyChanged(nameof(IsBusy)); OnPropertyChanged(nameof(CanRun)); OnPropertyChanged(nameof(HasResults)); OnPropertyChanged(nameof(Summary));
+        OnPropertyChanged(nameof(CanClearHistory));
     }
     public void Dispose() { disposed = true; Cancel(); }
 }

@@ -30,8 +30,10 @@
         <Grid>
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBlock Text="Results" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <Button Content="›" HorizontalAlignment="Right" Click="HideClick" Style="{StaticResource QuietButton}" Padding="10,2" FontSize="20" ToolTip="Collapse results to the side tab" AutomationProperties.Name="Collapse results panel" />
+                <Button Grid.Column="1" Content="Clear" Click="ClearClick" IsEnabled="{Binding CanClearHistory}" Style="{StaticResource QuietButton}" Padding="4,3" Margin="8,0,4,0" Foreground="{StaticResource MutedBrush}" ToolTip="Clear all session history. Stop a running calculation first." ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Clear calculation history" />
+                <Button Grid.Column="2" Content="›" HorizontalAlignment="Right" Click="HideClick" Style="{StaticResource QuietButton}" Padding="10,2" FontSize="20" ToolTip="Collapse results to the side tab" AutomationProperties.Name="Collapse results panel" />
             </Grid>
             <TextBlock Grid.Row="1" Text="{Binding Summary}" Style="{StaticResource Muted}" FontSize="11" Margin="0,7,0,14" TextWrapping="Wrap" />
             <Border Grid.Row="2" Background="#172D2B" CornerRadius="7" Padding="12" Margin="0,0,0,14" Visibility="{Binding IsBusy, Converter={StaticResource BooleanVisibility}}">

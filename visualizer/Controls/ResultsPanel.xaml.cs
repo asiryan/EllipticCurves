@@ -12,10 +12,22 @@ public partial class ResultsPanel : UserControl
 {
     public event Action? HideRequested;
     public event Action<CalculationRequest>? RepeatRequested;
-    public ResultsPanel() => InitializeComponent();
+    private readonly Func<bool> confirmClearHistory;
+    public ResultsPanel() : this(null) { }
+    internal ResultsPanel(Func<bool>? confirmation)
+    {
+        confirmClearHistory = confirmation ?? (() => ConfirmationWindow.Confirm(Window.GetWindow(this),
+            "Clear history?", "Remove all calculation results from this session? This cannot be undone.", "Clear history"));
+        InitializeComponent();
+    }
     private CalculationJobViewModel? Selected => (DataContext as WorkbenchViewModel)?.Selected;
     private void HideClick(object sender, RoutedEventArgs e) => HideRequested?.Invoke();
     private void RepeatClick(object sender, RoutedEventArgs e) { if (Selected != null) RepeatRequested?.Invoke(Selected.Request); }
+    private void ClearClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is WorkbenchViewModel { CanClearHistory: true } workbench && confirmClearHistory())
+            workbench.ClearHistory();
+    }
     private void HistoryContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         if (sender is not ComboBoxItem { DataContext: CalculationJobViewModel job, ContextMenu: { } menu }

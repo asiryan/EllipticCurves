@@ -92,7 +92,7 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <Button x:Name="EquationCollapseButton" Content="‹" Click="CollapseEquationClick" Style="{StaticResource QuietButton}" Width="24" Padding="0,2" Margin="-6,0,6,0" FontSize="20" ToolTip="Collapse equation panel" AutomationProperties.Name="Collapse equation panel" />
                             <TextBlock Grid.Column="1" Text="Equation" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Content="Reset" Command="{Binding ResetCommand}" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" />
+                            <Button Grid.Column="2" Content="Reset" Click="ResetEquationClick" Style="{StaticResource QuietButton}" Padding="4,3" Foreground="{StaticResource MutedBrush}" />
                         </Grid>
                         <TextBlock Text="{Binding FormDescription}" Style="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" />
                         <TextBlock x:Name="EquationIntro" Text="Enter a Weierstrass equation." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="Enter the whole curve equation above. Simple and general Weierstrass forms are recognized automatically." />

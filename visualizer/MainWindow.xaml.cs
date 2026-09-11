@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private const double SidebarTabWidth = 32;
     private readonly SidebarState equationSidebar = new(238);
     private readonly SidebarState resultsSidebar = new(300);
+    private readonly Func<bool> confirmEquationReset;
 
     private sealed class SidebarState(double minimumWidth)
     {
@@ -32,8 +33,12 @@ public partial class MainWindow : Window
         public int AnimationVersion { get; set; }
     }
 
-    public MainWindow()
+    public MainWindow() : this(null) { }
+    internal MainWindow(Func<bool>? confirmation)
     {
+        confirmEquationReset = confirmation ?? (() => ConfirmationWindow.Confirm(this,
+            "Reset equation?", "Restore the classic curve and recenter the plot. Your current equation will be replaced.",
+            "Reset equation", "y^2 = x^3 - x"));
         InitializeComponent();
         DataContext = ViewModel;
         Results.DataContext = Workbench;
@@ -142,6 +147,10 @@ public partial class MainWindow : Window
         column.BeginAnimation(ColumnDefinition.WidthProperty, animation, HandoffBehavior.SnapshotAndReplace);
     }
     private void ResetView(object? sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(Plot.Fit));
+    private void ResetEquationClick(object sender, RoutedEventArgs e)
+    {
+        if (confirmEquationReset()) ViewModel.ResetCommand.Execute(null);
+    }
     private void FitClick(object sender, RoutedEventArgs e) => Plot.Fit();
     private void ZoomInClick(object sender, RoutedEventArgs e) => Plot.Zoom(1 / 1.25);
     private void ZoomOutClick(object sender, RoutedEventArgs e) => Plot.Zoom(1.25);

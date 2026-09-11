@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Automation;
 using System.Windows.Media.Animation;
@@ -57,9 +58,11 @@ internal static class Program
             Require(workbench.Jobs.Count == 0 && workbench.Selected == null, "Last-result deletion did not clear the panel.");
             Require(Descendants(panel).OfType<Button>().Any(b => Equals(b.Content, "Repeat")), "Repeat button is missing.");
             CheckWorkspaceLayout(request);
+            CheckConfirmations(request);
+            CheckConfirmationDialogs();
             CheckDockAnimation();
             CheckPlotRendering();
-            Console.WriteLine("PASS: compiled XAML loads; history deletion, Repeat, title indicator, PNG rendering, navigation placement and both full-height sidebars checked. No windows opened.");
+            Console.WriteLine("PASS: compiled XAML loads; history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, title indicator, PNG rendering, navigation placement and both full-height sidebars checked. No windows opened.");
             app.Shutdown();
             return 0;
         }
@@ -67,6 +70,114 @@ internal static class Program
     }
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+    private static void CheckConfirmationDialogs()
+    {
+        foreach (var reset in new[] { false, true })
+        foreach (var action in new[] { "cancel", "confirm", "close" })
+        {
+            var dialog = new ConfirmationWindow(reset ? "Reset equation?" : "Clear history?",
+                reset ? "Restore the classic curve and recenter the plot. Your current equation will be replaced."
+                    : "Remove all calculation results from this session? This cannot be undone.",
+                reset ? "Reset equation" : "Clear history", reset ? "y^2 = x^3 - x" : null);
+            try
+            {
+                Require(dialog.WindowStyle == WindowStyle.None && dialog.AllowsTransparency && !dialog.ShowInTaskbar,
+                    "Confirmation must use the custom window frame.");
+                Require(dialog.WindowStartupLocation == WindowStartupLocation.CenterOwner, "Confirmation must center on its owner.");
+                var root = (FrameworkElement)dialog.Content;
+                root.Measure(new Size(dialog.Width, double.PositiveInfinity));
+                root.Arrange(new Rect(new Point(), root.DesiredSize));
+                root.UpdateLayout();
+                var cancel = (Button)dialog.FindName("CancelButton");
+                var confirm = (Button)dialog.FindName("ConfirmButton");
+                var detail = (Border)dialog.FindName("DetailPanel");
+                Require(cancel.IsDefault && cancel.IsCancel && !confirm.IsDefault, "Enter and Escape must default to cancellation.");
+                Require(FocusManager.GetFocusedElement(dialog) == cancel, "Initial confirmation focus must be on Cancel.");
+                Require((detail.Visibility == Visibility.Visible) == reset, "Only Reset should show the equation preview.");
+                Rect Bounds(FrameworkElement element) => element.TransformToAncestor(root).TransformBounds(new Rect(element.RenderSize));
+                Require(Bounds(confirm).Right < Bounds(cancel).Left && new Rect(root.RenderSize).Contains(Bounds(cancel))
+                    && new Rect(root.RenderSize).Contains(Bounds(confirm)),
+                    "Cancel must follow the confirmation action, with both buttons inside the window.");
+                if (action == "cancel")
+                {
+                    var bitmap = new RenderTargetBitmap((int)root.ActualWidth, (int)root.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                    bitmap.Render(root);
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                    using var stream = System.IO.File.Create(System.IO.Path.Combine(AppContext.BaseDirectory, reset ? "confirmation-reset.png" : "confirmation-clear.png"));
+                    encoder.Save(stream);
+                }
+                var button = action == "confirm" ? confirm : action == "cancel" ? cancel
+                    : Descendants(root).OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Close confirmation");
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Require(dialog.Confirmed == (action == "confirm"), "The custom dialog returned the wrong confirmation result.");
+            }
+            finally { dialog.Close(); }
+        }
+    }
+    private static void CheckConfirmations(CalculationRequest request)
+    {
+        using var workbench = new WorkbenchViewModel();
+        var first = new CalculationJobViewModel(request, "First");
+        var second = new CalculationJobViewModel(request, "Second");
+        workbench.Jobs.Add(first);
+        workbench.Jobs.Add(second);
+        workbench.Selected = second;
+        var clearAnswer = false;
+        var clearConfirmations = 0;
+        var panel = new ResultsPanel(() => { clearConfirmations++; return clearAnswer; }) { DataContext = workbench };
+        panel.Measure(new Size(300, 800));
+        panel.Arrange(new Rect(0, 0, 300, 800));
+        panel.UpdateLayout();
+        var clear = Descendants(panel).OfType<Button>().Single(b => Equals(b.Content, "Clear"));
+        var collapse = Descendants(panel).OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Collapse results panel");
+        var title = Descendants(panel).OfType<TextBlock>().Single(t => t.Text == "Results");
+        Rect Bounds(FrameworkElement element) => element.TransformToAncestor(panel).TransformBounds(new Rect(element.RenderSize));
+        Require(Bounds(title).Right < Bounds(clear).Left && Bounds(clear).Right < Bounds(collapse).Left,
+            "Clear overlaps the Results title or collapse button at minimum width.");
+        Require(clear.IsEnabled, "Clear must be enabled when history is available.");
+        clear.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Require(clearConfirmations == 1 && workbench.Jobs.Count == 2 && workbench.Selected == second,
+            "Rejecting Clear changed the history or selected result.");
+        clearAnswer = true;
+        clear.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        panel.UpdateLayout();
+        Require(clearConfirmations == 2 && !workbench.HasResults && !workbench.HasSelection && !clear.IsEnabled,
+            "Accepting Clear did not empty and disable the history.");
+        clear.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Require(clearConfirmations == 2, "An empty history must not request confirmation.");
+
+        var resetAnswer = false;
+        var resetConfirmations = 0;
+        var window = new MainWindow(() => { resetConfirmations++; return resetAnswer; });
+        try
+        {
+            var root = (FrameworkElement)window.Content;
+            root.Measure(new Size(1438, 918));
+            root.Arrange(new Rect(0, 0, 1438, 918));
+            root.UpdateLayout();
+            window.ViewModel.ShowPoints = false;
+            window.ViewModel.Equation.Text = "y^2 + y = x^3 - x";
+            window.ViewModel.FlushUpdate();
+            window.Workbench.Jobs.Add(first);
+            window.Workbench.Selected = first;
+            var snapshot = window.ViewModel.Snapshot;
+            var resets = 0;
+            window.ViewModel.ViewResetRequested += (_, _) => resets++;
+            var reset = Descendants(root).OfType<Button>().Single(b => Equals(b.Content, "Reset"));
+            Require(reset.Command == null, "Reset must not bypass confirmation through a command binding.");
+            reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(resetConfirmations == 1 && window.ViewModel.Snapshot == snapshot && resets == 0,
+                "Rejecting Reset changed the equation or viewport.");
+            resetAnswer = true;
+            reset.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(resetConfirmations == 2 && window.ViewModel.Equation.Text == "y^2 = x^3 - x" && resets == 1,
+                "Accepting Reset did not restore and recenter the classic curve.");
+            Require(window.Workbench.Selected == first && window.Workbench.Jobs.Count == 1,
+                "Reset must preserve calculation history.");
+        }
+        finally { window.Close(); window.Workbench.Dispose(); window.ViewModel.Dispose(); }
+    }
     private static void CheckPlotRendering()
     {
         foreach (var equation in new[] { "y^2=x^3-x", "y^2+xy+y=x^3-x", "y^2=x^3", "y^2=x^3-3*x-2", "y^2=x^3+1e400*x" })
