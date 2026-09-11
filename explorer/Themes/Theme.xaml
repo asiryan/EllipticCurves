@@ -135,7 +135,16 @@
             </Border>
         </ControlTemplate></Setter.Value></Setter>
     </Style>
+    <!-- FocusVisualStyle is shown for keyboard navigation. IsKeyboardFocused
+         also remains true after mouse clicks and must not keep hover styling on. -->
+    <Style x:Key="ButtonFocusVisual" TargetType="Control">
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Control">
+            <Border Margin="2" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                    CornerRadius="5" IsHitTestVisible="False" />
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocusVisual}" />
         <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
@@ -155,7 +164,6 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Trigger>
                         <Trigger Property="IsPressed" Value="True"><Setter TargetName="Frame" Property="Opacity" Value="0.65" /></Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Trigger>
                         <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Frame" Property="Opacity" Value="0.35" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -174,7 +182,7 @@
                               ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" ContentStringFormat="{TemplateBinding HeaderStringFormat}"
                               Foreground="{TemplateBinding Foreground}" HorizontalContentAlignment="Stretch"
                               IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                              MinHeight="20" Cursor="Hand" FocusVisualStyle="{x:Null}">
+                              MinHeight="20" Cursor="Hand" FocusVisualStyle="{StaticResource ButtonFocusVisual}">
                     <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
                         <Border Background="Transparent">
                             <Grid>
@@ -185,7 +193,6 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True"><Setter TargetName="Chevron" Property="Data" Value="{StaticResource ChevronUpGeometry}" /></Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource AccentBrush}" /></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate></ToggleButton.Template>
                 </ToggleButton>

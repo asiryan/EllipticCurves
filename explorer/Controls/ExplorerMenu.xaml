@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Unloaded="MenuUnloaded">
     <Grid>
         <ToggleButton x:Name="Toggle" Content="Explorer" Padding="10,5" Cursor="Hand"
+                      FocusVisualStyle="{StaticResource ButtonFocusVisual}"
                       Checked="ToggleStateChanged" Unchecked="ToggleStateChanged" AutomationProperties.Name="Explorer calculations menu">
             <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
                 <Border x:Name="Frame" CornerRadius="5" Background="Transparent" Padding="{TemplateBinding Padding}">
@@ -17,7 +18,6 @@
                         <Setter TargetName="Frame" Property="Background" Value="{StaticResource RaisedBrush}" />
                         <Setter TargetName="Chevron" Property="Data" Value="{StaticResource ChevronUpGeometry}" />
                     </Trigger>
-                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="{StaticResource AccentBrush}" /></Trigger>
                 </ControlTemplate.Triggers>
             </ControlTemplate></ToggleButton.Template>
             <ToggleButton.Foreground><StaticResource ResourceKey="TextBrush" /></ToggleButton.Foreground>

@@ -31,6 +31,7 @@
             <Setter Property="ResizeBehavior" Value="PreviousAndNext" />
         </Style>
         <Style x:Key="SidebarTab" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocusVisual}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
@@ -42,7 +43,6 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabFrame" Property="Background" Value="{StaticResource RaisedBrush}" /><Setter TargetName="TabFrame" Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Trigger>
-                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="TabFrame" Property="BorderBrush" Value="{StaticResource AccentBrush}" /></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>

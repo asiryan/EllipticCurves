@@ -12,7 +12,6 @@
             <Setter Property="Width" Value="132" />
             <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="16,7" />
-            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         </Style>
     </Window.Resources>
     <Grid x:Name="DialogRoot" Focusable="True" KeyboardNavigation.IsTabStop="False" FocusVisualStyle="{x:Null}">
