@@ -257,12 +257,12 @@ public sealed class VisualizerModelTests
     {
         using var model = new MainViewModel();
         for (var i = 0; i < 12; i++) model.SimpleCoefficients[1].SetExact(i);
-        model.ApplyPreset(CurvePreset.All[1]);
+        model.ApplyPreset(CurvePreset.All.Single(preset => preset.Name == "37.a1"));
         await model.PendingSamples;
         Assert.NotEmpty(model.Samples);
         Assert.All(model.Samples, point => Assert.True(model.Snapshot.Curve.IsOnCurve(point)));
         Assert.Contains("|m| ≤ 12", model.SampleStatus);
-        model.ApplyPreset(CurvePreset.All[3]);
+        model.ApplyPreset(CurvePreset.All.Single(preset => preset.Name == "The cusp"));
         await model.PendingSamples;
         Assert.Empty(model.Samples);
         Assert.True(model.Snapshot.IsSingular);

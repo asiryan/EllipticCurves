@@ -142,7 +142,7 @@ public sealed class VisualizerEquationTests
     {
         using var model = new MainViewModel();
         model.Equation.Text = "y^2=x^3-";
-        model.ApplyPreset(CurvePreset.All[1]);
+        model.ApplyPreset(CurvePreset.All.Single(preset => preset.Name == "37.a1"));
         Assert.Equal("y^2 + y = x^3 - x", model.Equation.Text);
         Assert.True(model.IsGeneralForm);
         Assert.Equal(BigRational.One, model.Coefficients[2].ExactValue);
