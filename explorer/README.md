@@ -2,7 +2,7 @@
 
 A WPF desktop application on .NET 8 for exploring elliptic-curve geometry and
 the full computational API of the EllipticCurves library. Native calculations run
-locally. The explicit LMFDB fetch commands are the only operations that use the
+locally. The explicit LMFDB search and fetch commands are the only operations that use the
 network; plotting and editing do not make network requests.
 
 ![Elliptic Curves Explorer](../docs/png/ec_explorer.png)
@@ -34,7 +34,7 @@ and the checks to run before publishing a release.
 
 ## Sessions
 
-**Session**, before **Edit** and **Explorer** in the title bar, contains **New**,
+**File**, before **Edit** and **Tools** in the title bar, contains **New**,
 **Open**, **Save**, **Save as** and **Exit**. New starts with the classic curve, empty history
 and default visualization and panel settings. Open and Save use `.ec` session files;
 Exit closes Explorer.
@@ -54,8 +54,8 @@ The title bar shows its file name (the full path appears on hover), an asterisk 
 unsaved changes, and **New**, **Unsaved**, **Saving…**, **Saved** or
 **Save failed**. File writing runs in the background; edits made during a save remain
 unsaved. Other session commands are disabled while writing.
-The menu uses the same header and popup styling as Explorer, with a single vertical
-list. All three menus close on Escape, another menu, an outside click (including the
+The menu uses the same header and popup styling as Tools, with a single vertical
+list. All four menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
 
 A session file preserves the exact equation and up to 50 calculation reports with their original
@@ -100,6 +100,20 @@ write the document data and leave the current visualization unchanged.
 Background sample generation does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
 The Results panel's **Export** exports an individual text report.
+
+## Help
+
+**Help → User Guide** (**F1**) opens this guide in the browser. **Keyboard Shortcuts**
+opens a local reference for the main window's commands. The menu also links to
+**LMFDB Website**, **Project on GitHub** and **Report an Issue**; the last item opens
+GitHub's new-issue page for you to fill in and submit.
+
+**About EllipticCurves** shows the version and author metadata from the loaded
+EllipticCurves library. **Copy version info** copies the library version, Explorer
+build, operating system, .NET runtime and process architecture for issue reports.
+**MIT License** opens the full project license bundled with the application.
+About, shortcuts and license windows work offline and are modeless, so the main
+window remains usable. Reopening a page activates its existing window. **Esc** closes it.
 
 ## Undo and redo
 
@@ -267,17 +281,42 @@ is shown after leaving the field or pressing **Enter**, so partial input such as
 In **Real locus** mode, coefficient updates invoke only the inexpensive native
 invariants and the bounded sample search described above. The optional complex
 view additionally computes periods and numerical point mappings. Rank, conductor,
-torsion enumeration and heights require an explicit Explorer calculation.
+torsion enumeration and heights require an explicit calculation from Tools.
 
-## Explorer calculations
+## Tools
 
-Open **Explorer** in the title bar, choose a category or search for an operation.
+### Import a curve from LMFDB
+
+Choose **Tools → LMFDB · internet → Import curve from LMFDB**. Enter a conductor
+such as `37`, or an inclusive range such as `11-100`, then choose **Search**.
+Inputs run from 1 to 500000; LMFDB's complete catalog covers conductors strictly
+below 500000. A conductor can have several curves, so select a labelled equation
+from the list and choose **Import formula**.
+
+Search requests only the curve labels and five exact integer coefficients. It
+loads up to 100 formulas per page; **Previous** and **Next** browse the range
+without downloading the whole catalog. Search requires internet access and has
+a 30-second timeout; **Stop**, closing the picker or changing the input cancels
+the pending request. Merely opening the picker does not make a network request.
+LMFDB may occasionally return a CAPTCHA page instead of data; the picker reports
+this and leaves the current curve unchanged so the search can be retried later.
+
+Import replaces the current equation and fits the graph. Only the equation is
+imported: no rank, points or other database metadata are fetched or added to the
+calculation history. **Undo** restores the previous equation and view together;
+**Redo** reuses the imported formula without a network request. Saving the session
+preserves the equation in its normal `.ec` format. Closing the picker without
+importing leaves the workspace unchanged.
+
+### Run calculations
+
+Open **Tools** in the title bar, choose a category or search for an operation.
 Each operation opens a movable, modeless parameter window. The curve is captured
 when the window opens, so editing the plot later does not silently change a pending
 calculation. Finite-extension curves and rational-number tools have independent
 inputs. **Run calculation** opens the results panel on the right.
 
-The title bar contains **Explorer**. Clicking the logo or **ELLIPTIC CURVES** opens
+The title bar contains **File**, **Edit**, **Tools** and **Help**. Clicking the logo or **ELLIPTIC CURVES** opens
 the project's GitHub repository in the default browser. **Export plot** is in the
 plot panel's own toolbar.
 
@@ -334,7 +373,7 @@ does not start another calculation until you choose **Run calculation**.
 To remove a result, right-click its entry in the history dropdown and choose
 **Delete**. This deletes that entry,
 even when another result is displayed; stop an active calculation before deleting it. History keeps the last
-50 calculations for the current session; use **Session → Save** to keep the session
+50 calculations for the current session; use **File → Save** to keep the session
 or save individual reports before closing the app.
 **Clear** in the Results header removes the entire session history after
 confirmation in the same dark dialog. **Clear** is disabled while a calculation
@@ -379,7 +418,7 @@ non-cooperative cancellation and disconnect behavior without opening any UI.
 
 On Windows, also run the compiled-XAML regression check. This standalone host is
 not included in `dotnet test EllipticCurves.sln`. It loads the real theme and main
-workspace and verifies Explorer click/focus scrolling, history-menu deletion,
+workspace and verifies Tools menu click/focus scrolling, history-menu deletion,
 acceptance/rejection of Clear and Reset, the presence of Repeat, both sidebars'
 folding, aligned bounds at different window sizes, animation and PNG rendering.
 PNG checks cover both embedded views, offsets within the window, fractional layout
@@ -395,7 +434,9 @@ dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release
 
 ## Code organization
 
-- `ExplorerInfo` owns the application title and repository address shared by C# and XAML.
+- `ExplorerInfo` owns application information, Help links, library metadata and the bundled license shared by C# and XAML.
+- `Theme.xaml` owns the shared title-bar action and shortcut styles. `TitleBarPopup` handles menu dismissal;
+  `MainWindow.CloseTitleBarMenus` closes all menus when a keyboard command runs.
 - `SessionFile` owns `.ec` naming, file-picker filters, format identifiers, validation and file I/O.
   `ExplorerSession` contains the saved data and the history limit. `SessionMessages` contains shared session labels.
 - `SessionState` defines command availability for both the menu and keyboard shortcuts.
@@ -405,6 +446,7 @@ dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release
 - `CalculationProtocol` and `CalculationStatus` name the existing worker messages and stored status values.
   `CurvePreset.Classic` and `ClassicEquation` define the initial curve used by the editor, sessions and calculation inputs.
 - `ClipboardActions` handles copying and clipboard errors for the equation and calculation reports.
+- `BrowserActions` opens external links and reports browser-launch errors. `MainWindow.Help` manages the modeless Help windows.
 
 Shared values belong with their owning feature. Text used in only one place stays
 beside that UI or operation. Refactoring these definitions must preserve the session

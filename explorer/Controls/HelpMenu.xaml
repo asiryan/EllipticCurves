@@ -1,0 +1,24 @@
+<UserControl x:Class="EllipticCurves.Explorer.Controls.HelpMenu"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <ToggleButton x:Name="Toggle" Content="Help" Style="{StaticResource TitleBarMenuToggle}" AutomationProperties.Name="Help menu" />
+        <Popup x:Name="MenuPopup" Placement="Bottom" PlacementTarget="{Binding ElementName=Toggle}"
+               IsOpen="{Binding IsChecked, ElementName=Toggle, Mode=TwoWay}" StaysOpen="True"
+               AllowsTransparency="True" PopupAnimation="Fade" Opened="PopupOpened">
+            <Border Style="{StaticResource Card}" Width="270" Padding="8" Margin="0,6,0,0">
+                <StackPanel KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle">
+                    <Button x:Name="GuideButton" Content="User Guide" Tag="F1" Style="{StaticResource TitleBarMenuAction}" Click="GuideClick"
+                            AutomationProperties.AcceleratorKey="F1" ToolTip="Open the user guide in your browser." />
+                    <Button Content="Keyboard Shortcuts" Style="{StaticResource TitleBarMenuAction}" Click="ShortcutsClick" />
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="12,6" />
+                    <Button Content="LMFDB Website" Tag="↗" Style="{StaticResource TitleBarMenuAction}" Click="LmfdbClick" ToolTip="Open LMFDB in your browser." />
+                    <Button Content="Project on GitHub" Tag="↗" Style="{StaticResource TitleBarMenuAction}" Click="ProjectClick" ToolTip="Open the project repository in your browser." />
+                    <Button Content="Report an Issue" Tag="↗" Style="{StaticResource TitleBarMenuAction}" Click="IssueClick" ToolTip="Open a new GitHub issue in your browser." />
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="12,6" />
+                    <Button Content="About EllipticCurves" Style="{StaticResource TitleBarMenuAction}" Click="AboutClick" />
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

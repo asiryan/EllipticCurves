@@ -10,6 +10,7 @@
         Icon="ec_logo.png" UseLayoutRounding="True" Loaded="WindowLoaded" Closed="WindowClosed">
     <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" /></shell:WindowChrome.WindowChrome>
     <Window.InputBindings>
+        <KeyBinding Key="F1" Command="{x:Static ApplicationCommands.Help}" />
         <KeyBinding Key="N" Modifiers="Control" Command="{x:Static ApplicationCommands.New}" />
         <KeyBinding Key="O" Modifiers="Control" Command="{x:Static ApplicationCommands.Open}" />
         <KeyBinding Key="S" Modifiers="Control" Command="{x:Static ApplicationCommands.Save}" />
@@ -19,6 +20,7 @@
         <KeyBinding Key="Y" Modifiers="Control" Command="{x:Static ApplicationCommands.Redo}" />
     </Window.InputBindings>
     <Window.CommandBindings>
+        <CommandBinding Command="{x:Static ApplicationCommands.Help}" Executed="HelpCommandExecuted" CanExecute="HelpCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.Undo}" PreviewExecuted="EditCommandExecuted" PreviewCanExecute="EditCommandCanExecute" CanExecute="EditCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.Redo}" PreviewExecuted="EditCommandExecuted" PreviewCanExecute="EditCommandCanExecute" CanExecute="EditCommandCanExecute" />
         <CommandBinding Command="{x:Static ApplicationCommands.New}" Executed="SessionCommandExecuted" CanExecute="SessionCommandCanExecute" />
@@ -82,6 +84,7 @@
                     <controls:SessionMenu x:Name="Session" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <controls:EditMenu x:Name="Edit" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                     <controls:ExplorerMenu x:Name="Explorer" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
+                    <controls:HelpMenu x:Name="Help" FontSize="12" VerticalAlignment="Center" shell:WindowChrome.IsHitTestVisibleInChrome="True" />
                 </StackPanel>
                 <Grid x:Name="SessionFileIndicator" Grid.Column="1" MaxWidth="240" Margin="24,0" VerticalAlignment="Center" HorizontalAlignment="Center" ClipToBounds="True"
                       DataContext="{Binding SessionStatus, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -173,7 +176,7 @@
                             </StackPanel>
                         </Expander>
                         <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,22,0,18" />
-                        <TextBlock Text="START SOMEWHERE" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
+                        <TextBlock Text="QUICK START" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
                         <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name" AutomationProperties.Name="Curve preset" />
                         <TextBlock Text="{Binding PresetDescription}" Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap" />
                         <TextBlock Text="Your zoom stays in place.&#10;Reset view recenters the view." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="The graph updates automatically after a short pause when you edit the equation." />

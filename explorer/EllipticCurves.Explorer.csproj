@@ -16,6 +16,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="PresentationHost" />
     <Resource Include="../docs/png/ec_logo_v3a.png" Link="ec_logo.png" />
+    <EmbeddedResource Include="../LICENSE" LogicalName="EllipticCurves.Explorer.LICENSE" />
     <ProjectReference Include="../sources/EllipticCurves.csproj" />
   </ItemGroup>
 </Project>

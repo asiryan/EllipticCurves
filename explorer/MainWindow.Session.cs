@@ -31,9 +31,7 @@ public partial class MainWindow
 
     private async void SessionCommandExecuted(object sender, ExecutedRoutedEventArgs e)
     {
-        Session.Close();
-        Explorer.Close();
-        Edit.Close();
+        CloseTitleBarMenus();
         e.Handled = true;
         if (e.Command == ApplicationCommands.New) await NewSessionAsync();
         else if (e.Command == ApplicationCommands.Open) await OpenSessionAsync();
@@ -251,7 +249,8 @@ public partial class MainWindow
         historyRestoreVersion++;
         try
         {
-            foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
+            foreach (var dialog in OwnedWindows.Cast<Window>()
+                .Where(window => window is CalculationWindow or LmfdbImportWindow).ToArray()) dialog.Close();
             // Every document opens in Real locus, fitted to the current layout.
             // Hide the torus before changing its inputs to avoid starting period work.
             ViewMode.SelectedIndex = 0;

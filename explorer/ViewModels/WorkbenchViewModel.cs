@@ -51,7 +51,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
     public bool CanClearHistory => CanRun && HasResults;
     public string HistoryHeading => $"SESSION HISTORY · LAST {ExplorerSession.HistoryLimit}";
     public bool CanDelete(CalculationJobViewModel? job) => job != null && job != Active && Jobs.Contains(job);
-    public string Summary => IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Explorer" : Jobs.Count + " calculations this session";
+    public string Summary => IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Tools" : Jobs.Count + " calculations this session";
     public RelayCommand CancelCommand => new(_ => Cancel());
 
     public void Delete(CalculationJobViewModel? job)

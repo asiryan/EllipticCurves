@@ -119,7 +119,7 @@ public sealed class ExplorerWorkerTests
         Assert.False(workbench.HasResults);
         Assert.False(workbench.CanDelete(workbench.Selected));
         Assert.Contains(nameof(workbench.HasResults), notifications);
-        Assert.Equal("Choose a calculation in Explorer", workbench.Summary);
+        Assert.Equal("Choose a calculation in Tools", workbench.Summary);
         workbench.Delete(null); // An empty history is a harmless no-op.
     }
 
@@ -142,7 +142,7 @@ public sealed class ExplorerWorkerTests
         Assert.False(workbench.HasResults);
         Assert.False(workbench.HasSelection);
         Assert.False(workbench.CanClearHistory);
-        Assert.Equal("Choose a calculation in Explorer", workbench.Summary);
+        Assert.Equal("Choose a calculation in Tools", workbench.Summary);
         Assert.Contains(nameof(workbench.CanClearHistory), notifications);
         Assert.Contains(nameof(workbench.HasResults), notifications);
         Assert.Contains(nameof(workbench.HasSelection), notifications);

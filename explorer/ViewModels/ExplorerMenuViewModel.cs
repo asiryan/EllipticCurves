@@ -5,6 +5,12 @@ namespace EllipticCurves.Explorer.ViewModels;
 
 public sealed class ExplorerMenuViewModel : ObservableObject
 {
+    public static CalculationOperation ImportCurve { get; } = new("explorer.import-curve", "Import curve from LMFDB",
+        "LMFDB · internet", "Search LMFDB by conductor or conductor range and import a curve equation.", CalculationContext.Database);
+    // Keep the catalog's category order, and sort every action within its category.
+    // Import opens a picker, so its menu entry is not part of the calculation catalog.
+    private static readonly IReadOnlyList<CalculationOperation> MenuOperations = CalculationCatalog.All.Append(ImportCurve)
+        .GroupBy(operation => operation.Group).SelectMany(category => category.OrderBy(operation => operation.Title)).ToArray();
     private string search = "", group = "All calculations";
     public IReadOnlyList<string> Groups { get; } = new[] { "All calculations" }.Concat(CalculationCatalog.All.Select(o => o.Group).Distinct()).ToArray();
     public string Search
@@ -29,10 +35,10 @@ public sealed class ExplorerMenuViewModel : ObservableObject
         }
     }
 
-    public IEnumerable<CalculationOperation> Operations => CalculationCatalog.All.Where(operation =>
+    public IEnumerable<CalculationOperation> Operations => MenuOperations.Where(operation =>
         (Group == "All calculations" || operation.Group == Group) &&
         (operation.Title + " " + operation.Group + " " + operation.Description + " " + operation.Member?.Name).Contains(Search.Trim(), StringComparison.OrdinalIgnoreCase));
-    public string Summary => Operations.Count() + " calculations shown · select one to set its parameters";
+    public string Summary => Operations.Count() + " actions shown · select one to continue";
 
     private void NotifyOperationsChanged()
     {

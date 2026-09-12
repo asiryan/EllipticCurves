@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -35,6 +34,7 @@ public partial class MainWindow : Window
         Session.SaveAsRequested += () => ApplicationCommands.SaveAs.Execute(null, this);
         Session.ExitRequested += Close;
         Explorer.OperationRequested += OpenCalculation;
+        Explorer.ImportCurveRequested += OpenLmfdbImport;
         Results.HideRequested += () => SetResultsVisible(false);
         Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
         ViewModel.ViewResetRequested += ResetView;
@@ -51,6 +51,7 @@ public partial class MainWindow : Window
             new Action(() => AppRoot.Margin = WindowWorkArea.GetContentMargin(this)));
         InitializeSession(sessionDialogs);
         InitializeHistory();
+        InitializeHelp();
     }
 
     private void UpdateWindowInsets(object? sender, EventArgs e)
@@ -91,18 +92,16 @@ public partial class MainWindow : Window
         ViewModel.Dispose();
     }
 
-    private void RepositoryClick(object sender, RoutedEventArgs e)
+    private void CloseTitleBarMenus()
     {
-        try
-        {
-            using var browser = Process.Start(new ProcessStartInfo(ExplorerInfo.RepositoryUrl) { UseShellExecute = true });
-        }
-        catch (Exception error) when (error is Win32Exception or InvalidOperationException)
-        {
-            ConfirmationWindow.ShowMessage(this, "Open GitHub repository",
-                "Could not open the browser. Open this address manually:\n" + ExplorerInfo.RepositoryUrl);
-        }
+        Session.Close();
+        Edit.Close();
+        Explorer.Close();
+        Help.Close();
     }
+
+    private void RepositoryClick(object sender, RoutedEventArgs e) =>
+        BrowserActions.Open(this, ExplorerInfo.RepositoryUrl, "Project on GitHub");
     private void OpenCalculation(CalculationOperation operation) => OpenCalculation(operation, null);
     private void OpenCalculation(CalculationOperation operation, CalculationRequest? previous)
     {
