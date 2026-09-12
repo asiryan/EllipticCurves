@@ -34,9 +34,12 @@ internal static partial class Program
             CheckTitleBarToggle(new ExplorerMenu());
             CheckTitleBarToggle(new SessionMenu());
             CheckTitleBarToggle(new EditMenu());
+            CheckTitleBarToggle(new HelpMenu());
             CheckCaptionDismissal("Explorer");
             CheckCaptionDismissal("Session");
             CheckCaptionDismissal("Edit");
+            CheckCaptionDismissal("Help");
+            CheckHelp();
             CheckEditHistory();
             CheckSessionMenu();
             CheckSessionRestore();
@@ -98,7 +101,7 @@ internal static partial class Program
             CheckViewSwitching();
             CheckTorusCycleColors();
             CheckComplexTorusView();
-            Console.WriteLine("PASS: compiled XAML loads; LMFDB formula import, Edit Undo/Redo, graph and result mementos, Session save/load and shared title-bar menus, Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
+            Console.WriteLine("PASS: compiled XAML loads; Help actions, bundled license and layouts, LMFDB formula import, Edit Undo/Redo, graph and result mementos, File save/load and shared title-bar menus, Tools click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
         }
@@ -274,10 +277,12 @@ internal static partial class Program
             var session = (SessionMenu)owner.FindName("Session");
             var explorer = (ExplorerMenu)owner.FindName("Explorer");
             var edit = (EditMenu)owner.FindName("Edit");
+            var help = (HelpMenu)owner.FindName("Help");
             var header = (Panel)session.Parent;
             Require(header.Children.IndexOf(session) + 1 == header.Children.IndexOf(edit)
-                && header.Children.IndexOf(edit) + 1 == header.Children.IndexOf(explorer),
-                "Title-bar menus must appear in Session, Edit, Explorer order.");
+                && header.Children.IndexOf(edit) + 1 == header.Children.IndexOf(explorer)
+                && header.Children.IndexOf(explorer) + 1 == header.Children.IndexOf(help),
+                "Title-bar menus must appear in File, Edit, Tools, Help order.");
             var toggle = (ToggleButton)session.FindName("Toggle");
             var otherToggle = (ToggleButton)explorer.FindName("Toggle");
             Require(ReferenceEquals(toggle.Style, otherToggle.Style), "Title-bar menu styles differ.");

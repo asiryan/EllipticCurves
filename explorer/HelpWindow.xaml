@@ -1,0 +1,72 @@
+<Window x:Class="EllipticCurves.Explorer.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:EllipticCurves.Explorer"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Width="560" Height="360" MinWidth="500" MinHeight="340"
+        Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI" FontSize="13" ShowInTaskbar="False" WindowStartupLocation="CenterOwner" UseLayoutRounding="True">
+    <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" /></shell:WindowChrome.WindowChrome>
+    <Grid x:Name="HelpRoot" Margin="1">
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,0">
+            <Grid>
+                <TextBlock x:Name="SectionHeading" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" />
+                <Button Click="CloseClick" Style="{StaticResource QuietButton}" Width="40" Padding="0" HorizontalAlignment="Right" Margin="0,0,-12,0"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True" AutomationProperties.Name="Close help window">
+                    <Path Style="{StaticResource CaptionCloseIcon}" />
+                </Button>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="1" Margin="24,20,24,20">
+            <ScrollViewer x:Name="AboutContent" Visibility="Collapsed" Style="{StaticResource PanelScrollViewer}" Padding="0,0,16,0">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Image Source="ec_logo.png" Width="56" Height="56" Margin="0,0,16,0" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="EllipticCurves logo" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="EllipticCurves" FontSize="22" FontWeight="SemiBold" />
+                            <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0"><Run Text="Library version " /><Run Text="{x:Static local:ExplorerInfo.LibraryVersion}" /></TextBlock>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Explore elliptic curves over the rationals and finite fields." TextWrapping="Wrap" LineHeight="20" Margin="0,20,0,16" />
+                    <TextBlock Text="{x:Static local:ExplorerInfo.Copyright}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                    <Button x:Name="LicenseButton" Click="LicenseClick" Style="{StaticResource QuietButton}"
+                            Foreground="{StaticResource AccentBrush}" FontSize="13" HorizontalAlignment="Left" Padding="0,4"
+                            ToolTip="Read the full MIT license included with this application." AutomationProperties.Name="Read MIT License">
+                        <TextBlock Text="MIT License" Foreground="{StaticResource AccentBrush}" TextDecorations="Underline" />
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+            <ScrollViewer x:Name="ShortcutsContent" Visibility="Collapsed" Style="{StaticResource PanelScrollViewer}" Padding="0,0,20,0">
+                <StackPanel>
+                    <TextBlock Text="Keyboard Shortcuts" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,18" />
+                    <ItemsControl x:Name="ShortcutList" Grid.IsSharedSizeScope="True">
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" SharedSizeGroup="ShortcutKeys" /></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,0,24,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Keys}" FontFamily="Consolas" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="File and edit commands apply to the main window. Some commands are unavailable during a calculation or while saving." Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" Margin="0,16,0,0" />
+                </StackPanel>
+            </ScrollViewer>
+            <Grid x:Name="LicenseContent" Visibility="Collapsed">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <TextBlock Text="MIT License" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,18" />
+                <TextBox x:Name="LicenseText" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         FontFamily="Consolas" FontSize="13" Style="{StaticResource ReportText}" AutomationProperties.Name="MIT license text" />
+            </Grid>
+        </Grid>
+        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,16">
+            <Grid>
+                <Button x:Name="CopyVersionButton" Content="Copy version info" Click="CopyVersionClick" HorizontalAlignment="Left" Visibility="Collapsed" />
+                <Button x:Name="CloseButton" Content="Close" Click="CloseClick" HorizontalAlignment="Right" IsCancel="True" IsDefault="True" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

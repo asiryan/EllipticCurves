@@ -34,6 +34,7 @@ public partial class MainWindow
         Session.Close();
         Explorer.Close();
         Edit.Close();
+        Help.Close();
         e.Handled = true;
         if (e.Command == ApplicationCommands.New) await NewSessionAsync();
         else if (e.Command == ApplicationCommands.Open) await OpenSessionAsync();

@@ -55,7 +55,7 @@ unsaved changes, and **New**, **Unsaved**, **Saving…**, **Saved** or
 **Save failed**. File writing runs in the background; edits made during a save remain
 unsaved. Other session commands are disabled while writing.
 The menu uses the same header and popup styling as Tools, with a single vertical
-list. All three menus close on Escape, another menu, an outside click (including the
+list. All four menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
 
 A session file preserves the exact equation and up to 50 calculation reports with their original
@@ -100,6 +100,20 @@ write the document data and leave the current visualization unchanged.
 Background sample generation does not count as an edit. Sessions are saved
 explicitly; there is no automatic saving on exit.
 The Results panel's **Export** exports an individual text report.
+
+## Help
+
+**Help → User Guide** (**F1**) opens this guide in the browser. **Keyboard Shortcuts**
+opens a local reference for the main window's commands. The menu also links to
+**LMFDB Website**, **Project on GitHub** and **Report an Issue**; the last item opens
+GitHub's new-issue page for you to fill in and submit.
+
+**About EllipticCurves** shows the version and author metadata from the loaded
+EllipticCurves library. **Copy version info** copies the library version, Explorer
+build, operating system, .NET runtime and process architecture for issue reports.
+**MIT License** opens the full project license bundled with the application.
+About, shortcuts and license windows work offline and are modeless, so the main
+window remains usable. Reopening a page activates its existing window. **Esc** closes it.
 
 ## Undo and redo
 
@@ -302,7 +316,7 @@ when the window opens, so editing the plot later does not silently change a pend
 calculation. Finite-extension curves and rational-number tools have independent
 inputs. **Run calculation** opens the results panel on the right.
 
-The title bar contains **File**, **Edit** and **Tools**. Clicking the logo or **ELLIPTIC CURVES** opens
+The title bar contains **File**, **Edit**, **Tools** and **Help**. Clicking the logo or **ELLIPTIC CURVES** opens
 the project's GitHub repository in the default browser. **Export plot** is in the
 plot panel's own toolbar.
 

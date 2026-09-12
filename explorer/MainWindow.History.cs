@@ -141,6 +141,7 @@ public partial class MainWindow
         Session.Close();
         Explorer.Close();
         Edit.Close();
+        Help.Close();
         if (!Workbench.CanRun || sessionActionInProgress) return;
         CommitHistory();
         var undo = e.Command == ApplicationCommands.Undo;

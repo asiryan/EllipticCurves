@@ -162,7 +162,7 @@ internal static partial class Program
             var badge = (FrameworkElement)window.FindName("SessionStatusBadge");
             var fileName = (TextBlock)window.FindName("SessionFileName");
             Rect Bounds(FrameworkElement element) => element.TransformToAncestor(root).TransformBounds(new Rect(element.RenderSize));
-            var explorer = (FrameworkElement)window.FindName("Explorer");
+            var help = (FrameworkElement)window.FindName("Help");
             var minimize = Descendants(root).OfType<Button>().Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "Minimize");
             foreach (var width in new[] { 1120, 1440, 1920 })
             foreach (var name in new[] { "untitled.ec", new string('x', 180) + ".ec" })
@@ -174,7 +174,7 @@ internal static partial class Program
                 var bounds = Bounds(indicator);
                 Require(Math.Abs(bounds.Left + bounds.Width / 2 - root.ActualWidth / 2) <= 1,
                     "The session indicator must be centered on the whole window.");
-                Require(bounds.Left > Bounds(explorer).Right && bounds.Right < Bounds(minimize).Left,
+                Require(bounds.Left > Bounds(help).Right && bounds.Right < Bounds(minimize).Left,
                     "The session indicator overlaps the menus or caption buttons.");
                 Require(Bounds(fileName).Left - Bounds(badge).Right >= 11 && Bounds(fileName).Right <= bounds.Right + 1,
                     "The status must precede the file name with a fixed gap and no overflow.");
