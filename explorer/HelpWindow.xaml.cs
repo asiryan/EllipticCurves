@@ -46,7 +46,7 @@ public partial class HelpWindow : Window
                 break;
             case HelpPage.License:
                 Title = "MIT License";
-                SectionHeading.Text = "HELP · LICENSE";
+                SectionHeading.Text = "HELP · ABOUT · LICENSE";
                 Width = 760;
                 Height = 620;
                 LicenseText.Text = ExplorerInfo.LicenseText;
