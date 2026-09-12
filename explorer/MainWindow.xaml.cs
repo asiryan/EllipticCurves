@@ -35,6 +35,7 @@ public partial class MainWindow : Window
         Session.SaveAsRequested += () => ApplicationCommands.SaveAs.Execute(null, this);
         Session.ExitRequested += Close;
         Explorer.OperationRequested += OpenCalculation;
+        Explorer.ImportCurveRequested += OpenLmfdbImport;
         Results.HideRequested += () => SetResultsVisible(false);
         Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
         ViewModel.ViewResetRequested += ResetView;

@@ -304,7 +304,7 @@ exploration sliders, an interactive real-locus plot, a linked period-lattice and
 The Explorer menu exposes the library's computations,
 including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
 Parameter windows feed a results panel with session history, progress, cancellation
-and time limits. Native computations run locally; only the explicit LMFDB fetch
+and time limits. Native computations run locally; only the explicit LMFDB search and fetch
 commands require internet access.
 
 # License

@@ -1,5 +1,9 @@
 # Independent arithmetic fixtures
 
+`lmfdb-formulas-37.json` is a live LMFDB API response captured on 2026-09-12 from
+`/api/ec_curvedata/?conductor=i37&_format=json&_fields=lmfdb_label,ainvs&_sort=conductor,lmfdb_label`.
+The Explorer import tests use its labels and exact coefficients without network access.
+
 Generated using PARI/GP 2.19.0 development 31236-59c418aa0c, compiled 2026-09-08,
 from the [official Windows snapshot](https://pari.math.u-bordeaux.fr/download.html).
 All inputs are explicit coefficients. The scripts use `ellglobalred`,

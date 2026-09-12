@@ -2,7 +2,7 @@
 
 A WPF desktop application on .NET 8 for exploring elliptic-curve geometry and
 the full computational API of the EllipticCurves library. Native calculations run
-locally. The explicit LMFDB fetch commands are the only operations that use the
+locally. The explicit LMFDB search and fetch commands are the only operations that use the
 network; plotting and editing do not make network requests.
 
 ![Elliptic Curves Explorer](../docs/png/ec_explorer.png)
@@ -270,6 +270,31 @@ view additionally computes periods and numerical point mappings. Rank, conductor
 torsion enumeration and heights require an explicit Explorer calculation.
 
 ## Explorer calculations
+
+### Import a curve from LMFDB
+
+Choose **Explorer → LMFDB · internet → Import curve from LMFDB**. Enter a conductor
+such as `37`, or an inclusive range such as `11-100`, then choose **Search**.
+Inputs run from 1 to 500000; LMFDB's complete catalog covers conductors strictly
+below 500000. A conductor can have several curves, so select a labelled equation
+from the list and choose **Import formula**.
+
+Search requests only the curve labels and five exact integer coefficients. It
+loads up to 100 formulas per page; **Previous** and **Next** browse the range
+without downloading the whole catalog. Search requires internet access and has
+a 30-second timeout; **Stop**, closing the picker or changing the input cancels
+the pending request. Merely opening the picker does not make a network request.
+LMFDB may occasionally return a CAPTCHA page instead of data; the picker reports
+this and leaves the current curve unchanged so the search can be retried later.
+
+Import replaces the current equation and fits the graph. Only the equation is
+imported: no rank, points or other database metadata are fetched or added to the
+calculation history. **Undo** restores the previous equation and view together;
+**Redo** reuses the imported formula without a network request. Saving the session
+preserves the equation in its normal `.ec` format. Closing the picker without
+importing leaves the workspace unchanged.
+
+### Run calculations
 
 Open **Explorer** in the title bar, choose a category or search for an operation.
 Each operation opens a movable, modeless parameter window. The curve is captured

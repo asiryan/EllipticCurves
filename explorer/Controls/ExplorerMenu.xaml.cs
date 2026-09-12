@@ -11,6 +11,7 @@ namespace EllipticCurves.Explorer.Controls;
 public partial class ExplorerMenu : UserControl
 {
     public event Action<CalculationOperation>? OperationRequested;
+    public event Action? ImportCurveRequested;
     public ExplorerMenu()
     {
         InitializeComponent();
@@ -60,6 +61,7 @@ public partial class ExplorerMenu : UserControl
     {
         if (sender is not Button { Tag: CalculationOperation operation }) return;
         Toggle.IsChecked = false;
-        OperationRequested?.Invoke(operation);
+        if (operation == ExplorerMenuViewModel.ImportCurve) ImportCurveRequested?.Invoke();
+        else OperationRequested?.Invoke(operation);
     }
 }

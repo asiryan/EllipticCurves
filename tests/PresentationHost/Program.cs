@@ -49,6 +49,7 @@ internal static partial class Program
             CheckSessionSavingConcurrency();
             CheckSaveChangesDialog();
             CheckExplorerSelection();
+            CheckLmfdbImport();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();
             var request = new CalculationRequest("Q.TorsionStructure", "y^2 = x^3 - x", new());
@@ -97,7 +98,7 @@ internal static partial class Program
             CheckViewSwitching();
             CheckTorusCycleColors();
             CheckComplexTorusView();
-            Console.WriteLine("PASS: compiled XAML loads; Edit Undo/Redo, graph and result mementos, Session save/load and shared title-bar menus, Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
+            Console.WriteLine("PASS: compiled XAML loads; LMFDB formula import, Edit Undo/Redo, graph and result mementos, Session save/load and shared title-bar menus, Explorer click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
         }
