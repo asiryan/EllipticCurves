@@ -251,7 +251,8 @@ public partial class MainWindow
         historyRestoreVersion++;
         try
         {
-            foreach (var calculation in OwnedWindows.OfType<CalculationWindow>().ToArray()) calculation.Close();
+            foreach (var dialog in OwnedWindows.Cast<Window>()
+                .Where(window => window is CalculationWindow or LmfdbImportWindow).ToArray()) dialog.Close();
             // Every document opens in Real locus, fitted to the current layout.
             // Hide the torus before changing its inputs to avoid starting period work.
             ViewMode.SelectedIndex = 0;

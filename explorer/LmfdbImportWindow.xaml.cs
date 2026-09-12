@@ -8,7 +8,7 @@ namespace EllipticCurves.Explorer;
 public partial class LmfdbImportWindow : Window
 {
     internal LmfdbImportViewModel Model { get; }
-    public LmfdbCurveFormula? ImportedFormula { get; private set; }
+    public event Action<LmfdbCurveFormula>? ImportRequested;
 
     public LmfdbImportWindow() : this(new LmfdbImportViewModel()) { }
     internal LmfdbImportWindow(LmfdbImportViewModel model)
@@ -28,7 +28,6 @@ public partial class LmfdbImportWindow : Window
     private void ImportClick(object sender, RoutedEventArgs e)
     {
         if (!Model.CanImport) return;
-        ImportedFormula = Model.Selected;
-        DialogResult = true;
+        ImportRequested?.Invoke(Model.Selected!);
     }
 }

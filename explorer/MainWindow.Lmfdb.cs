@@ -13,7 +13,17 @@ public partial class MainWindow
             return;
         }
         var dialog = new LmfdbImportWindow { Owner = this };
-        if (dialog.ShowDialog() == true && dialog.ImportedFormula is { } formula) ImportLmfdbFormula(formula);
+        dialog.ImportRequested += formula =>
+        {
+            if (sessionActionInProgress || !Workbench.CanRun)
+            {
+                ConfirmationWindow.ShowMessage(dialog, "Import curve", "Finish the current calculation or session operation before importing a curve.");
+                return;
+            }
+            ImportLmfdbFormula(formula);
+            dialog.Close();
+        };
+        dialog.Show();
     }
 
     internal void ImportLmfdbFormula(LmfdbCurveFormula formula)

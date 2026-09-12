@@ -73,7 +73,7 @@
         <Border Grid.Row="4" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,16">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <TextBlock Text="Only the equation is imported. Undo: Ctrl+Z." Style="{StaticResource Muted}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <TextBlock Text="Only the equation is imported." Style="{StaticResource Muted}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0" />
                 <Button x:Name="ImportButton" Grid.Column="1" Content="Import formula  →" Click="ImportClick" IsEnabled="{Binding CanImport}" Foreground="{StaticResource AccentBrush}" />
             </Grid>
         </Border>
