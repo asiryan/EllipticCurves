@@ -434,7 +434,9 @@ dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release
 
 ## Code organization
 
-- `ExplorerInfo` owns the application title and repository address shared by C# and XAML.
+- `ExplorerInfo` owns application information, Help links, library metadata and the bundled license shared by C# and XAML.
+- `Theme.xaml` owns the shared title-bar action and shortcut styles. `TitleBarPopup` handles menu dismissal;
+  `MainWindow.CloseTitleBarMenus` closes all menus when a keyboard command runs.
 - `SessionFile` owns `.ec` naming, file-picker filters, format identifiers, validation and file I/O.
   `ExplorerSession` contains the saved data and the history limit. `SessionMessages` contains shared session labels.
 - `SessionState` defines command availability for both the menu and keyboard shortcuts.
@@ -444,6 +446,7 @@ dotnet run --project tests/PresentationHost/PresentationHost.csproj -c Release
 - `CalculationProtocol` and `CalculationStatus` name the existing worker messages and stored status values.
   `CurvePreset.Classic` and `ClassicEquation` define the initial curve used by the editor, sessions and calculation inputs.
 - `ClipboardActions` handles copying and clipboard errors for the equation and calculation reports.
+- `BrowserActions` opens external links and reports browser-launch errors. `MainWindow.Help` manages the modeless Help windows.
 
 Shared values belong with their owning feature. Text used in only one place stays
 beside that UI or operation. Refactoring these definitions must preserve the session

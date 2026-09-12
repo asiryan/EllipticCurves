@@ -38,13 +38,11 @@ public sealed class ExplorerMenuViewModel : ObservableObject
     public IEnumerable<CalculationOperation> Operations => MenuOperations.Where(operation =>
         (Group == "All calculations" || operation.Group == Group) &&
         (operation.Title + " " + operation.Group + " " + operation.Description + " " + operation.Member?.Name).Contains(Search.Trim(), StringComparison.OrdinalIgnoreCase));
-    public bool ShowCurveImport => Operations.Contains(ImportCurve);
     public string Summary => Operations.Count() + " actions shown · select one to continue";
 
     private void NotifyOperationsChanged()
     {
         OnPropertyChanged(nameof(Operations));
-        OnPropertyChanged(nameof(ShowCurveImport));
         OnPropertyChanged(nameof(Summary));
     }
 }

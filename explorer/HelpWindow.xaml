@@ -47,8 +47,7 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" SharedSizeGroup="ShortcutKeys" /></Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,0,24,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Keys}" FontSize="12" Foreground="{StaticResource MutedBrush}"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Keys}" Style="{StaticResource MenuShortcutHint}" HorizontalAlignment="Right" />
                                 </Grid>
                             </Border>
                         </DataTemplate></ItemsControl.ItemTemplate>

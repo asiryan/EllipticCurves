@@ -474,6 +474,29 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="MenuShortcutHint" TargetType="TextBlock" BasedOn="{StaticResource Muted}">
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- File, Edit and Help share action rows; Tag supplies a shortcut or link marker. -->
+    <Style x:Key="TitleBarMenuAction" TargetType="Button" BasedOn="{StaticResource QuietButton}">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="12,9" />
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   Style="{StaticResource MenuShortcutHint}" Margin="24,0,0,0" />
+                    </Grid>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource RaisedBrush}" /></Trigger>
+        </Style.Triggers>
+    </Style>
     <Style x:Key="TitleBarMenuToggle" TargetType="ToggleButton">
         <Setter Property="Padding" Value="10,5" />
         <Setter Property="Cursor" Value="Hand" />

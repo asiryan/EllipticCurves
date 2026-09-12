@@ -92,6 +92,14 @@ public partial class MainWindow : Window
         ViewModel.Dispose();
     }
 
+    private void CloseTitleBarMenus()
+    {
+        Session.Close();
+        Edit.Close();
+        Explorer.Close();
+        Help.Close();
+    }
+
     private void RepositoryClick(object sender, RoutedEventArgs e) =>
         BrowserActions.Open(this, ExplorerInfo.RepositoryUrl, "Project on GitHub");
     private void OpenCalculation(CalculationOperation operation) => OpenCalculation(operation, null);

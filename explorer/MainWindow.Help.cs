@@ -25,10 +25,7 @@ public partial class MainWindow
     private void HelpCommandExecuted(object sender, ExecutedRoutedEventArgs e)
     {
         e.Handled = true;
-        Session.Close();
-        Edit.Close();
-        Explorer.Close();
-        Help.Close();
+        CloseTitleBarMenus();
         BrowserActions.Open(this, ExplorerInfo.UserGuideUrl, "User Guide");
     }
 

@@ -138,10 +138,7 @@ public partial class MainWindow
     private void EditCommandExecuted(object sender, ExecutedRoutedEventArgs e)
     {
         e.Handled = true;
-        Session.Close();
-        Explorer.Close();
-        Edit.Close();
-        Help.Close();
+        CloseTitleBarMenus();
         if (!Workbench.CanRun || sessionActionInProgress) return;
         CommitHistory();
         var undo = e.Command == ApplicationCommands.Undo;

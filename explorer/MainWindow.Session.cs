@@ -31,10 +31,7 @@ public partial class MainWindow
 
     private async void SessionCommandExecuted(object sender, ExecutedRoutedEventArgs e)
     {
-        Session.Close();
-        Explorer.Close();
-        Edit.Close();
-        Help.Close();
+        CloseTitleBarMenus();
         e.Handled = true;
         if (e.Command == ApplicationCommands.New) await NewSessionAsync();
         else if (e.Command == ApplicationCommands.Open) await OpenSessionAsync();

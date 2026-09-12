@@ -186,13 +186,13 @@ public sealed class ExplorerLmfdbImportTests
     public void ImportIsDiscoverableInTheLmfdbCategoryAndSearch()
     {
         var model = new ExplorerMenuViewModel { Group = "LMFDB · internet" };
-        Assert.True(model.ShowCurveImport);
+        Assert.Contains(ExplorerMenuViewModel.ImportCurve, model.Operations);
         model.Search = "conductor";
-        Assert.True(model.ShowCurveImport);
+        Assert.Contains(ExplorerMenuViewModel.ImportCurve, model.Operations);
         model.Search = "Faltings";
-        Assert.False(model.ShowCurveImport);
+        Assert.DoesNotContain(ExplorerMenuViewModel.ImportCurve, model.Operations);
         model.Search = "";
         model.Group = "Prime fields";
-        Assert.False(model.ShowCurveImport);
+        Assert.DoesNotContain(ExplorerMenuViewModel.ImportCurve, model.Operations);
     }
 }
