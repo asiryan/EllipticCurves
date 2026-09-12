@@ -53,7 +53,6 @@
                             </Border>
                         </DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Text="File and edit commands apply to the main window. Some commands are unavailable during a calculation or while saving." Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" Margin="0,16,0,0" />
                 </StackPanel>
             </ScrollViewer>
             <Grid x:Name="LicenseContent" Visibility="Collapsed">
@@ -65,8 +64,12 @@
         </Grid>
         <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,16">
             <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <Button x:Name="CopyVersionButton" Content="Copy version info" Click="CopyVersionClick" HorizontalAlignment="Left" Visibility="Collapsed" />
-                <Button x:Name="CloseButton" Content="Close" Click="CloseClick" HorizontalAlignment="Right" IsCancel="True" IsDefault="True" />
+                <TextBlock Text="File and edit commands apply to the main window. Some commands are unavailable during a calculation or while saving."
+                           Style="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="18" VerticalAlignment="Center" Margin="0,0,20,0"
+                           Visibility="{Binding Visibility, ElementName=ShortcutsContent}" />
+                <Button x:Name="CloseButton" Grid.Column="1" Content="Close" Click="CloseClick" HorizontalAlignment="Right" VerticalAlignment="Center" IsCancel="True" IsDefault="True" />
             </Grid>
         </Border>
     </Grid>
