@@ -23,8 +23,8 @@
         </Style>
     </UserControl.Resources>
     <Grid>
-        <ToggleButton x:Name="Toggle" Content="Session" Style="{StaticResource TitleBarMenuToggle}"
-                      AutomationProperties.Name="Session menu" />
+        <ToggleButton x:Name="Toggle" Content="File" Style="{StaticResource TitleBarMenuToggle}"
+                      AutomationProperties.Name="File menu" />
         <Popup x:Name="MenuPopup" Placement="Bottom" PlacementTarget="{Binding ElementName=Toggle}"
                IsOpen="{Binding IsChecked, ElementName=Toggle, Mode=TwoWay}" StaysOpen="True"
                AllowsTransparency="True" PopupAnimation="Fade" Opened="PopupOpened">

@@ -301,7 +301,7 @@ The [WPF Explorer](explorer/README.md) provides a modern desktop interface on
 .NET 8: full formula input for simple and general Weierstrass equations, optional
 exploration sliders, an interactive real-locus plot, a linked period-lattice and
 3D complex-torus view, exact invariants and bounded rational-point samples.
-The Explorer menu exposes the library's computations,
+The Tools menu exposes the library's computations,
 including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
 Parameter windows feed a results panel with session history, progress, cancellation
 and time limits. Native computations run locally; only the explicit LMFDB search and fetch

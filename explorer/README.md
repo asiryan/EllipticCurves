@@ -34,7 +34,7 @@ and the checks to run before publishing a release.
 
 ## Sessions
 
-**Session**, before **Edit** and **Explorer** in the title bar, contains **New**,
+**File**, before **Edit** and **Tools** in the title bar, contains **New**,
 **Open**, **Save**, **Save as** and **Exit**. New starts with the classic curve, empty history
 and default visualization and panel settings. Open and Save use `.ec` session files;
 Exit closes Explorer.
@@ -54,7 +54,7 @@ The title bar shows its file name (the full path appears on hover), an asterisk 
 unsaved changes, and **New**, **Unsaved**, **Saving…**, **Saved** or
 **Save failed**. File writing runs in the background; edits made during a save remain
 unsaved. Other session commands are disabled while writing.
-The menu uses the same header and popup styling as Explorer, with a single vertical
+The menu uses the same header and popup styling as Tools, with a single vertical
 list. All three menus close on Escape, another menu, an outside click (including the
 title bar), window movement, resizing or deactivation.
 
@@ -267,13 +267,13 @@ is shown after leaving the field or pressing **Enter**, so partial input such as
 In **Real locus** mode, coefficient updates invoke only the inexpensive native
 invariants and the bounded sample search described above. The optional complex
 view additionally computes periods and numerical point mappings. Rank, conductor,
-torsion enumeration and heights require an explicit Explorer calculation.
+torsion enumeration and heights require an explicit calculation from Tools.
 
-## Explorer calculations
+## Tools
 
 ### Import a curve from LMFDB
 
-Choose **Explorer → LMFDB · internet → Import curve from LMFDB**. Enter a conductor
+Choose **Tools → LMFDB · internet → Import curve from LMFDB**. Enter a conductor
 such as `37`, or an inclusive range such as `11-100`, then choose **Search**.
 Inputs run from 1 to 500000; LMFDB's complete catalog covers conductors strictly
 below 500000. A conductor can have several curves, so select a labelled equation
@@ -296,13 +296,13 @@ importing leaves the workspace unchanged.
 
 ### Run calculations
 
-Open **Explorer** in the title bar, choose a category or search for an operation.
+Open **Tools** in the title bar, choose a category or search for an operation.
 Each operation opens a movable, modeless parameter window. The curve is captured
 when the window opens, so editing the plot later does not silently change a pending
 calculation. Finite-extension curves and rational-number tools have independent
 inputs. **Run calculation** opens the results panel on the right.
 
-The title bar contains **Explorer**. Clicking the logo or **ELLIPTIC CURVES** opens
+The title bar contains **File**, **Edit** and **Tools**. Clicking the logo or **ELLIPTIC CURVES** opens
 the project's GitHub repository in the default browser. **Export plot** is in the
 plot panel's own toolbar.
 
@@ -359,7 +359,7 @@ does not start another calculation until you choose **Run calculation**.
 To remove a result, right-click its entry in the history dropdown and choose
 **Delete**. This deletes that entry,
 even when another result is displayed; stop an active calculation before deleting it. History keeps the last
-50 calculations for the current session; use **Session → Save** to keep the session
+50 calculations for the current session; use **File → Save** to keep the session
 or save individual reports before closing the app.
 **Clear** in the Results header removes the entire session history after
 confirmation in the same dark dialog. **Clear** is disabled while a calculation
@@ -404,7 +404,7 @@ non-cooperative cancellation and disconnect behavior without opening any UI.
 
 On Windows, also run the compiled-XAML regression check. This standalone host is
 not included in `dotnet test EllipticCurves.sln`. It loads the real theme and main
-workspace and verifies Explorer click/focus scrolling, history-menu deletion,
+workspace and verifies Tools menu click/focus scrolling, history-menu deletion,
 acceptance/rejection of Clear and Reset, the presence of Repeat, both sidebars'
 folding, aligned bounds at different window sizes, animation and PNG rendering.
 PNG checks cover both embedded views, offsets within the window, fractional layout

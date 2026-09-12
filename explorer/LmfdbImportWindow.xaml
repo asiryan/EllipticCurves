@@ -20,7 +20,7 @@
             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,0">
-            <Grid><TextBlock Text="EXPLORER · LMFDB" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" />
+            <Grid><TextBlock Text="TOOLS · LMFDB" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" />
                 <Button Click="CloseClick" Style="{StaticResource QuietButton}" Width="40" Padding="0" HorizontalAlignment="Right" Margin="0,0,-12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" AutomationProperties.Name="Close import window">
                     <Path Style="{StaticResource CaptionCloseIcon}" />
                 </Button>
