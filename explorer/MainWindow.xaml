@@ -173,7 +173,7 @@
                             </StackPanel>
                         </Expander>
                         <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,22,0,18" />
-                        <TextBlock Text="START SOMEWHERE" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
+                        <TextBlock Text="QUICK START" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
                         <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name" AutomationProperties.Name="Curve preset" />
                         <TextBlock Text="{Binding PresetDescription}" Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap" />
                         <TextBlock Text="Your zoom stays in place.&#10;Reset view recenters the view." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="The graph updates automatically after a short pause when you edit the equation." />
