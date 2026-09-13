@@ -1,5 +1,15 @@
 # Independent arithmetic fixtures
 
+`icarm-302.json` is the [ICARM curve #302 JSON response](https://elliptic-rank.icarm.cloud/curve/302.json)
+captured on 2026-09-13. It contains the rank-record curve credited to Claude,
+Levent Alpöge and Ava Howell, with 31 rational witness points. `RecordRankTests`
+read only its coefficients and points: rank, torsion and factorization metadata
+are not trusted as proof inputs. The tests independently prove rank at least 31
+using this library's exact reduction characters, without full descent or integer
+factorization. See [the reproducible experiment](../../docs/rank31-verification.md).
+The data is maintained by the NSF Institute for Computer-Aided Reasoning in
+Mathematics (ICARM), supported by NSF Grant DMS 2425401.
+
 `lmfdb-formulas-37.json` is a live LMFDB API response captured on 2026-09-12 from
 `/api/ec_curvedata/?conductor=i37&_format=json&_fields=lmfdb_label,ainvs&_sort=conductor,lmfdb_label`.
 The Explorer import tests use its labels and exact coefficients without network access.
