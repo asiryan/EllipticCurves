@@ -19,10 +19,14 @@ namespace EllipticCurves
         private int imageDimension;
         internal int LowerBound { get; private set; }
         internal int ImageDimension => imageDimension;
+        internal int TorsionDimensionUpperBound => torsionDimension;
+        internal int GoodPrimeCount { get; private set; }
+        internal int? NoTwoTorsionPrime { get; private set; }
 
-        internal RationalPointRank(EllipticCurveQ curve, int torsionDimension, DescentBudget budget)
+        internal RationalPointRank(EllipticCurveQ curve, int? torsionDimension, DescentBudget budget)
         {
-            this.curve = curve; this.torsionDimension = torsionDimension; this.budget = budget;
+            this.curve = curve; this.budget = budget;
+            int torsionUpper = 2;
             var composite = new bool[budget.Options.ReductionPrimeBound + 1];
             var delta = curve.Discriminant.Num;
             // X=4x, Y=8y+4a1*x+4a3 gives an integral monic cubic.
@@ -33,19 +37,25 @@ namespace EllipticCurves
                 if (composite[p]) continue;
                 for (int multiple = p * 2; multiple < composite.Length; multiple += p) composite[multiple] = true;
                 if (p == 2 || delta % p == 0) continue;
+                GoodPrimeCount++;
+                int before = characters.Count;
                 long aa = (long)NativeNumberTheory.Mod(a, p), bb = (long)NativeNumberTheory.Mod(b, p), cc = (long)NativeNumberTheory.Mod(c, p);
                 for (int r = 0; r < p; r++)
                     if ((((r + aa) * r + bb) * r + cc) % p == 0)
                         characters.Add((p, r, (int)((3L * r * r + 2 * aa * r + bb) % p)));
+                int roots = characters.Count - before;
+                torsionUpper = Math.Min(torsionUpper, roots == 0 ? 0 : roots == 1 ? 1 : 2);
+                if (roots == 0 && !NoTwoTorsionPrime.HasValue) NoTwoTorsionPrime = p;
             }
+            this.torsionDimension = torsionDimension ?? torsionUpper;
             for (int i = 0; i < characters.Count; i++) basis.Add(0);
         }
 
         internal void Add(EllipticCurvePoint point)
         {
             budget.Token.ThrowIfCancellationRequested();
-            if (point.IsInfinity || !points.Add(point)) return;
             if (!curve.IsOnCurve(point)) throw new InvalidOperationException("Rank witness is not on the curve.");
+            if (point.IsInfinity || !points.Add(point)) return;
             BigInteger image = 0;
             for (int i = 0; i < characters.Count; i++)
             {

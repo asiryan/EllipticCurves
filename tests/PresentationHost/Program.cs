@@ -53,6 +53,7 @@ internal static partial class Program
             CheckSaveChangesDialog();
             CheckExplorerSelection();
             CheckLmfdbImport();
+            CheckCurveSearch();
             Require(app.MainWindow == null, "The presentation host must not launch the application window.");
             using var workbench = new WorkbenchViewModel();
             var request = new CalculationRequest("Q.TorsionStructure", "y^2 = x^3 - x", new());

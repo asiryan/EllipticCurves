@@ -285,6 +285,50 @@ torsion enumeration and heights require an explicit calculation from Tools.
 
 ## Tools
 
+### Search the Elkies family
+
+Choose **Tools → Ranks and arithmetic → Search the Elkies family**, then **Start search**.
+No input file, coefficients or point coordinates are required. The published
+family formulas generate a curve and 17 rational points from `t = a/b`.
+The starting range is `−50 ≤ a ≤ 50`, `1 ≤ b ≤ 20`, with two CPU workers;
+equivalent fractions are skipped. All search work runs locally in a separate process.
+
+Candidates are ranked by a heuristic from point counts over small finite fields.
+The default shortlist keeps eight curves. **Rank bound ≥ n** is a separately proved
+lower bound from exact rational points, not the heuristic score or an exact rank.
+The fast certificate can return less than 17, even with 17 supplied points; that
+does not prove those points dependent. Advanced settings control the prime limits,
+shortlist length and additional point-search depth. Settings are fixed during a run;
+**New search** unlocks them while retaining their values.
+
+The additional search is intentionally small: it tries `x = x_section + k/d²`,
+with `|k| ≤ depth` and `1 ≤ d ≤ 4`, and checks for an exact rational square.
+It stops after two seconds or 1024 accumulated points per candidate. Depth zero
+disables it. This does not implement the reduced-covering searches used in record
+computations; finding ranks above the family baseline is not guaranteed.
+The shortlist retains the highest **scores**, so it is not an archive of every
+inspected curve or the largest rank bound ever encountered.
+
+**Pause** stops the worker and retains the last completed checkpoint. **Resume**
+repeats an unfinished batch and continues. Closing this search window also pauses;
+reopening it in the same Explorer window restores its state. **Save search** writes
+the current checkpoint, settings, equations and exact points to a separate
+`.ecsearch` file; it can save a completed batch while the worker is still running.
+**Open search** restores that file. Resume/recheck reconstructs retained curves
+from their parameters and verifies the points again, instead of trusting saved
+equations or rank values. An interrupted application run is recoverable only up
+to the checkpoint you saved. Search files are not part of `.ec` plot sessions.
+
+Pause or finish, select a candidate and use **Open curve in Explorer** to transfer
+its equation to the plot; this is one undoable edit. Its coordinates remain in the
+search report and saved search file. Plot sampling still uses its usual small
+coordinate box, so it need not display these large known points as gold markers.
+The separate Tools action **Verify rank from supplied points** accepts coordinates
+as one `x; y` pair per line and verifies a lower bound without a full descent.
+
+See [the family data and computation notes](../docs/elkies-search.md) for provenance,
+the model transformation, scoring and certificate limitations.
+
 ### Import a curve from LMFDB
 
 Choose **Tools → LMFDB · internet → Import curve from LMFDB**. Enter a conductor

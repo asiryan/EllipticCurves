@@ -1,0 +1,101 @@
+<Window x:Class="EllipticCurves.Explorer.CurveSearchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Search the Elkies family" Width="1080" Height="800" MinWidth="880" MinHeight="680"
+        Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI" FontSize="13" ShowInTaskbar="False" WindowStartupLocation="CenterOwner" UseLayoutRounding="True">
+    <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" /></shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <DataTemplate x:Key="SearchSettingTemplate">
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding Label}" Margin="0,0,0,5" />
+                <TextBox Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" MaxLength="12" Padding="9,6" ToolTip="{Binding Help}" AutomationProperties.Name="{Binding Label}" />
+            </StackPanel>
+        </DataTemplate>
+        <Style x:Key="SearchError" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="1">
+        <Grid.RowDefinitions><RowDefinition Height="44" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,0">
+            <Grid>
+                <TextBlock Text="TOOLS · RANK SEARCH" Style="{StaticResource Eyebrow}" VerticalAlignment="Center" />
+                <Button Click="CloseClick" Style="{StaticResource QuietButton}" Width="40" Padding="0" HorizontalAlignment="Right" Margin="0,0,-12,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" AutomationProperties.Name="Close search window"><Path Style="{StaticResource CaptionCloseIcon}" /></Button>
+            </Grid>
+        </Border>
+        <StackPanel Grid.Row="1" Margin="24,18,24,18">
+            <TextBlock Text="Search the Elkies family" FontSize="24" FontWeight="SemiBold" />
+            <TextBlock Text="One rational parameter t = a/b generates a curve and 17 known points. Start with the built-in range; no formulas or files to supply." Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap" LineHeight="19" />
+        </StackPanel>
+        <Grid Grid.Row="2" Margin="24,0,24,18">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="230" /><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <ScrollViewer Style="{StaticResource PanelScrollViewer}" Padding="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Text="SEARCH RANGE" Style="{StaticResource Eyebrow}" Margin="0,0,0,14" />
+                    <ItemsControl ItemsSource="{Binding BasicSettings}" ItemTemplate="{StaticResource SearchSettingTemplate}" IsEnabled="{Binding CanEdit}" />
+                    <Grid Margin="0,4,0,12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Button x:Name="StartButton" Content="{Binding StartLabel}" Click="StartClick" IsEnabled="{Binding CanStart}" Foreground="{StaticResource AccentBrush}" Padding="12,9" />
+                        <Button Grid.Column="1" x:Name="PauseButton" Content="Pause" Click="PauseClick" IsEnabled="{Binding IsBusy}" Margin="8,0,0,0" Padding="12,9" />
+                    </Grid>
+                    <TextBlock Text="{Binding InputError}" Style="{StaticResource SearchError}" />
+                    <Expander x:Name="AdvancedSettings" Header="Advanced settings" Margin="0,8,0,12">
+                        <ItemsControl ItemsSource="{Binding AdvancedSettings}" ItemTemplate="{StaticResource SearchSettingTemplate}" IsEnabled="{Binding CanEdit}" Margin="0,12,0,0" />
+                    </Expander>
+                    <TextBlock Text="The score is a heuristic. The point check proves only a lower bound, which may be below 17. Extra point search tries a small set of nearby rational coordinates." Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" LineHeight="17" />
+                    <Button Content="Published family ↗" Click="SourceClick" Style="{StaticResource QuietButton}" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Left" Padding="0,10" />
+                </StackPanel>
+            </ScrollViewer>
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="180" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                <StackPanel>
+                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" LineHeight="18" AutomationProperties.LiveSetting="Polite" />
+                    <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Error}" Style="{StaticResource SearchError}" />
+                    <ProgressBar Value="{Binding Percent, Mode=OneWay}" Height="4" Margin="0,12,0,16" Foreground="{StaticResource AccentBrush}" Background="{StaticResource BorderBrush}" BorderThickness="0" AutomationProperties.Name="Search range progress" />
+                </StackPanel>
+                <Grid Grid.Row="1" Margin="12,0,22,7">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="100" /><ColumnDefinition Width="100" /><ColumnDefinition Width="55" /></Grid.ColumnDefinitions>
+                    <TextBlock Text="PARAMETER t" Style="{StaticResource Eyebrow}" FontSize="10" />
+                    <TextBlock Grid.Column="1" Text="SCORE" Style="{StaticResource Eyebrow}" FontSize="10" ToolTip="Larger is preferred; this is not a rank estimate." />
+                    <TextBlock Grid.Column="2" Text="RANK BOUND" Style="{StaticResource Eyebrow}" FontSize="10" />
+                    <TextBlock Grid.Column="3" Text="POINTS" Style="{StaticResource Eyebrow}" FontSize="10" />
+                </Grid>
+                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="4">
+                    <ListBox x:Name="CandidateList" ItemsSource="{Binding Candidates}" SelectedItem="{Binding Selected}" Style="{StaticResource WorkbenchList}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Top Elkies candidates by score">
+                        <ListBox.ItemTemplate><DataTemplate>
+                            <Grid Margin="4,3">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="100" /><ColumnDefinition Width="100" /><ColumnDefinition Width="55" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Parameter}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Text="{Binding ScoreText}" />
+                                <TextBlock Grid.Column="2" Text="{Binding RankText}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="3" Text="{Binding PointCount}" />
+                            </Grid>
+                        </DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+                <TextBlock Grid.Row="3" Text="SELECTED CURVE · EXACT COORDINATES" Style="{StaticResource Eyebrow}" FontSize="10" Margin="0,16,0,8" />
+                <TextBox x:Name="CandidateDetails" Grid.Row="4" Text="{Binding Details, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource ReportText}" FontFamily="Consolas" FontSize="11" Padding="12" AutomationProperties.Name="Selected curve and rank certificate" />
+            </Grid>
+        </Grid>
+        <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,14">
+            <StackPanel>
+                <TextBlock Text="{Binding PersistenceText}" Style="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="New search" Click="NewClick" IsEnabled="{Binding IsIdle}" Padding="12,7" />
+                        <Button Content="Open search…" Click="LoadClick" IsEnabled="{Binding IsIdle}" Padding="12,7" Margin="8,0,0,0" />
+                        <Button x:Name="SaveButton" Content="Save search…" Click="SaveClick" Padding="12,7" Margin="8,0,0,0" />
+                    </StackPanel>
+                    <Button x:Name="OpenCurveButton" Grid.Column="1" Content="Open curve in Explorer →" Click="OpenCurveClick" IsEnabled="{Binding CanOpenCurve}" Foreground="{StaticResource AccentBrush}" Padding="14,7" Margin="12,0,0,0" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -11,6 +11,8 @@ public static class CalculationEngine
 {
     public static async Task<string> ExecuteAsync(CalculationRequest request, Action<CalculationUpdate>? report = null, CancellationToken token = default)
     {
+        if (request.OperationId == CurveSearchEngine.OperationId)
+            return System.Text.Json.JsonSerializer.Serialize(CurveSearchEngine.Run(CurveSearchState.Parse(request.Arguments["state"]), report, token));
         if (request.MaxItems is < 1 or > 100_000) throw new ArgumentOutOfRangeException(nameof(request.MaxItems), "Result limit must be between 1 and 100,000.");
         var operation = CalculationCatalog.Get(request.OperationId);
         var arguments = operation.Parameters.ToDictionary(p => p.Key, p => p.Default);

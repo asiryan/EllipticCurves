@@ -303,6 +303,9 @@ exploration sliders, an interactive real-locus plot, a linked period-lattice and
 3D complex-torus view, exact invariants and bounded rational-point samples.
 The Tools menu exposes the library's computations,
 including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
+The [Elkies family search](explorer/README.md#search-the-elkies-family) comes with
+formulas and 17 initial points, a candidate shortlist, exact rank lower bounds,
+pause/resume and saved checkpoints; no manual mathematical data is needed.
 Parameter windows feed a results panel with session history, progress, cancellation
 and time limits. Native computations run locally; only the explicit LMFDB search and fetch
 commands require internet access.
