@@ -179,7 +179,7 @@
                         <TextBlock Text="QUICK START" Style="{StaticResource Eyebrow}" Margin="0,0,0,10" />
                         <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name" AutomationProperties.Name="Curve preset" />
                         <TextBlock Text="{Binding PresetDescription}" Style="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                        <TextBlock Text="Your zoom stays in place.&#10;Reset view recenters the view." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="The graph updates automatically after a short pause when you edit the equation." />
+                        <TextBlock Text="Small edits keep your zoom.&#10;Large changes fit automatically." Style="{StaticResource Muted}" Margin="0,18,0,0" TextWrapping="Wrap" LineHeight="18" ToolTip="The graph updates after a short pause. A substantially different coordinate range is fitted automatically; Reset view fits the current curve at any time." />
                     </StackPanel>
                 </ScrollViewer>
             </Border>

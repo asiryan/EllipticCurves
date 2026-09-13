@@ -40,6 +40,7 @@ public partial class MainWindow : Window
         Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
         ViewModel.ViewResetRequested += ResetView;
         ViewModel.CurveResetRequested += ResetCurveViews;
+        ViewModel.CurveRecalculated += FitChangedCurve;
         TorusView.Model.PropertyChanged += TorusStateChanged;
         SourceInitialized += UpdateWindowInsets;
         StateChanged += UpdateWindowInsets;
@@ -94,6 +95,7 @@ public partial class MainWindow : Window
         TorusView.Dispose();
         ViewModel.ViewResetRequested -= ResetView;
         ViewModel.CurveResetRequested -= ResetCurveViews;
+        ViewModel.CurveRecalculated -= FitChangedCurve;
         ViewModel.Dispose();
     }
 

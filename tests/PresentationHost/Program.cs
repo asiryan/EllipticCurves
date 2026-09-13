@@ -99,6 +99,7 @@ internal static partial class Program
             CheckExportBounds();
             CheckPlotRendering();
             CheckExtremePlotViews();
+            CheckLargeCurvePlotScales();
             CheckViewSwitching();
             CheckTorusCycleColors();
             CheckComplexTorusView();

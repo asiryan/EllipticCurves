@@ -171,8 +171,14 @@ Undo history is kept only for the current run and is not written to `.ec` files.
   model is shown separately in transformed coordinates. Confirming unchanged input
   keeps the selected example and current samples. Equivalent equations reuse the
   samples; opening a calculation for the same curve preserves the torus selection.
-- Drag the plot to pan and use the mouse wheel to zoom about the pointer. Both
-  axes use the same scale. Edits preserve the viewport. **Reset view**, a double-click
+- Drag the plot to pan and use the mouse wheel to zoom about the pointer. Ordinary
+  curves use equal axis units. When the coordinate ranges differ greatly, fitting
+  uses separate x/y scales so that large curves, including Elkies specializations,
+  remain visible. The plot says **Independent axis scales** in that case; labels
+  and point coordinates still refer to the entered equation. Small edits preserve
+  the viewport; entering a curve with a substantially different coordinate range
+  automatically fits it after the normal input delay or pressing Enter. This also
+  works when returning from Complex torus to Real locus. **Reset view**, a double-click
   or **Ctrl+F** recenters the view around the real branch points and part of the
   unbounded branch. With the plot focused, **Home** fits and **+ / −** zoom.
   Slider arrow keys move by the chosen exact step.
@@ -220,7 +226,8 @@ the torus, or **Ctrl+F** restores the camera. Arrow keys in the lattice cycle
 through the markers. **Grid** toggles the subdivisions in both panels;
 **Rational samples** hides affine markers while retaining O. The real plot keeps
 its viewport when switching modes unless an example or **Reset** was selected
-while it was hidden. Editing coefficients preserves that viewport in either mode;
+while it was hidden. Small coefficient edits preserve that viewport in either mode;
+substantially different coordinate ranges are fitted when the real plot is visible.
 **Reset view** and **Ctrl+F** affect only the active mode. The **−**, **+** and **Reset view** buttons
 remain in the same position in both modes. In a small window the complex view
 scrolls vertically to keep its diagrams readable.

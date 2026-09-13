@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EllipticCurves.Explorer.Controls;
+using EllipticCurves.Explorer.Models;
 using EllipticCurves.Explorer.ViewModels;
 using Microsoft.Win32;
 
@@ -42,6 +43,20 @@ public partial class MainWindow
         TorusView.Fit();
         realViewResetPending = true;
         QueueRealViewReset();
+    }
+
+    private void FitChangedCurve(CurveSnapshot previous, CurveSnapshot current)
+    {
+        if (!Plot.NeedsRefit(previous.Plot, current.Plot)) return;
+        realViewResetPending = true;
+        if (IsComplexView || Plot.ActualWidth <= 0 || Plot.ActualHeight <= 0) QueueRealViewReset();
+        else
+        {
+            // Complete the visible fit before Enter/blur captures an undo checkpoint.
+            // Memento restoration does not recalculate, so Undo keeps its saved camera.
+            Plot.Fit(current.Plot);
+            realViewResetPending = false;
+        }
     }
 
     private void QueueRealViewReset()

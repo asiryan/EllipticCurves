@@ -34,6 +34,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public Task PendingUpdate { get; private set; } = Task.CompletedTask;
     public event EventHandler? CurveResetRequested;
     public event EventHandler? ViewResetRequested;
+    public event Action<CurveSnapshot, CurveSnapshot>? CurveRecalculated;
     public RelayCommand ResetCommand { get; }
     public RelayCommand FitCommand { get; }
     public RelayCommand SetStepCommand { get; }
@@ -268,8 +269,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         NotifyInput();
         if (HasIncompleteInput || disposed || Snapshot.Curve.Equals(Equation.Curve)) return;
+        var previous = Snapshot;
         Snapshot = new CurveSnapshot(Equation.Curve);
         OnPropertyChanged(nameof(Snapshot));
+        CurveRecalculated?.Invoke(previous, Snapshot);
         RefreshSamples();
     }
 
