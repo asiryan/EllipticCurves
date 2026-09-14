@@ -53,7 +53,7 @@ def j_invariant(data):
 
 def candidate_order(rows,count):
     by_score=sorted(rows,key=lambda r:(-r['score'],r['id']))
-    by_tail=sorted(rows,key=lambda r:(-r['tail_score'],r['id']))
+    by_tail=sorted(rows,key=lambda r:(-selection_tail(r),r['id']))
     shuffled=sorted(rows,key=lambda r:r['id']);random.Random(POLICY['random_seed']).shuffle(shuffled)
     result=[];seen=set()
     for group in zip(by_score,by_tail,shuffled):
@@ -62,9 +62,120 @@ def candidate_order(rows,count):
     return result[:count]
 
 
+def selection_tail(row):
+    return row.get('confirmation_score',row['tail_score'])
+
+
+def arithmetic_score(data,start,end,timeout=30):
+    """Finite-field point counts only; no rank or L-function computation."""
+    from blind_search import GP
+    from point_search import vector
+    if not 3<=start<end<=262139:raise ValueError('Invalid scoring interval')
+    script=('default(realprecision,38);\nE=ellinit('+vector(data['ainvs'])+');\n'
+        f's=0;forprime(p={start+1},{end},if(E.disc%p,s+=log((p+1-ellap(E,p))/p)));print(s);quit;\n')
+    process=subprocess.run([str(GP),'-fq'],input=script,capture_output=True,text=True,timeout=timeout)
+    if process.returncode or '***' in process.stderr:raise RuntimeError('Finite-field scoring failed: '+process.stderr)
+    result=float(process.stdout.strip())
+    if not math.isfinite(result):raise ValueError('Nonfinite score')
+    return result
+
+
 def promoted(rows,count):
     eligible=[r for r in rows if r.get('status') in {'budget_completed','target_reached'}]
     return sorted(eligible,key=lambda r:(-r['lower_bound'],-r['tail_score'],-r['score'],r['id']))[:count]
+
+
+def adaptive_promoted(rows,count):
+    """Favor certified growth while reserving slots for slower-starting curves."""
+    eligible=[r for r in rows if r.get('status') not in {'error','pending'}]
+    if not eligible:return []
+    exploitation=sorted(eligible,key=lambda r:(-r['lower_bound'],-r.get('recent_gain_per_second',0),
+        -selection_tail(r),r['id']))
+    explore=0 if count==1 else max(1,count//3)
+    chosen=exploitation[:max(1,count-explore)];seen={r['id'] for r in chosen}
+    tail=sorted(eligible,key=lambda r:(-selection_tail(r),-r['score'],r['id']))
+    cost=sorted(eligible,key=lambda r:(r.get('quartic_bits_p10',float('inf')),
+        -r.get('gain_per_second',0),-selection_tail(r),r['id']))
+    for pair in zip(tail,cost):
+        for row in pair:
+            if len(chosen)>=count:return chosen
+            if row['id'] not in seen:chosen.append(row);seen.add(row['id'])
+    return chosen
+
+
+def run_fast(args):
+    from fast_search import search,independent_result
+    check_engine()
+    pool=Path(args.candidates).resolve();out=Path(args.output).resolve()
+    if out==ROOT or not out.is_relative_to(ROOT):raise ValueError('Use a dedicated workspace output directory')
+    record_j=j_invariant({'ainvs':RECORD_A});seen={record_j};source=[]
+    for index,row in enumerate(read(pool/'candidates.json')):
+        path=(pool/row['file']).resolve()
+        if not path.is_relative_to(pool):raise ValueError('Candidate path escapes pool')
+        data=clean(read(path));j=j_invariant(data)
+        if j in seen:continue
+        if not all(math.isfinite(float(row[k])) for k in ['score','tail_score']):raise ValueError('Nonfinite score')
+        seen.add(j)
+        source.append({**row,'id':f'c{index:03d}','input':str(path),'input_sha256':digest(path),
+                       'j_invariant':str(j),'seed_lower_bound':None,'lower_bound':0,
+                       'search_seconds':0,'status':'pending'})
+    if args.confirmation_bound:
+        print(f'Checking {len(source)} candidates on primes (65521,{args.confirmation_bound}]',flush=True)
+        with ThreadPoolExecutor(max_workers=args.parallel_curves) as executor:
+            futures={executor.submit(arithmetic_score,read(r['input']),65521,args.confirmation_bound):r for r in source}
+            for future in as_completed(futures):
+                futures[future]['confirmation_score']=future.result()
+    selected=candidate_order(source,args.counts[0]);out.mkdir(parents=True,exist_ok=True)
+    config={'inputs':{r['id']:r['input_sha256'] for r in selected},
+        'counts':args.counts,'seconds':args.seconds,'target':args.target,'anchors':args.anchors,
+        'workers':args.point_workers,'parallel':args.parallel_curves,'job_seconds':args.job_seconds,
+        'confirmation_bound':args.confirmation_bound,
+        'controller_sha256':digest(Path(__file__)),'point_engine_sha256':digest(ROOT/'tools/RankHunt/fast_search.py')}
+    checkpoint=out/'campaign.json'
+    if checkpoint.exists():
+        state=read(checkpoint)
+        if state['config']!=config:raise ValueError('Campaign settings changed')
+        if state['status']=='completed':return state
+        rows=state['rows'];stage=state['stage'];active=state['active']
+    else:rows=selected;stage=0;active=[r['id'] for r in rows]
+    def persist(status='running'):
+        save(checkpoint,{'config':config,'rows':rows,'stage':stage,'active':active,'status':status})
+    persist()
+    def work(row,budget):
+        folder=out/row['id'];old=row['lower_bound'];used=row['search_seconds']
+        if (folder/'checkpoint.json').exists():
+            previous=read(folder/'checkpoint.json');used=previous['wall_seconds'];old=previous['lower_bound']
+        if used<budget and old<args.target:
+            search(row['input'],folder,max(1,budget-used),args.point_workers,args.anchors,args.target,
+                   job_seconds=args.job_seconds)
+        result=read(folder/'checkpoint.json');elapsed=result['wall_seconds']
+        initial=result['initial_lower_bound'];bound=result['lower_bound']
+        return {**row,'seed_lower_bound':initial,'lower_bound':bound,'search_seconds':elapsed,
+            'status':result['status'],'gain_per_second':(bound-initial)/max(elapsed,.001),
+            'recent_gain_per_second':(bound-max(initial,old))/max(elapsed-used,.001),
+            **result.get('initial_features',{})}
+    while stage<len(args.seconds) and active:
+        print(json.dumps({'stage':stage,'curves':len(active),'cumulative_seconds':args.seconds[stage]}),flush=True)
+        with ThreadPoolExecutor(max_workers=args.parallel_curves) as executor:
+            futures=[executor.submit(work,r,args.seconds[stage]) for r in rows if r['id'] in active]
+            for future in as_completed(futures):
+                result=future.result();rows=[result if r['id']==result['id'] else r for r in rows]
+                print(json.dumps({'finished_candidate':result['id'],'parameter':f'{result["u"]}/{result["v"]}',
+                    'lower_bound':result['lower_bound'],'seconds':round(result['search_seconds'],2),
+                    'gain_per_second':round(result['gain_per_second'],4),
+                    'quartic_bits_p10':result.get('quartic_bits_p10')}),flush=True)
+                persist()
+        stage+=1
+        if max(r['lower_bound'] for r in rows)>=args.target:break
+        active=[r['id'] for r in adaptive_promoted(rows,args.counts[stage])] if stage<len(args.counts) else []
+        persist()
+    best=max(rows,key=lambda r:(r['lower_bound'],r['tail_score'],r['id']))
+    result=independent_result(read(out/best['id']/'points.json'),best['lower_bound'])
+    result.update(parameter={'u':best['u'],'v':best['v']},global_novelty_not_established=True)
+    save(out/'best.json',result);persist('completed')
+    print(json.dumps({'status':'completed','best_parameter':result['parameter'],
+                      'independently_verified_lower_bound':best['lower_bound']}),flush=True)
+    return result
 
 
 def check_engine():
@@ -252,10 +363,13 @@ if __name__=='__main__':
     p.add_argument('--anchors',type=int,default=2048);p.add_argument('--job-seconds',type=float,default=2)
     p.add_argument('--target',type=int,default=32);p.add_argument('--resume',action='store_true')
     p.add_argument('--previously-studied',action='store_true',help='Record prior work on these curves in the audit context')
+    p.add_argument('--fast',action='store_true',help='Batch point searches with compact checkpoints and adaptive selection')
+    p.add_argument('--confirmation-bound',type=int,default=262139,help='Later-prime check for --fast; 0 disables it')
     args=p.parse_args()
     if not (len(args.counts)==len(args.seconds) and 1<=len(args.counts)<=8
         and all(1<=v<=1000 for v in args.counts) and all(1<=v<=86400 for v in args.seconds)
         and args.counts==sorted(args.counts,reverse=True) and args.seconds==sorted(set(args.seconds))
         and 1<=args.point_workers<=8 and 1<=args.parallel_curves<=4 and args.point_workers*args.parallel_curves<=16
-        and 1<=args.anchors<=4096 and .05<=args.job_seconds<=60 and 1<=args.target<=100):p.error('Invalid bounded campaign settings')
-    run(args)
+        and 1<=args.anchors<=4096 and .05<=args.job_seconds<=60 and 1<=args.target<=100
+        and (args.confirmation_bound==0 or 65521<args.confirmation_bound<=262139)):p.error('Invalid bounded campaign settings')
+    (run_fast if args.fast else run)(args)

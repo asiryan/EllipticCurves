@@ -37,6 +37,52 @@ class RecordHuntTests(unittest.TestCase):
     def test_preserved_engine_is_unchanged(self):
         self.assertEqual(len(check_engine()),5)
 
+    def test_adaptive_selection_keeps_best_and_reserves_exploration(self):
+        from record_hunt import adaptive_promoted
+        rows=[{'id':str(i),'lower_bound':25-i,'tail_score':float(i),
+               'score':30-i,'status':'budget_completed','quartic_bits_p10':100-i}
+              for i in range(8)]
+        chosen=adaptive_promoted(rows,3)
+        self.assertEqual(chosen[0]['id'],'0')
+        self.assertIn('7',{r['id'] for r in chosen})
+        rows[-1]['status']='error'
+        self.assertNotIn('7',{r['id'] for r in adaptive_promoted(rows,3)})
+
+    def test_later_prime_confirmation_overrides_early_tail_noise(self):
+        from record_hunt import adaptive_promoted,arithmetic_score
+        rows=[{'id':'best','lower_bound':24,'score':20,'tail_score':2,'confirmation_score':2.8,'status':'budget_completed'},
+              {'id':'noise','lower_bound':17,'score':20,'tail_score':4,'confirmation_score':1.4,'status':'budget_completed'},
+              {'id':'steady','lower_bound':17,'score':19,'tail_score':3,'confirmation_score':2.7,'status':'budget_completed'}]
+        self.assertEqual([r['id'] for r in adaptive_promoted(rows,2)],['best','steady'])
+        # Independent direct enumeration for the exact same good-reduction primes.
+        import math
+        data={'ainvs':['0','0','0','-25','4']};expected=0
+        for p in range(5,100):
+            if any(p%d==0 for d in range(2,math.isqrt(p)+1)):continue
+            if (-16*(4*(-25)**3+27*4**2))%p==0:continue
+            count=1+sum((y*y-x*x*x+25*x-4)%p==0 for x in range(p) for y in range(p))
+            expected+=math.log(count/p)
+        self.assertAlmostEqual(arithmetic_score(data,3,99),expected,places=12)
+
+    def test_compact_campaign_certifies_and_completed_resume_is_idle(self):
+        pool=self.root/'compact-pool';pool.mkdir()
+        save(pool/'curve.json',{'ainvs':['0','0','0','-25','4'],'points':[['0','2']]})
+        save(pool/'candidates.json',[{'id':'toy','u':0,'v':1,'file':'curve.json',
+                                     'score':0,'tail_score':0}])
+        out=self.root/'compact-run'
+        command=[sys.executable,str(ROOT/'tools/RankHunt/record_hunt.py'),'--fast',
+            '--candidates',str(pool),'--output',str(out),'--counts','1','--seconds','5',
+            '--target','2','--point-workers','1','--parallel-curves','1','--anchors','16']
+        p=subprocess.run(command,capture_output=True,text=True,timeout=20)
+        self.assertEqual(p.returncode,0,p.stderr)
+        result=json.loads((out/'best.json').read_text())
+        self.assertGreaterEqual(result['rank_lower_bound'],2)
+        before=(out/'campaign.json').read_bytes()
+        p=subprocess.run(command,capture_output=True,text=True,timeout=20)
+        self.assertEqual(p.returncode,0,p.stderr)
+        self.assertEqual(before,(out/'campaign.json').read_bytes())
+        self.assertLessEqual(len([p for p in out.rglob('*') if p.is_file()]),6)
+
     def test_live_monitor_does_not_open_the_workers_replaceable_checkpoint(self):
         import record_hunt
         out=self.root/'monitor';(out/'processes').mkdir(parents=True)

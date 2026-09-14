@@ -30,7 +30,25 @@ try
             Number("prime-bound", 65521, 16382, 262139), Number("workers", Math.Min(8, Environment.ProcessorCount), 1, 32),
             Number("seed", 20260914, 0, int.MaxValue));
         if (cfg.FinalKeep > cfg.RefineKeep || cfg.RefineKeep > cfg.Keep) throw new ArgumentException("Require keep >= refine-keep >= final-keep.");
-        CandidateSampler.Run(cfg, Get("output", "artifacts/record-hunt/candidates"), cancellation.Token);
+        string selection = Get("selection", "cumulative");
+        if (selection == "bands")
+            CandidateSampler.RunBands(cfg, Get("output", "artifacts/record-hunt/candidates"), cancellation.Token);
+        else if (selection == "cumulative")
+            CandidateSampler.Run(cfg, Get("output", "artifacts/record-hunt/candidates"), cancellation.Token);
+        else throw new ArgumentException("Selection must be cumulative or bands.");
+    }
+    else if (mode == "rescore")
+    {
+        using var input = JsonDocument.Parse(File.ReadAllText(Get("input", "")));
+        var rows = input.RootElement.EnumerateArray().Select(row => new Candidate {
+            U = row.GetProperty("u").GetInt32(), V = row.GetProperty("v").GetInt32() }).ToList();
+        if (rows.Any(row => row.V <= 0) || rows.Count > 10000) throw new ArgumentException("Invalid rescore candidates.");
+        int start = Number("start",65521,0,262138), end = Number("prime-bound",262139,5,262139);
+        if (end <= start) throw new ArgumentException("Empty prime interval.");
+        Hunt.ScoreStage(rows,start,end,Number("workers",4,1,32),cancellation.Token);
+        string output = Get("output","artifacts/record-hunt/rescore.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
+        Hunt.Save(output,rows.Select(row => new { u=row.U,v=row.V,score=row.Score,start_exclusive=start,end_inclusive=end }));
     }
     else if (mode == "grid")
     {

@@ -111,5 +111,45 @@ class BlindSearchTests(unittest.TestCase):
         for bad in ([[2,0],[0,1]],[[1,1],[1,1]]):
             with self.assertRaises(ValueError):integer_inverse(bad)
 
+    def test_batched_search_matches_individual_models(self):
+        from fast_search import batch_search
+        from blind_search import search_job
+        data={'ainvs':['0','0','0','-25','4'],'points':[['0','2']]}
+        models=[{'key':str(i),'anchor':p,'pool_index':i+1}
+                for i,p in enumerate([['0','2'],['-5','2'],['5','2']])]
+        expected=[]
+        for i,m in enumerate(models):
+            expected.extend(search_job(data,m,128,16,self.root/str(i),10)['points'])
+        actual=batch_search(data,models,128,16,10)
+        self.assertEqual(len(actual['complete']),len(models))
+        self.assertEqual(clean({**data,'points':expected}),
+            clean({**data,'points':[o['point'] for o in actual['observations']]}))
+
+    def test_batch_timeout_preserves_points_and_only_completed_models(self):
+        from fast_search import batch_search
+        from unittest.mock import patch
+        data={'ainvs':['0','0','0','-25','4'],'points':[['0','2']]}
+        models=[{'key':str(i),'anchor':['0','2']} for i in range(3)]
+        timeout=subprocess.TimeoutExpired('gp',1,output=b'ANCHOR_BEGIN 1\nPOINT [0, 2]\nANCHOR_DONE 1 1\nANCHOR_BEGIN 2\n')
+        with patch('fast_search.subprocess.run',side_effect=timeout):
+            result=batch_search(data,models,128,16,1)
+        self.assertEqual(result['complete'],['0:128:16'])
+        self.assertEqual(result['observations'][0]['point'],['0','-2'])
+        self.assertTrue(result['timed_out'])
+
+    def test_fast_search_finds_independent_points_and_resumes(self):
+        from fast_search import search,independent_result
+        source=self.root/'fast-input.json'
+        save(source,{'ainvs':['0','0','0','-25','4'],'points':[['0','2']]})
+        out=self.root/'fast'
+        found=search(source,out,10,1,16,2)
+        self.assertGreaterEqual(found['rank_lower_bound'],2)
+        proof=independent_result(found,found['rank_lower_bound'])
+        self.assertTrue(proof['verification']['all_points_independent_modulo_torsion'])
+        jobs=json.loads((out/'checkpoint.json').read_text())['attempted_models']
+        search(source,out,1,1,16,2)
+        self.assertEqual(json.loads((out/'checkpoint.json').read_text())['attempted_models'],jobs)
+        self.assertLessEqual(len(list(out.rglob('*'))),5)
+
 
 if __name__=='__main__':unittest.main()
