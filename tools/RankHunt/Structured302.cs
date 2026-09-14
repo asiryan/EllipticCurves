@@ -10,8 +10,25 @@ static class Structured302
 {
     static readonly JsonDocument Data = JsonDocument.Parse(typeof(Structured302).Assembly
         .GetManifestResourceStream("icarm302-sections.json")!);
-    static readonly (BigRational[] X, BigRational[] Y)[] Sections = Data.RootElement.GetProperty("sections")
-        .EnumerateArray().Select(p => (Coefficients(p, "x_coeffs"), Coefficients(p, "y_coeffs"))).ToArray();
+    sealed class HomogeneousPolynomial
+    {
+        readonly BigInteger denominator;
+        readonly BigInteger[] coefficients;
+        public HomogeneousPolynomial(BigRational[] a)
+        {
+            denominator = a.Aggregate(BigInteger.One, (d,c) => d/BigInteger.GreatestCommonDivisor(d,c.Den)*c.Den);
+            coefficients = a.Select(c=>c.Num*(denominator/c.Den)).ToArray();
+        }
+        public BigRational Evaluate(BigInteger[] monomials)
+        {
+            BigInteger n = 0;
+            for (int i=0; i<coefficients.Length; i++) n += coefficients[i]*monomials[i];
+            return new(n,denominator);
+        }
+    }
+    static readonly (HomogeneousPolynomial X, HomogeneousPolynomial Y)[] Sections = Data.RootElement.GetProperty("sections")
+        .EnumerateArray().Select(p => (new HomogeneousPolynomial(Coefficients(p, "x_coeffs")),
+            new HomogeneousPolynomial(Coefficients(p, "y_coeffs")))).ToArray();
     static readonly Dictionary<string, BigRational[]> Conic = Data.RootElement.GetProperty("base_change")
         .EnumerateObject().ToDictionary(p => p.Name, p => p.Value.EnumerateArray().Select(x => Q(x.GetString()!)).ToArray());
 
@@ -34,9 +51,13 @@ static class Structured302
         var t = new BigRational(n, d);
         var curve = Family302.Curve(t.Num, t.Den);
         if (curve.IsSingular) throw new InvalidOperationException("Singular family specialization.");
-        var sx = new BigRational(BigInteger.Pow(t.Den, 4));
-        var sy = new BigRational(BigInteger.Pow(t.Den, 6));
-        var points = Sections.Select(p => new EllipticCurvePoint(Evaluate(p.X, t) * sx, Evaluate(p.Y, t) * sy)).ToArray();
+        // Share homogeneous monomials across all sections. This avoids hundreds
+        // of rational gcd reductions whose operands grow with the parameter.
+        var np = new BigInteger[7]; var dp = new BigInteger[7]; np[0]=dp[0]=1;
+        for (int i=1;i<=6;i++) {np[i]=np[i-1]*t.Num;dp[i]=dp[i-1]*t.Den;}
+        var xm = Enumerable.Range(0,5).Select(i=>np[i]*dp[4-i]).ToArray();
+        var ym = Enumerable.Range(0,7).Select(i=>np[i]*dp[6-i]).ToArray();
+        var points = Sections.Select(p => new EllipticCurvePoint(p.X.Evaluate(xm),p.Y.Evaluate(ym))).ToArray();
         if (points.Any(p => !curve.IsOnCurve(p))) throw new InvalidOperationException("Section specialization is off the curve.");
         return (curve, points);
     }

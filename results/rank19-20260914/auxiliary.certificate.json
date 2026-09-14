@@ -1,0 +1,37 @@
+{
+  "format": "local-2-kummer-rank-certificate-v1",
+  "input_sha256": "c6b9ccb1e67a8a45447abf5d037fd400617c698a4e094829a4366fed778ec483",
+  "points_checked": 4,
+  "matrix_rank": 3,
+  "torsion_2_dimension_upper_bound": 1,
+  "rank_lower_bound": 2,
+  "all_points_independent_modulo_torsion": false,
+  "torsion_witness": {
+    "prime": 5,
+    "roots": [
+      4
+    ],
+    "dimension_upper_bound": 1
+  },
+  "independent_rows": [
+    {
+      "prime": 5,
+      "root": 4,
+      "bits": "1111"
+    },
+    {
+      "prime": 23,
+      "root": 9,
+      "bits": "1110"
+    },
+    {
+      "prime": 23,
+      "root": 15,
+      "bits": "1010"
+    }
+  ],
+  "good_primes_examined": 286,
+  "largest_prime_examined": 1999,
+  "requested_prime_bound": 2000,
+  "conditional_assumptions": []
+}

@@ -1,0 +1,50 @@
+{
+  "small18-rank": {
+    "source": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\bisection-hunt\\aux-box\\certified\\curve_0003.json",
+    "mode": "rank",
+    "minimal_model_preprocessing": true,
+    "pari_stack_limit_mb": 512,
+    "height": 10000,
+    "anchors": 32,
+    "timeout_seconds": 30.0,
+    "seconds": 30.014,
+    "timed_out": true,
+    "process_exit_code": null,
+    "finished": false,
+    "initial_distinct_up_to_sign": 19,
+    "new_distinct_up_to_sign": 0,
+    "new_points_are_not_automatically_independent": true,
+    "gp_errors_detected": false,
+    "exact_certificate": {
+      "point_count": 19,
+      "LowerBound": 18,
+      "ImageDimension": 18,
+      "NoTwoTorsionPrime": 37,
+      "hypotheses": []
+    }
+  },
+  "compact19-pointed": {
+    "source": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\bisection-hunt\\aux-small\\certified\\curve_0012.json",
+    "mode": "pointed",
+    "minimal_model_preprocessing": true,
+    "pari_stack_limit_mb": 512,
+    "height": 1000000,
+    "anchors": 19,
+    "timeout_seconds": 30.0,
+    "seconds": 30.03,
+    "timed_out": true,
+    "process_exit_code": null,
+    "finished": false,
+    "initial_distinct_up_to_sign": 19,
+    "new_distinct_up_to_sign": 0,
+    "new_points_are_not_automatically_independent": true,
+    "gp_errors_detected": false,
+    "exact_certificate": {
+      "point_count": 19,
+      "LowerBound": 19,
+      "ImageDimension": 19,
+      "NoTwoTorsionPrime": 19,
+      "hypotheses": []
+    }
+  }
+}

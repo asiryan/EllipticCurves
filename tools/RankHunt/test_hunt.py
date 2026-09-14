@@ -127,6 +127,56 @@ class HuntTests(unittest.TestCase):
         self.assertEqual(before["rank_lower_bound"], 3)
         self.assertEqual(after["rank_lower_bound"], 17)
 
+    def test_two_bisections_certify_19_but_not_every_specialization(self):
+        fixture = ROOT / "tests/Fixtures/icarm302-pair19"
+        out = self.directory / "pair19"
+        self.cli("bisections", "--input-dir", fixture, "--output", out)
+        expected = json.loads((fixture / "expected.json").read_text())
+        actual = json.loads((out / "curve_0000.json").read_text())
+        self.assertEqual(actual["ainvs"], expected["ainvs"])
+        self.assertEqual(actual["points"], expected["points"])
+        self.assertEqual(actual["rank_lower_bound"], 19)
+        special = json.loads((out / "curve_0001.json").read_text())
+        self.assertEqual(len(special["points"]), 19)
+        self.assertEqual(special["rank_lower_bound"], 18)
+
+    def test_corrupted_bisection_formula_is_rejected(self):
+        fixture = ROOT / "tests/Fixtures/icarm302-pair19"
+        folder = self.directory / "corrupt"
+        folder.mkdir()
+        b = json.loads((fixture / "bisections.json").read_text())
+        b["bisections"][0]["quadratic_u"][0] = str(Fraction(b["bisections"][0]["quadratic_u"][0])+1)
+        (folder / "bisections.json").write_text(json.dumps(b))
+        (folder / "advanced.json").write_bytes((fixture / "advanced.json").read_bytes())
+        p = subprocess.run(["dotnet", str(DLL), "bisections", "--input-dir", str(folder),
+                            "--output", str(self.directory / "bad-result")],capture_output=True,text=True,timeout=15)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("off the curve", p.stderr)
+
+    def test_exact_conic_pair_construction_and_quartic_step(self):
+        from bisection_hunt import construct, parametrize, intersections, advance
+        folder = self.directory / "constructed"
+        construct(folder, 12)
+        parametrize(folder)
+        intersections(folder, 1)
+        advance(folder, 1)
+        self.cli("bisections", "--input-dir", folder, "--output", folder / "verified")
+        summary = json.loads((folder / "verified/summary.json").read_text())
+        self.assertEqual(summary["best_lower_bound"], 19)
+
+    def test_auxiliary_cubic_map_returns_exact_quartic_points(self):
+        from auxiliary_hunt import script_for
+        from bisection_hunt import run_gp
+        script = script_for({"quartic_coefficients": ["1","1","0","0","1"],
+                             "quartic_seed": ["0","1"]},
+                            [["0","1","0"],["0","0","1"],["0","0","0"]],1,0,"pairwise",100)
+        stdout, _ = run_gp(script,self.directory / "auxiliary",15)
+        points = [json.loads(line[10:]) for line in stdout.splitlines() if line.startswith("PARAMETER ")]
+        self.assertTrue(points)
+        for _, x, y in points:
+            x,y = Fraction(x),Fraction(y)
+            self.assertEqual(y*y,x**4+x+1)
+
 
 if __name__ == "__main__":
     unittest.main()

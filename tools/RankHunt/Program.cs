@@ -48,6 +48,9 @@ try
         Hunt.Save(output, Hunt.CurveData(pair.Item1, pair.Item2, $"{family} sections at {u}/{v}", cert.LowerBound));
         Console.WriteLine($"{family} {u}/{v}: certified lower bound {cert.LowerBound}");
     }
+    else if (mode == "bisections")
+        BisectionSearch.Certify(Get("input-dir", "artifacts/bisection-hunt"),
+            Get("output", "artifacts/bisection-hunt/certified"), Number("limit",1000,1,10000), cancellation.Token);
     else if (mode == "enrich")
         Structured302.Enrich(Get("input-dir", "artifacts/rank-hunt/h10000"),
             Get("output", "artifacts/rank-structure-audit/enriched-h10000"), cancellation.Token);
@@ -75,9 +78,14 @@ try
         Console.WriteLine(JsonSerializer.Serialize(new { point_count = points.Length, cert.LowerBound, cert.ImageDimension,
             cert.NoTwoTorsionPrime, hypotheses = Array.Empty<string>() }, Hunt.JsonOptions));
     }
-    else Console.WriteLine("RankHunt grid [--height 10000 --keep 8192 --refine-keep 256 --final-keep 48 --prime-bound 65521 --workers 4 --output directory]\nRankHunt export --family icarm302|icarm302-17|icarm302-18|elkies17 --u 0 --v 1 --output curve.json\nRankHunt enrich --input-dir candidates-directory --output enriched-directory\nRankHunt verify --input points.json");
+    else Console.WriteLine("RankHunt grid [--height 10000 --keep 8192 --refine-keep 256 --final-keep 48 --prime-bound 65521 --workers 4 --output directory]\nRankHunt export --family icarm302|icarm302-17|icarm302-18|elkies17 --u 0 --v 1 --output curve.json\nRankHunt enrich --input-dir candidates-directory --output enriched-directory\nRankHunt bisections --input-dir bisection-data-directory --output certified-directory --limit 1000\nRankHunt verify --input points.json");
 }
 catch (OperationCanceledException) { Console.WriteLine("Stopped. Completed grid batches are checkpointed; rerun with the same options."); }
+catch (Exception error)
+{
+    Console.Error.WriteLine($"RankHunt failed: {error.Message}");
+    Environment.ExitCode = 1;
+}
 
 static BigRational Q(string s)
 {

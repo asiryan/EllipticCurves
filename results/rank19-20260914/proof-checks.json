@@ -1,0 +1,18 @@
+{
+  "rank19": {
+    "points_checked": 19,
+    "matrix_rank": 19,
+    "torsion_2_dimension_upper_bound": 0,
+    "rank_lower_bound": 19,
+    "all_points_independent_modulo_torsion": true,
+    "conditional_assumptions": []
+  },
+  "auxiliary": {
+    "points_checked": 4,
+    "matrix_rank": 3,
+    "torsion_2_dimension_upper_bound": 1,
+    "rank_lower_bound": 2,
+    "all_points_independent_modulo_torsion": false,
+    "conditional_assumptions": []
+  }
+}
