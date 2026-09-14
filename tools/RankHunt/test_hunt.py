@@ -89,6 +89,44 @@ class HuntTests(unittest.TestCase):
         self.assertEqual(before, json.loads((folder / "candidates.json").read_text()))
         self.assertTrue(json.loads((folder / "run.json").read_text())["resumed_grid"])
 
+    def test_recovered_sections_match_independent_fixtures(self):
+        # The doubled parameter also checks that homogeneous model scaling uses
+        # the reduced fraction, not the raw CLI denominator.
+        for family, n, d, fixture, lower in [
+            ("icarm302-17", -116, 474, "icarm302-structured17.json", 17),
+            ("icarm302-18", 0, 3, "icarm302-basechange18.json", 18),
+        ]:
+            output = self.directory / (family + ".json")
+            self.cli("export", "--family", family, "--u", n, "--v", d, "--output", output)
+            actual = json.loads(output.read_text())
+            expected = json.loads((ROOT / "tests/Fixtures" / fixture).read_text())
+            self.assertEqual(actual["ainvs"], expected["ainvs"])
+            self.assertEqual(actual["points"], expected["points"])
+            self.assertEqual(actual["rank_lower_bound"], lower)
+
+    def test_generic_rank_is_not_assumed_at_specialization(self):
+        output = self.directory / "t0.json"
+        self.cli("export", "--family", "icarm302-17", "--u", 0, "--v", 1, "--output", output)
+        actual = json.loads(output.read_text())
+        self.assertEqual(len(actual["points"]), 17)
+        # This is a finite-character lower bound, not an upper-bound assertion.
+        self.assertEqual(actual["rank_lower_bound"], 12)
+
+    def test_enrichment_preserves_existing_points(self):
+        folder = self.directory / "original"
+        folder.mkdir()
+        path = folder / "curve_-58_237.json"
+        self.cli("export", "--family", "icarm302", "--u", -58, "--v", 237, "--output", path)
+        before = json.loads(path.read_text())
+        (folder / "candidates.json").write_text(json.dumps([{"U": -58, "V": 237, "Control": False}]))
+        out = self.directory / "enriched"
+        self.cli("enrich", "--input-dir", folder, "--output", out)
+        after = json.loads((out / path.name).read_text())
+        self.assertEqual(before, json.loads(path.read_text()))
+        self.assertTrue(set(map(tuple, before["points"])) <= set(map(tuple, after["points"])))
+        self.assertEqual(before["rank_lower_bound"], 3)
+        self.assertEqual(after["rank_lower_bound"], 17)
+
 
 if __name__ == "__main__":
     unittest.main()

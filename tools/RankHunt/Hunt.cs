@@ -118,7 +118,8 @@ static class Hunt
         Save(Path.Combine(directory, "run.json"), new { options, checkpoint.PrimitiveCount,
             resumed_grid = resumed, seconds_this_session = timer.Elapsed.TotalSeconds,
             record_retained_by_grid = recordRetained,
-            validation_primes_start_exclusive = 16381, scores_are_rank_bounds = false });
+            validation_primes_start_exclusive = 16381, scores_are_rank_bounds = false,
+            candidate_sections = "icarm302 recovered 17 sections; specialized bounds recomputed" });
         using var writer = new StreamWriter(Path.Combine(directory, "candidates.tsv"));
         writer.WriteLine("u\tv\tscore_16381\tfull_score\tvalidation_score\trole");
         foreach (var c in candidates)
@@ -128,10 +129,10 @@ static class Hunt
             {
                 var curve = Family302.Curve(c.U, c.V);
                 if (curve.IsSingular) continue;
-                var points = Family302.Points(c.U, c.V);
+                var points = Structured302.Create(c.U, c.V).Item2;
                 var cert = curve.GetRankLowerBound(points, 1009, token);
                 Save(Path.Combine(directory, $"curve_{c.U}_{c.V}.json"), CurveData(curve, points,
-                    $"icarm302 family sections at {c.U}/{c.V}", cert.LowerBound));
+                    $"icarm302 recovered 17 sections at {c.U}/{c.V}", cert.LowerBound));
             }
         }
         foreach (var c in candidates.Take(8))

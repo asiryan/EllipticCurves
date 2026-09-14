@@ -33,10 +33,14 @@ try
     }
     else if (mode == "export")
     {
-        int u = int.Parse(Get("u", "0")), v = Number("v", 1, 1, int.MaxValue);
+        var u = BigInteger.Parse(Get("u", "0"));
+        var v = BigInteger.Parse(Get("v", "1"));
+        if (v <= 0) throw new ArgumentOutOfRangeException("v");
         string family = Get("family", "icarm302");
-        var pair = family == "elkies17" ? ElkiesSearchFamily.Create(u, v, cancellation.Token) :
+        var pair = family == "elkies17" ? ElkiesSearchFamily.Create(checked((int)u), checked((int)v), cancellation.Token) :
             family == "icarm302" ? (Family302.Curve(u, v), Family302.Points(u, v)) :
+            family == "icarm302-17" ? Structured302.Create(u, v) :
+            family == "icarm302-18" ? Structured302.BaseChange(u, v) :
             throw new ArgumentException("Unknown family");
         var cert = pair.Item1.GetRankLowerBound(pair.Item2, 1009, cancellation.Token);
         string output = Get("output", "artifacts/rank-hunt/curve.json");
@@ -44,6 +48,9 @@ try
         Hunt.Save(output, Hunt.CurveData(pair.Item1, pair.Item2, $"{family} sections at {u}/{v}", cert.LowerBound));
         Console.WriteLine($"{family} {u}/{v}: certified lower bound {cert.LowerBound}");
     }
+    else if (mode == "enrich")
+        Structured302.Enrich(Get("input-dir", "artifacts/rank-hunt/h10000"),
+            Get("output", "artifacts/rank-structure-audit/enriched-h10000"), cancellation.Token);
     else if (mode is "verify" or "relations")
     {
         using var data = JsonDocument.Parse(File.ReadAllText(Get("input", "")));
@@ -68,7 +75,7 @@ try
         Console.WriteLine(JsonSerializer.Serialize(new { point_count = points.Length, cert.LowerBound, cert.ImageDimension,
             cert.NoTwoTorsionPrime, hypotheses = Array.Empty<string>() }, Hunt.JsonOptions));
     }
-    else Console.WriteLine("RankHunt grid [--height 10000 --keep 8192 --refine-keep 256 --final-keep 48 --prime-bound 65521 --workers 4 --output directory]\nRankHunt export --family icarm302|elkies17 --u 0 --v 1 --output curve.json\nRankHunt verify --input points.json");
+    else Console.WriteLine("RankHunt grid [--height 10000 --keep 8192 --refine-keep 256 --final-keep 48 --prime-bound 65521 --workers 4 --output directory]\nRankHunt export --family icarm302|icarm302-17|icarm302-18|elkies17 --u 0 --v 1 --output curve.json\nRankHunt enrich --input-dir candidates-directory --output enriched-directory\nRankHunt verify --input points.json");
 }
 catch (OperationCanceledException) { Console.WriteLine("Stopped. Completed grid batches are checkpointed; rerun with the same options."); }
 

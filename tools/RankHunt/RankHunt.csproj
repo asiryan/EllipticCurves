@@ -7,6 +7,7 @@
     <NuGetAudit>false</NuGetAudit>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Data/icarm302-sections.json" LogicalName="icarm302-sections.json" />
     <ProjectReference Include="../../sources/EllipticCurves.csproj" />
     <Compile Include="../RankPackageAudit/Family302.cs" Link="Family302.cs" />
     <Compile Include="../RankPackageAudit/Local302.cs" Link="Local302.cs" />
