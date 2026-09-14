@@ -41,7 +41,7 @@ def run(args):
     reads=data_boundary(source,output)
     raw=source.read_bytes(); data=equation(json.loads(raw.decode('utf-8-sig')))
     save(output/'equation.json',data)
-    modules=[HERE/name for name in ('run.py','bootstrap.py','seeded.py','certificate.py','geometry.py')]
+    modules=[HERE/name for name in ('run.py','bootstrap.py','seeded.py','certificate.py','geometry.py','models.py','lattice.py')]
     modules += [ROOT/'tools/RankHunt'/name for name in ('blind_search.py','point_search.py',
                  'bounded_anchor_pool.py','anchor_diversity.py','point_arithmetic.py')]
     config={'input_sha256':hashlib.sha256(raw).hexdigest(),
@@ -49,18 +49,20 @@ def run(args):
             'bootstrap_seconds':args.bootstrap_seconds,'search_seconds':args.search_seconds,
             'workers':args.workers,'anchors':args.anchors,'target':args.target,'job_seconds':args.job_seconds,
             'seed_limit':args.seed_limit,
+            'anchor_mode':args.anchor_mode,'lattice_seconds':args.lattice_seconds,
             'equation_only':True,'initial_points':0,'full_rank_calls':False}
     save(output/'config.json',config)
     print(json.dumps({'phase':'start','input_points':0,'target':args.target,
                       'bootstrap_budget':args.bootstrap_seconds,'search_budget':args.search_seconds}),flush=True)
-    basis,bootstrap=discover(data,output,args.bootstrap_seconds,args.workers,args.job_seconds,args.seed_limit)
+    basis,bootstrap=discover(data,output,args.bootstrap_seconds,args.workers,args.job_seconds,args.seed_limit,args.lattice_seconds)
     search_seconds=0.0; verification_seconds=0.0
     if basis:
         from seeded import search, independent_result
         seed=output/'seed.json'
         t=time.perf_counter()
         if basis['rank_lower_bound']<args.target and args.search_seconds:
-            found=search(seed,output/'expansion',args.search_seconds,args.workers,args.anchors,args.target,batch_size=4)
+            found=search(seed,output/'expansion',args.search_seconds,args.workers,args.anchors,args.target,
+                         batch_size=4,anchor_mode=args.anchor_mode)
         else: found=basis
         search_seconds=time.perf_counter()-t
         t=time.perf_counter(); result=independent_result(found,found['rank_lower_bound'])
@@ -92,9 +94,12 @@ if __name__=='__main__':
     parser.add_argument('--target',type=int,default=31)
     parser.add_argument('--job-seconds',type=float,default=3)
     parser.add_argument('--seed-limit',type=int,default=None,help='Pass at most this many independently found points to expansion')
+    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity'),default='adaptive')
+    parser.add_argument('--lattice-seconds',type=float,default=0,help='Optional tangent-lattice stage within the bootstrap budget')
     args=parser.parse_args()
     if not (0<args.bootstrap_seconds<=3600 and 0<=args.search_seconds<=7200 and
             1<=args.workers<=24 and 1<=args.anchors<=4096 and 1<=args.target<=100 and
-            .05<=args.job_seconds<=60 and (args.seed_limit is None or 1<=args.seed_limit<=100)):
+            .05<=args.job_seconds<=60 and 0<=args.lattice_seconds<=args.bootstrap_seconds and
+            (args.seed_limit is None or 1<=args.seed_limit<=100)):
         parser.error('Invalid bounded search settings')
     run(args)

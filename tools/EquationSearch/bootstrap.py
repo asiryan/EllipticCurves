@@ -145,8 +145,15 @@ def search_script(original, prepared, model, numerator, denominator, stop_first=
     # Otherwise the first affine hit may map back to infinity, so retain the
     # complete-list mode and explicitly skip the pole of the inverse map.
     if stop_first is None: stop_first=Q(c)==0
-    base+=f'H=hyperellratpoints(C,[{numerator},{denominator}],{int(stop_first)});\n'
-    base+='for(i=1,#H,emit(H[i][1],H[i][2]));print("SEARCH_END");quit;\n'
+    if stop_first:
+        base+=f'H=hyperellratpoints(C,[{numerator},{denominator}],1);\n'
+        base+='for(i=1,#H,emit(H[i][1],H[i][2]));\n'
+    else:
+        base+=(f'lo=1;while(lo<={denominator},hi=min({denominator},min(lo+255,max(lo,4*lo-1)));'
+               f'H=hyperellratpoints(C,[{numerator},[lo,hi]],0);'
+               'for(i=1,#H,emit(H[i][1],H[i][2]));'
+               f'print("BOOT_SLICE ",[{numerator},lo,hi]);lo=hi+1);\n')
+    base+='print("SEARCH_END");quit;\n'
     return base
 
 
@@ -174,12 +181,13 @@ def select_basis(data):
     return {**basis,'rank_lower_bound':claim['rank_lower_bound'],'certificate':cert,'verification':claim}
 
 
-def discover(data, output, seconds=120, workers=12, job_seconds=2, seed_limit=None):
+def discover(data, output, seconds=120, workers=12, job_seconds=2, seed_limit=None, lattice_seconds=0):
     output=Path(output); output.mkdir(parents=True,exist_ok=True)
     start=time.perf_counter(); deadline=start+seconds
     a=list(map(Q,data['ainvs'])); observed={}; jobs=[]; models=[]; errors=[]
     state={'equation_only':True,'status':'preparing','points':[], 'lower_bound':0,
-           'workers':workers,'job_seconds':job_seconds,'budget_seconds':seconds,'seed_limit':seed_limit}
+           'workers':workers,'job_seconds':job_seconds,'budget_seconds':seconds,'seed_limit':seed_limit,
+           'lattice_budget_seconds':lattice_seconds}
     def checkpoint(status):
         state.update(status=status,seconds=time.perf_counter()-start,points=list(observed),
                      jobs=len(jobs),models=len(models),errors=errors)
@@ -213,6 +221,26 @@ def discover(data, output, seconds=120, workers=12, job_seconds=2, seed_limit=No
                                   'input_points':0,'method':'square_denominator'}),flush=True)
                 return basis,state
             if time.perf_counter()>=deadline: break
+    if lattice_seconds>0 and time.perf_counter()<deadline:
+        from lattice import search as lattice_search
+        points,stats=lattice_search(prepared['ainvs'],prepared['centers'],
+                                   min(lattice_seconds,deadline-time.perf_counter()))
+        u,r,s,t=map(Q,prepared['change'])
+        points=[canonical_point(a,(u*u*x+r,u**3*y+s*u*u*x+t)) for x,y in points]
+        keep(points,{'method':'tangent_lattice'})
+        log({'phase':'tangent_lattice',**stats,'points':len(points)})
+        if points:
+            basis=select_basis({'ainvs':data['ainvs'],'points':points})
+            if basis and basis['rank_lower_bound']:
+                if seed_limit is not None:
+                    basis=select_basis({'ainvs':data['ainvs'],'points':basis['points'][:seed_limit]})
+                state['lower_bound']=basis['rank_lower_bound']
+                save(output/'seed.json',basis)
+                save(output/'origins.json',[{'point':p,**origin} for p,origin in observed.items()])
+                checkpoint('seed_found')
+                print(json.dumps({'phase':'bootstrap','lower_bound':state['lower_bound'],
+                                  'seconds':state['seconds'],'input_points':0,'method':'tangent_lattice'}),flush=True)
+                return basis,state
     # An additional coefficient-derived search: divisors of b6, with no assumption
     # that the remaining cofactor is prime. Every generated divisor is exact.
     divisors=[1]

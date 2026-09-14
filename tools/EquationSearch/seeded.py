@@ -7,13 +7,15 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import time
 
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'RankHunt'))
 from blind_search import (GP, ROOT, POLICY, boxes, clean, certify, generate,
-                         diverse_vectors, profile_models, order_models)
-from point_search import make_script
+                         diverse_vectors, order_models)
 from bootstrap import save, checked_script
+from models import prepare_models, parity_vectors, parity_order, record_coverage, search_script
 
 
 def read(path):
@@ -24,9 +26,8 @@ def job_key(model, n, d):
     return f'{model["key"]}:{n}:{d}'
 
 
-def batch_search(data, models, n, d, timeout):
-    script = make_script(data, 'pointed', n, len(models), 0, True, 512,
-                         [m['anchor'] for m in models], True, d)
+def batch_search(data, models, n, d, timeout, coverage=None):
+    script = search_script(data, models, n, d, coverage)
     checked_script(script)
     started = time.perf_counter()
     timed_out = False
@@ -41,13 +42,18 @@ def batch_search(data, models, n, d, timeout):
         if isinstance(stderr, bytes): stderr = stderr.decode(errors='replace')
     if code not in (0, None) or any('***' in s and 'Warning:' not in s for s in stderr.splitlines()):
         raise RuntimeError('PARI point search failed: ' + stderr[-4000:])
-    complete, observations = [], []
+    complete, observations, slices = [], [], []
     current = None
     for line in stdout.splitlines():
         if line.startswith('ANCHOR_BEGIN '):
             current = int(line.split()[1]) - 1
         elif line.startswith('ANCHOR_DONE '):
             complete.append(job_key(models[int(line.split()[1]) - 1], n, d))
+        elif line.startswith('SLICE_DONE '):
+            i,nn,lo,hi = json.loads(line[11:])
+            if not (1<=i<=len(models) and nn==n and 1<=lo<=hi<=d):
+                raise ValueError('Malformed completed search slice')
+            slices.append((models[i-1]['key'],nn,lo,hi))
         elif line.startswith('POINT '):
             match = re.fullmatch(r'POINT \[(-?\d+(?:/\d+)?), (-?\d+(?:/\d+)?)\]', line)
             if match is None or current is None: raise ValueError('Malformed point output')
@@ -56,7 +62,7 @@ def batch_search(data, models, n, d, timeout):
                                  'n':n, 'd':d, 'model':models[current]['key']})
     if not timed_out and ('SEARCH_END' not in stdout or len(complete) != len(models)):
         raise RuntimeError('Incomplete successful PARI batch')
-    return {'complete':complete, 'observations':observations, 'timed_out':timed_out,
+    return {'complete':complete, 'observations':observations, 'slices':slices, 'timed_out':timed_out,
             'seconds':time.perf_counter() - started}
 
 
@@ -75,16 +81,19 @@ def independent_result(data, expected):
 
 def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
            batch_size=8, job_seconds=2, import_run=None, anchor_mode='adaptive'):
-    if anchor_mode not in ('adaptive','fixed'): raise ValueError('Unknown anchor policy')
+    if anchor_mode not in ('adaptive','fixed','frozen','parity'): raise ValueError('Unknown anchor policy')
     source, output = Path(source).resolve(), Path(output).resolve()
     if output == ROOT or not output.is_relative_to(ROOT): raise ValueError('Use a dedicated workspace directory')
     output.mkdir(parents=True, exist_ok=True)
     config = {'input_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
-              'code_sha256':{name:hashlib.sha256(((Path(__file__).parent/name) if name=='seeded.py' else (ROOT/'tools/RankHunt'/name)).read_bytes()).hexdigest()
-                  for name in ['seeded.py','blind_search.py','point_search.py','bounded_anchor_pool.py',
+              'code_sha256':{name:hashlib.sha256(((Path(__file__).parent/name) if name in ('seeded.py','models.py','bootstrap.py') else (ROOT/'tools/RankHunt'/name)).read_bytes()).hexdigest()
+                  for name in ['seeded.py','models.py','bootstrap.py','blind_search.py','point_search.py','bounded_anchor_pool.py',
                                'anchor_diversity.py','point_arithmetic.py']},
               'policy':POLICY, 'anchors':anchors, 'target':target, 'batch_size':batch_size,
-              'job_seconds':job_seconds, 'workers':workers,'anchor_mode':anchor_mode}
+              'job_seconds':job_seconds, 'workers':workers,'anchor_mode':anchor_mode,
+              'search_policy':{'cached_inverse_maps':True,'denominator_slices':256,
+                               'parity_balanced':anchor_mode=='parity',
+                               'profile_budget_fraction':0.25,'profile_budget_max_seconds':2}}
     state_path = output/'checkpoint.json'
     if state_path.exists():
         state = read(state_path)
@@ -104,7 +113,8 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
             state.update(generation=old['generation'], imported_seconds=old['wall_seconds'],
                          origin='continue previous point search', imported_run=str(legacy))
             model_path = legacy/f'generation-{old["generation"]:03d}'/'models.json'
-            if model_path.exists(): models = read(model_path)
+            # Old profiling files do not contain inverse maps; rebuild them.
+            models = None
         if not found['points']: raise ValueError('Known seed points are required')
     save(output/'basis.json', found)
     proof = certify(output/'basis.json')
@@ -112,6 +122,11 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
     known = set(map(tuple, found['points']))
     if 'initial_lower_bound' not in state: state['initial_lower_bound'] = proof['LowerBound']
     initial_basis=clean(read(source))
+    initial_points=set(map(tuple,initial_basis['points']))
+    coverage = state.setdefault('coverage',{})
+    model_cache = state.setdefault('model_cache',{})
+    state.setdefault('finished_slices',0)
+    state.setdefault('preparations',[])
     started = time.perf_counter(); deadline = started + seconds; before = state['wall_seconds']
     last_save = started; last_progress = started; status = 'running'
     def checkpoint():
@@ -128,23 +143,51 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
         with ThreadPoolExecutor(max_workers=workers) as executor:
             while time.perf_counter() < deadline and proof['LowerBound'] < target:
                 if models is None:
+                    preparing=time.perf_counter()
                     save(output/'basis.json', {'ainvs':found['ainvs'], 'points':proof['points']})
                     with tempfile.TemporaryDirectory(prefix='preparation-', dir=output) as temp:
                         folder = Path(temp)
+                        pool_basis=initial_basis if anchor_mode in ('fixed','frozen') else {'ainvs':found['ainvs'],'points':proof['points']}
                         if anchor_mode=='fixed':
                             pool={'ainvs':initial_basis['ainvs'],'points':initial_basis['points'],
                                   'approximate_heights':[0]*len(initial_basis['points'])}
                         else:
-                            pool = generate(output/'basis.json', folder/'pool', anchors, anchors,
-                                            min(90,max(1,deadline-time.perf_counter())), selector=diverse_vectors)
-                        models = order_models(profile_models(pool, folder, min(90,max(1,deadline-time.perf_counter()))))
-                    if not models: raise RuntimeError('No usable pointed models')
+                            pool_source=folder/'basis.json';save(pool_source,pool_basis)
+                            pool = generate(pool_source, folder/'pool', anchors, anchors,
+                                            min(90,max(1,deadline-time.perf_counter())),
+                                            selector=parity_vectors if anchor_mode=='parity' else diverse_vectors)
+                        # A difficult later anchor must not consume the entire
+                        # search budget after useful earlier models are ready.
+                        profile_budget=min(2,max(.05,(deadline-time.perf_counter())*.25))
+                        models = prepare_models(pool,profile_budget,model_cache)
+                        models = parity_order(models) if anchor_mode=='parity' else order_models(models)
+                    # Coefficients refer to an exactly checked independent basis.
+                    # Mark only provable use of directions outside the initial span.
+                    retained=initial_points<=set(map(tuple,pool_basis['points']))
+                    extra=[i for i,p in enumerate(pool_basis['points']) if tuple(p) not in initial_points]
+                    for model in models:
+                        model['preparation']=len(state['preparations'])
+                        model['uses_new_direction']=(False if anchor_mode in ('fixed','frozen') else
+                            any(pool['vectors'][model['pool_index']][i] for i in extra) if retained else None)
+                    state['preparations'].append({'generation':state['generation'],
+                        'basis_lower_bound':proof['LowerBound'],'seconds':time.perf_counter()-preparing,
+                        'pool_points':pool['points'],'pool_vectors':pool.get('vectors'),
+                        'basis_points':pool_basis['points'],
+                        'models':[{'key':m['key'],'pool_index':m['pool_index'],
+                                   'coefficient_bits':m['coefficient_bits'],
+                                   'uses_new_direction':m['uses_new_direction']} for m in models]})
+                    if not models:
+                        models=None
+                        status='model_preparation_incomplete'
+                        break
                     checkpoint()
                 if 'initial_features' not in state:
                     bits=sorted(m['coefficient_bits'] for m in models)
                     state['initial_features']={'quartic_bits_min':bits[0],
                         'quartic_bits_p10':bits[len(bits)//10],
-                        'anchor_height_min':min(m['anchor_height'] for m in models)}
+                        'anchor_height_min':min(m['anchor_height'] for m in models),
+                        'parity_classes':len({m['parity'] for m in models if 'parity' in m}),
+                        'model_count':len(models)}
                 improved = False
                 for n,d in boxes():
                     pending = [m for m in models if job_key(m,n,d) not in done]
@@ -154,19 +197,29 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                         group = pending[offset:offset+32]
                         chunks = [group[i:i+batch_size] for i in range(0,len(group),batch_size)]
                         limit = min(job_seconds*batch_size, max(.05,remaining/((len(chunks)+workers-1)//workers)))
-                        futures = [executor.submit(batch_search,found,chunk,n,d,limit) for chunk in chunks]
+                        futures = [executor.submit(batch_search,found,chunk,n,d,limit,coverage) for chunk in chunks]
                         observations = []; old_bound = proof['LowerBound']; new = []
                         for chunk,future in zip(chunks,futures):
-                            result = future.result(); observations.extend(result['observations'])
+                            result = future.result()
+                            by_key={m['key']:m for m in chunk}
+                            for observation in result['observations']:
+                                model=by_key[observation['model']]
+                                observation.update(preparation=model['preparation'],
+                                                   uses_new_direction=model['uses_new_direction'])
+                            observations.extend(result['observations'])
                             done.update(result['complete'])
                             state['attempted_models'] += len(chunk)
                             state['finished_models'] += len(result['complete'])
                             state['timed_out_batches'] += int(result['timed_out'])
+                            for key,nn,lo,hi in result['slices']:
+                                coverage[key]=record_coverage(coverage.get(key,[]),nn,lo,hi)
+                            state['finished_slices'] += len(result['slices'])
                         for observation in observations:
                             point = tuple(observation['point'])
                             if point not in known:
                                 known.add(point); found['points'].append(list(point)); new.append(observation)
                         if new:
+                            old_points=set(map(tuple,proof['points']))
                             save(output/'basis.json', {'ainvs':found['ainvs'],
                                 'points':proof['points']+[o['point'] for o in new]})
                             proof = certify(output/'basis.json')
@@ -178,10 +231,13 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                         if proof['LowerBound'] > old_bound:
                             event = {'run':output.name, 'lower_bound':proof['LowerBound'],
                                      'seconds':before+time.perf_counter()-started,
-                                     'attempted_models':state['attempted_models']}
-                            state['events'].append(event); print(json.dumps(event),flush=True)
+                                     'attempted_models':state['attempted_models'],
+                                     'selected_new_points':[o for o in new if tuple(o['point']) not in old_points
+                                         and o['point'] in proof['points']]}
+                            state['events'].append(event)
+                            print(json.dumps({k:v for k,v in event.items() if k!='selected_new_points'}),flush=True)
                             state['generation'] += 1
-                            if anchor_mode=='adaptive': models = None
+                            if anchor_mode not in ('fixed','frozen'): models = None
                             improved = True; checkpoint(); break
                         if time.perf_counter()-last_save >= 5: checkpoint()
                         if time.perf_counter()-last_progress >= 30:
@@ -206,4 +262,19 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
     return {'ainvs':found['ainvs'],'points':proof['points'],'rank_lower_bound':proof['LowerBound']}
 
 
-
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description='Expand supplied points; an existing checkpoint resumes completed slices.')
+    parser.add_argument('--input',required=True)
+    parser.add_argument('--output',required=True)
+    parser.add_argument('--seconds',type=float,default=10)
+    parser.add_argument('--workers',type=int,default=2)
+    parser.add_argument('--anchors',type=int,default=64)
+    parser.add_argument('--target',type=int,default=32)
+    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity'),default='adaptive',
+                        help='fixed: supplied anchors; frozen: their initial generated pool; adaptive/parity: rebuild after growth')
+    args=parser.parse_args()
+    if not (0<args.seconds<=7200 and 1<=args.workers<=24 and 1<=args.anchors<=4096 and 1<=args.target<=100):
+        parser.error('Invalid bounded search settings')
+    result=search(args.input,args.output,args.seconds,args.workers,args.anchors,args.target,
+                  batch_size=4,anchor_mode=args.anchor_mode)
+    save(Path(args.output)/'result.json',independent_result(result,result['rank_lower_bound']))
