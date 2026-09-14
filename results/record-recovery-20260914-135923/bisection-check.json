@@ -1,0 +1,9 @@
+{
+  "source": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\bisection-hunt\\bisections.json",
+  "source_sha256": "47cb2b634025fafc9d4a99f24da81822eaf63a115ec06591c1f80d177253d564",
+  "parameter": "164518/924945",
+  "total_bisections": 318,
+  "distinct_square_conditions": 126,
+  "rational_conditions_at_record": [],
+  "published_witness_list_loaded": false
+}

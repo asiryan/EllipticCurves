@@ -58,6 +58,104 @@ class HuntTests(unittest.TestCase):
         result = self.search(source, "pointed", "--minimal")
         self.assertGreater(result["new_distinct_up_to_sign"], 0)
 
+    def test_minimized_quartic_map_with_rational_anchor(self):
+        source = self.source([0,0,0,-25,4], [["-109/25","686/125"]])
+        result = self.search(source,"pointed","--minimal","--quartic-minimal")
+        self.assertGreater(result["new_distinct_up_to_sign"],0)
+        self.assertTrue(result["quartic_minimal_preprocessing"])
+        self.assertIn(["0","-2"], result["points"])
+
+    def test_record_basis_matches_17_published_points_exactly(self):
+        from record_recovery import prepare, align_basis
+        source, cert = prepare(self.directory)
+        actual = json.loads(source.read_text())
+        published = json.loads((ROOT/'tests/Fixtures/icarm-302.json').read_text())
+        self.assertEqual(actual['points'], [published['points'][j-1] for j in actual['aligned_published_indices']])
+        self.assertEqual(cert['LowerBound'],17)
+        self.assertFalse(actual['published_witness_list_loaded'])
+        from point_arithmetic import add, multiply
+        a = list(map(Fraction,actual['ainvs']))
+        p,q = [tuple(map(Fraction,point)) for point in actual['points'][:2]]
+        self.assertEqual(add(a,p,q),add(a,q,p))
+        self.assertIsNone(add(a,p,multiply(a,p,-1)))
+
+    def test_quartic_audit_checks_exact_inverse_maps(self):
+        from point_search_audit import audit
+        source = self.source([0,0,0,-25,4], [["-109/25","686/125"]])
+        witness = self.directory/'witness.json'
+        witness.write_text(json.dumps({'ainvs':['0','0','0','-25','4'],'points':[['0','2']]}))
+        report = audit(source,witness,self.directory/'audit',height=200,quartic_minimal=True)
+        self.assertEqual(report['exact_round_trips'],1)
+        self.assertEqual(report['exact_infinity_round_trips'],1)
+        self.assertEqual(report['witnesses_inside_search_box'],1)
+
+    def test_anchor_file_cannot_switch_curves(self):
+        source = self.source([0,0,0,-25,4], [[0,2]])
+        wrong = self.directory/'wrong.json'
+        wrong.write_text(json.dumps({'ainvs':['0','0','0','-1','0'],'points':[['0','0']]}))
+        p = subprocess.run([sys.executable,str(ROOT/'tools/RankHunt/point_search.py'),
+            '--input',str(source),'--output',str(self.directory/'bad'),
+            '--anchor-input',str(wrong)],capture_output=True,text=True,timeout=10)
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('Anchor curve differs',p.stderr)
+        self.assertFalse((self.directory/'bad.gp').exists())
+
+    def test_reference_matching_does_not_insert_missing_points(self):
+        from guided_recovery import matches, rounded_bound
+        a=['0','0','0','-25','4']
+        found={'ainvs':a,'points':[['0','-2']]}
+        reference={'ainvs':a,'points':[['0','2'],['-109/25','686/125']]}
+        indices, points=matches(found,reference)
+        self.assertEqual(indices,[1])
+        self.assertEqual(points,[['0','2']])
+        self.assertEqual(rounded_bound(122829),200000)
+
+    def test_pointed_only_script_has_no_rank_or_selmer_calls(self):
+        script=make_script({'ainvs':['0','0','0','-25','4'],'points':[['0','2']]},
+            'pointed',100,1,0,minimal=True,quartic_minimal=True,denominator_height=10)
+        for forbidden in ['ellrank(', 'ellrankinit(', 'ell2cover(', 'ellanalyticrank(', 'ellgenerators(']:
+            self.assertNotIn(forbidden,script)
+        self.assertIn('hyperellratpoints(C,[100,10])',script)
+
+    def test_translated_restoration_requires_observed_points(self):
+        from point_arithmetic import add
+        from search_translated_point import restore
+        a=list(map(Fraction,[0,0,0,-25,4]));point=(Fraction(0),Fraction(2))
+        twice=add(a,point,point)
+        found={'ainvs':list(map(str,a)),'points':[list(map(str,point)),list(map(str,twice))]}
+        self.assertEqual(restore(found,twice,[point],[1]),list(map(str,point)))
+        with self.assertRaises(ValueError):
+            restore({'ainvs':found['ainvs'],'points':[found['points'][0]]},twice,[point],[1])
+        with self.assertRaises(ValueError):
+            restore({'ainvs':found['ainvs'],'points':[found['points'][1]]},twice,[point],[1])
+
+    def test_coset_shortening_in_oblique_lattice(self):
+        from translated_witnesses import short_coset_vectors
+        vectors=short_coset_vectors([[2,1],[1,2]],[-1.8,-1.2],[0.8,0.2],32)
+        self.assertIn((1,0),vectors)
+
+    def test_saved_recipe_search_and_restoration(self):
+        from point_arithmetic import add
+        from point_search import save
+        bundle=self.directory/'recipe';(bundle/'seed').mkdir(parents=True)
+        (bundle/'step').mkdir()
+        data={'ainvs':['0','0','0','-25','4'],'points':[['0','2']]}
+        save(bundle/'seed/input17.json',data)
+        save(bundle/'step/anchor.json',{'points':data['points'],'known_basis':data['points'],'integer_coefficients':[1]})
+        save(bundle/'restore.json',{'observed_representative':['0','2'],
+            'known_points':data['points'],'known_coefficients':[-1],'published_index':1})
+        save(bundle/'operations.json',[{'kind':'search','directory':'step','height':100,'denominator_height':10},
+            {'kind':'restore','file':'restore.json'}])
+        out=self.directory/'replay'
+        proc=subprocess.run([sys.executable,str(ROOT/'tools/RankHunt/replay_record_reproduction.py'),
+            '--bundle',str(bundle),'--output',str(out)],capture_output=True,text=True,timeout=15)
+        self.assertEqual(proc.returncode,0,proc.stderr)
+        summary=json.loads((out/'summary.json').read_text())
+        self.assertEqual(summary['status'],'recipe_completed')
+        result=json.loads(Path(summary['result']).read_text())
+        point=(Fraction(0),Fraction(2));twice=add(list(map(Fraction,data['ainvs'])),point,point)
+        self.assertEqual(result['points'][-1],list(map(str,twice)))
+
     def test_actual_two_covers_map_back(self):
         source = self.source([0, 0, 0, -25, 4], [[0, 2]])
         result = self.search(source, "covers", "--minimal")

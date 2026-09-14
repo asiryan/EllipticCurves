@@ -26,11 +26,22 @@ def vector(values):
     return "[" + ",".join(str(Fraction(v)) for v in values) + "]"
 
 
-def make_script(data, mode, height, anchors, effort, minimal=False, stack_mb=512):
+def quartic_reduction_code(minimal=False):
+    if not minimal:
+        return 'C=hyperellred(F,&m);'
+    return ('C0=hyperellminimalmodel(F,&m0);C=hyperellred(C0,&m1);' +
+            'md=m1[2][2,1]*x+m1[2][2,2];' +
+            'mh=m0[1]*m1[3]+subst(m0[3],x,(m1[2][1,1]*x+m1[2][1,2])/md)*md^2;' +
+            'm=[m0[1]*m1[1],m0[2]*m1[2],mh];')
+
+
+def make_script(data, mode, height, anchors, effort, minimal=False, stack_mb=512,
+                anchor_points=None, quartic_minimal=False, denominator_height=None):
     a = [Fraction(x) for x in data["ainvs"]]
     if len(a) != 5:
         raise ValueError("Expected five Weierstrass coefficients")
-    points = [[Fraction(x), Fraction(y)] for x, y in data["points"]]
+    points = [[Fraction(x), Fraction(y)] for x, y in (anchor_points if anchor_points is not None else data["points"])]
+    search_denominator = height if denominator_height is None else denominator_height
     lines = [f"default(parisizemax,{stack_mb*1048576});", "default(realprecision,100);", "setrand(20260914);",
              f"E=ellinit({vector(a)});", "print(\"VERSION \",version());",
              "print(\"MODEL \",[E.a1,E.a2,E.a3,E.a4,E.a6]);",
@@ -52,8 +63,16 @@ def make_script(data, mode, height, anchors, effort, minimal=False, stack_mb=512
             'x0=P[k][1];v0=2*P[k][2]+E.a1*x0+E.a3;' +
             'D=x^4-2*(12*x0+E.b2)*x^2+32*v0*x+E.b2^2-8*E.b2*x0-48*x0^2-32*E.b4;' +
             'den=denominator(content(D));F=den^2*D;' +
-            'C=hyperellred(F,&m);' +
-            f'H=hyperellratpoints(C,[{height},{height}]);' +
+            quartic_reduction_code(quartic_minimal) +
+            'infq=polcoef(C[2],2);infp=polcoef(C[1],4);' +
+            'if(m[2][2,1]!=0 && issquare(infq^2+4*infp,&infr),' +
+            'inz=Set([(-infq+infr)/2,(-infq-infr)/2]);' +
+            'for(infi=1,#inz,slope=m[2][1,1]/m[2][2,1];' +
+            'square=(m[1]*inz[infi]+polcoef(m[3],2))/m[2][2,1]^2/den;' +
+            'if(square^2!=subst(D,x,slope),error("Quartic infinity transformation failed"));' +
+            'xx=(slope^2-E.b2-4*x0+square)/8;' +
+            'yy=(v0+slope*(xx-x0)-E.a1*xx-E.a3)/2;W=[xx,yy];' + emit + '));' +
+            f'H=hyperellratpoints(C,[{height},{search_denominator}]);' +
             'for(j=1,#H,h=H[j][1];z=H[j][2];dd=m[2][2,1]*h+m[2][2,2];' +
             'if(dd==0,next);slope=(m[2][1,1]*h+m[2][1,2])/dd;' +
             'square=(m[1]*z+subst(m[3],x,h))/dd^2/den;' +
@@ -93,7 +112,21 @@ def run(args):
     data = json.loads(Path(args.input).read_text(encoding="utf-8"))
     prefix = Path(args.output).resolve()
     prefix.parent.mkdir(parents=True, exist_ok=True)
-    script = make_script(data, args.mode, args.height, args.anchors, args.effort, args.minimal, args.stack_mb)
+    anchor_source = getattr(args, "anchor_input", None)
+    anchor_points = None
+    if anchor_source:
+        if args.mode != "pointed":
+            raise ValueError("Separate anchors apply only to pointed search")
+        anchor_data = json.loads(Path(anchor_source).read_text(encoding="utf-8-sig"))
+        if list(map(Fraction,anchor_data["ainvs"])) != list(map(Fraction,data["ainvs"])):
+            raise ValueError("Anchor curve differs from the search curve")
+        anchor_points = anchor_data["points"]
+    quartic_minimal = getattr(args,"quartic_minimal",False)
+    denominator_height = getattr(args,"denominator_height",None)
+    if denominator_height is not None and (args.mode != "pointed" or not 1 <= denominator_height <= args.height):
+        raise ValueError("A denominator bound requires pointed mode and 1 <= bound <= height")
+    script = make_script(data, args.mode, args.height, args.anchors, args.effort, args.minimal, args.stack_mb,
+                         anchor_points, quartic_minimal, denominator_height)
     prefix.with_suffix(".gp").write_text(script, encoding="utf-8")
     start = time.perf_counter()
     timed_out = False
@@ -125,6 +158,11 @@ def run(args):
               "process_exit_code": exit_code, "finished": "SEARCH_END" in stdout and exit_code == 0,
               "initial_distinct_up_to_sign": len(initial), "new_distinct_up_to_sign": len(merged)-len(initial),
               "new_points_are_not_automatically_independent": True}
+    result["quartic_minimal_preprocessing"] = quartic_minimal
+    result["denominator_height"] = denominator_height if denominator_height is not None else args.height
+    if anchor_source:
+        result["anchor_source"] = str(Path(anchor_source).resolve())
+        result["available_anchor_count"] = len(anchor_points)
     bounds = re.search(r"^PARI_BOUNDS (\[.*\])$", stdout, re.M)
     if bounds:
         result["pari_reported_bounds"] = json.loads(bounds[1])
@@ -154,6 +192,9 @@ if __name__ == "__main__":
     parser.add_argument("--anchors", type=int, default=32)
     parser.add_argument("--effort", type=int, default=1)
     parser.add_argument("--minimal", action="store_true", help="Minimize first and map all points back to the input model")
+    parser.add_argument("--quartic-minimal", action="store_true", help="Minimize each pointed quartic before reduction")
+    parser.add_argument("--anchor-input", help="Separate JSON of pointed-search anchors on the same curve")
+    parser.add_argument("--denominator-height", type=int, help="Separate maximum denominator for pointed search")
     parser.add_argument("--stack-mb", type=int, default=512)
     parser.add_argument("--timeout", type=float, default=30)
     arguments = parser.parse_args()

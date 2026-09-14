@@ -1,0 +1,232 @@
+[
+  {
+    "kind": "search",
+    "directory": "00-search-01",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-point-audit\\guided1514.json",
+    "height": 5000000,
+    "denominator_height": 10000,
+    "seconds": 2.455,
+    "lower_bound": 18,
+    "new_direct_matches": [
+      17
+    ],
+    "new_distinct_points": 8,
+    "gp_output_points_checked": 8,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "01-search-02",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-00\\search.json",
+    "height": 200000,
+    "denominator_height": 1,
+    "seconds": 0.019,
+    "lower_bound": 19,
+    "new_direct_matches": [
+      6
+    ],
+    "new_distinct_points": 2,
+    "gp_output_points_checked": 2,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "02-search-03",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-01\\search.json",
+    "height": 100000,
+    "denominator_height": 50,
+    "seconds": 0.021,
+    "lower_bound": 20,
+    "new_direct_matches": [
+      22
+    ],
+    "new_distinct_points": 2,
+    "gp_output_points_checked": 2,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "03-search-04",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-02\\search.json",
+    "height": 10000,
+    "denominator_height": 2000,
+    "seconds": 0.022,
+    "lower_bound": 21,
+    "new_direct_matches": [
+      14
+    ],
+    "new_distinct_points": 8,
+    "gp_output_points_checked": 8,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "04-search-05",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-03\\search.json",
+    "height": 20000,
+    "denominator_height": 5000,
+    "seconds": 0.03,
+    "lower_bound": 22,
+    "new_direct_matches": [
+      3
+    ],
+    "new_distinct_points": 6,
+    "gp_output_points_checked": 6,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "05-search-06",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-04\\search.json",
+    "height": 5000000,
+    "denominator_height": 50,
+    "seconds": 0.039,
+    "lower_bound": 23,
+    "new_direct_matches": [
+      19
+    ],
+    "new_distinct_points": 5,
+    "gp_output_points_checked": 6,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "06-search-07",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-05\\search.json",
+    "height": 2000,
+    "denominator_height": 50,
+    "seconds": 0.023,
+    "lower_bound": 24,
+    "new_direct_matches": [
+      1
+    ],
+    "new_distinct_points": 2,
+    "gp_output_points_checked": 2,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "07-search-08",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-06\\search.json",
+    "height": 100000,
+    "denominator_height": 5000,
+    "seconds": 0.034,
+    "lower_bound": 25,
+    "new_direct_matches": [
+      13
+    ],
+    "new_distinct_points": 4,
+    "gp_output_points_checked": 4,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "08-search-09",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-07\\search.json",
+    "height": 500000000,
+    "denominator_height": 500,
+    "seconds": 16.679,
+    "lower_bound": 26,
+    "new_direct_matches": [
+      4
+    ],
+    "new_distinct_points": 12,
+    "gp_output_points_checked": 14,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "09-search-10",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-08\\search.json",
+    "height": 1000000000,
+    "denominator_height": 500,
+    "seconds": 39.048,
+    "lower_bound": 27,
+    "new_direct_matches": [
+      26
+    ],
+    "new_distinct_points": 9,
+    "gp_output_points_checked": 10,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "10-search-11",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\guided-recovery\\20260914-143421\\round-09\\search.json",
+    "height": 500000,
+    "denominator_height": 200000,
+    "seconds": 4.208,
+    "lower_bound": 28,
+    "new_direct_matches": [
+      9
+    ],
+    "new_distinct_points": 9,
+    "gp_output_points_checked": 10,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "11-search-12",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-point-audit\\target30-tighter\\search.json",
+    "height": 6000000,
+    "denominator_height": 300000,
+    "seconds": 97.854,
+    "lower_bound": 29,
+    "new_direct_matches": [
+      30
+    ],
+    "new_distinct_points": 8,
+    "gp_output_points_checked": 8,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "search",
+    "directory": "12-search-13",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-point-audit\\translated-target29\\search.json",
+    "height": 20000,
+    "denominator_height": 500,
+    "seconds": 0.023,
+    "lower_bound": 30,
+    "new_direct_matches": [],
+    "new_distinct_points": 10,
+    "gp_output_points_checked": 10,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "restore",
+    "file": "13-restore-29.json",
+    "published_index": 29
+  },
+  {
+    "kind": "search",
+    "directory": "14-search-14",
+    "original_result": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-point-audit\\translated-target31\\search.json",
+    "height": 5000,
+    "denominator_height": 500,
+    "seconds": 0.023,
+    "lower_bound": 31,
+    "new_direct_matches": [],
+    "new_distinct_points": 2,
+    "gp_output_points_checked": 2,
+    "script_regenerated_from_known_points_only": true,
+    "anchor_combination_verified": true
+  },
+  {
+    "kind": "restore",
+    "file": "15-restore-31.json",
+    "published_index": 31
+  }
+]

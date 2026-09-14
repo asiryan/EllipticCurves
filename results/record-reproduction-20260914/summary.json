@@ -1,0 +1,35 @@
+{
+  "reference_guided": true,
+  "blind_recovery": false,
+  "initial_generic_points": 17,
+  "published_points_matched_exactly": 31,
+  "certified_lower_bound": 31,
+  "exact_rank_not_claimed": true,
+  "successful_search_calls": 14,
+  "successful_search_seconds": 160.478,
+  "guided_timeout_seconds": 120.005,
+  "earlier_128_anchor_unsuccessful_search_seconds": 50.649,
+  "times_exclude_model_selection_diagnostics_and_development": true,
+  "all_search_scripts_regenerated_and_output_provenance_checked": true,
+  "all_anchors_are_exact_integer_combinations_of_previously_observed_points": true,
+  "reference_used_for_basis_alignment_model_selection_search_bounds_and_coset_choice": true,
+  "unrecovered_reference_coordinates_injected_into_searches": false,
+  "new_record_not_claimed": true,
+  "csharp": {
+    "point_count": 31,
+    "LowerBound": 31,
+    "ImageDimension": 31,
+    "NoTwoTorsionPrime": 31,
+    "hypotheses": []
+  },
+  "independent_python": {
+    "points_checked": 31,
+    "matrix_rank": 31,
+    "torsion_2_dimension_upper_bound": 0,
+    "rank_lower_bound": 31,
+    "all_points_independent_modulo_torsion": true,
+    "conditional_assumptions": []
+  },
+  "independent_verifier_sha256": "9e0d0d2562fc53705e92a2eaa9a3f6e7c923f1cd3fd82b14df68b60268f4ad54",
+  "operations": "operations.json"
+}
