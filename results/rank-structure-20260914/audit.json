@@ -27,6 +27,7 @@
   "base_change_identity_verified": true,
   "extra_section_identity_verified": true,
   "published_specialization_coordinates_match": true,
+  "record_decomposition_17_plus_14_checked": true,
   "record_not_on_conic": {
     "prime": 19,
     "quadratic_nonresidue": 3
@@ -68,7 +69,7 @@
       "hypotheses": []
     }
   },
-  "symbolic_gp_seconds": 0.021066699991934,
+  "symbolic_gp_seconds": 0.020882799988612533,
   "section_discovery_replayed": false,
   "saturation_computed": false
 }
