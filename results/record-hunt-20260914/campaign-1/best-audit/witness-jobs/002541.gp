@@ -1,0 +1,13 @@
+default(parisizemax,536870912);
+default(realprecision,100);
+setrand(20260914);
+E=ellinit([-244910829655039279,2805191058761031750814796352597558,-71419452027886771926466353964803175718437420748688,-8211317720444569917506931594699561025191319486176616341390051758160,0]);
+print("VERSION ",version());
+print("MODEL ",[E.a1,E.a2,E.a3,E.a4,E.a6]);
+P=[[377445884589438822505143188492773919442563040377965535070517305278795507259637494806107971408/672732366557924371461748211551146992179227454385110918489,8647871429913751387307661012437277841991834369405838417957915817218311362894171510535522274077652820583937423532039046729254917969019897200/17448716421422424717182576231734899495704355934137850436371762404426547153208965314013]];
+for(i=1,#P,if(!ellisoncurve(E,P[i]),error("Input point off curve")));
+Eoriginal=E;E=ellminimalmodel(Eoriginal,&modelchange);
+P=vector(#P,i,ellchangepoint(P[i],modelchange));
+print("MINIMAL_MODEL ",[E.a1,E.a2,E.a3,E.a4,E.a6]);
+for(k=1,min(#P,1),print("ANCHOR_BEGIN ",k);x0=P[k][1];v0=2*P[k][2]+E.a1*x0+E.a3;D=x^4-2*(12*x0+E.b2)*x^2+32*v0*x+E.b2^2-8*E.b2*x0-48*x0^2-32*E.b4;den=denominator(content(D));F=den^2*D;C0=hyperellminimalmodel(F,&m0);C=hyperellred(C0,&m1);md=m1[2][2,1]*x+m1[2][2,2];mh=m0[1]*m1[3]+subst(m0[3],x,(m1[2][1,1]*x+m1[2][1,2])/md)*md^2;m=[m0[1]*m1[1],m0[2]*m1[2],mh];infq=polcoef(C[2],2);infp=polcoef(C[1],4);if(m[2][2,1]!=0 && issquare(infq^2+4*infp,&infr),inz=Set([(-infq+infr)/2,(-infq-infr)/2]);for(infi=1,#inz,slope=m[2][1,1]/m[2][2,1];square=(m[1]*inz[infi]+polcoef(m[3],2))/m[2][2,1]^2/den;if(square^2!=subst(D,x,slope),error("Quartic infinity transformation failed"));xx=(slope^2-E.b2-4*x0+square)/8;yy=(v0+slope*(xx-x0)-E.a1*xx-E.a3)/2;W=[xx,yy];if(!ellisoncurve(E,W),error("Mapped point off curve"));W=ellchangepointinv(W,modelchange);if(!ellisoncurve(Eoriginal,W),error("Minimal model inverse failed"));print("POINT ",W);));H=hyperellratpoints(C,[65536,16]);for(j=1,#H,h=H[j][1];z=H[j][2];dd=m[2][2,1]*h+m[2][2,2];if(dd==0,next);slope=(m[2][1,1]*h+m[2][1,2])/dd;square=(m[1]*z+subst(m[3],x,h))/dd^2/den;if(square^2!=subst(D,x,slope),error("Quartic transformation failed"));xx=(slope^2-E.b2-4*x0+square)/8;yy=(v0+slope*(xx-x0)-E.a1*xx-E.a3)/2;W=[xx,yy];if(!ellisoncurve(E,W),error("Mapped point off curve"));W=ellchangepointinv(W,modelchange);if(!ellisoncurve(Eoriginal,W),error("Minimal model inverse failed"));print("POINT ",W););print("ANCHOR_DONE ",k," ",#H));
+print("SEARCH_END");quit;

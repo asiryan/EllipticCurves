@@ -1,0 +1,8 @@
+{
+  "points_checked": 23,
+  "matrix_rank": 23,
+  "torsion_2_dimension_upper_bound": 0,
+  "rank_lower_bound": 23,
+  "all_points_independent_modulo_torsion": true,
+  "conditional_assumptions": []
+}

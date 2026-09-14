@@ -1,0 +1,85 @@
+{
+  "campaigns": [
+    {
+      "source": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-hunt\\first-20260914\\search-v2",
+      "tested_curves": 12,
+      "best_lower_bound": 17,
+      "distribution": {
+        "17": 12
+      },
+      "controller_wall_seconds": 364.56283929996425,
+      "aggregate_point_search_seconds": 722.579087299935,
+      "best_candidate": {
+        "id": "c004",
+        "u": 220316,
+        "v": 773231,
+        "file": "curve_220316_773231.json",
+        "score": 22.865063462216295,
+        "screening_score": 20.337970204915646,
+        "tail_score": 2.527093257300649,
+        "seed_lower_bound": 17,
+        "j_invariant": "-128335668726826038741391904820998084481645946883512617407823778992241121487566244527935095744373429091545095229110206646576563770630311107912280534322912005266466198134703631552373842307902664971652987025995281/456081787825225447723877383075531038626846627936662731727708417093360860005001188301503001553407062706202063688932840289854924041391993061765731916979908129426457293769723648781079163647881678850058190848",
+        "published_novelty_verified": false,
+        "source_file": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-hunt\\first-20260914\\candidates\\curve_220316_773231.json",
+        "input_sha256": "23a5964d5f948832529177c2d260cae341dd3582871cc053455e271b42992fda",
+        "prior_point_search_data_used": false,
+        "lower_bound": 17,
+        "status": "budget_completed",
+        "search_seconds": 240.21897469996475,
+        "last_process_exit_code": 0,
+        "last_process_wall_seconds": 180.74508530000458
+      },
+      "audit_seconds": 7.849747699976433
+    },
+    {
+      "source": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-hunt\\grid-20260914\\search",
+      "tested_curves": 6,
+      "best_lower_bound": 23,
+      "distribution": {
+        "17": 4,
+        "19": 1,
+        "23": 1
+      },
+      "controller_wall_seconds": 342.71038599999156,
+      "aggregate_point_search_seconds": 471.41072300000815,
+      "best_candidate": {
+        "id": "c000",
+        "u": -5037,
+        "v": 2518,
+        "file": "curve_-5037_2518.json",
+        "score": 24.579966721480364,
+        "screening_score": 21.406454529954768,
+        "tail_score": 3.173512191525596,
+        "seed_lower_bound": 17,
+        "j_invariant": "-3481547606082192386398497674048808423476098211370949138475858607026858914045205038689058079905878881012516458098626938531694901876454863734526273483528426435220561/29968632089636742291193844347466959533254269650209839045780815597215679636557075618997384988513684059152136822973687898035437819194284095784914097949822681088",
+        "seed_origin": "fresh export of the 17 generic family sections",
+        "old_point_files_loaded": false,
+        "published_novelty_verified": false,
+        "source_file": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\record-hunt\\grid-20260914\\candidates\\curve_-5037_2518.json",
+        "input_sha256": "ff0993e2db488df6949b07edf3e02f19f71414d660212c600de9dcaf2cb066a5",
+        "prior_point_search_data_used": false,
+        "lower_bound": 23,
+        "status": "budget_completed",
+        "search_seconds": 300.03650639997795,
+        "last_process_exit_code": 0,
+        "last_process_wall_seconds": 210.58714820002206
+      },
+      "audit_seconds": 12.534059199970216
+    }
+  ],
+  "best_lower_bound": 23,
+  "target": 32,
+  "target_reached": false,
+  "independent_verification": {
+    "points_checked": 23,
+    "matrix_rank": 23,
+    "torsion_2_dimension_upper_bound": 0,
+    "rank_lower_bound": 23,
+    "all_points_independent_modulo_torsion": true,
+    "conditional_assumptions": []
+  },
+  "different_j_from_reference": true,
+  "global_novelty_not_established": true,
+  "exact_model_change_checked": true,
+  "no_full_rank_computation": true
+}
