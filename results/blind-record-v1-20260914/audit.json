@@ -1,0 +1,27 @@
+{
+  "campaign": "C:\\Users\\Profit77\\Documents\\Git\\EllipticCurves\\artifacts\\blind-search\\record-v1",
+  "status": "error",
+  "seed_count": 17,
+  "certified_lower_bound": 24,
+  "wall_seconds": 393.6308729999582,
+  "jobs_checked": 11182,
+  "used_anchor_combinations_exactly_checked": 7029,
+  "raw_point_outputs_checked": 10982,
+  "timed_out_attempts": 0,
+  "archive_is_exact_seed_union_search_outputs": true,
+  "all_used_anchors_come_from_previously_observed_points": true,
+  "all_search_scripts_regenerated": true,
+  "reference_points_or_recipe_loaded": false,
+  "seeded_not_equation_only": true,
+  "curve_previously_used_in_method_development": true,
+  "no_full_rank_computation": true,
+  "independent_verification": {
+    "points_checked": 24,
+    "matrix_rank": 24,
+    "torsion_2_dimension_upper_bound": 0,
+    "rank_lower_bound": 24,
+    "all_points_independent_modulo_torsion": true,
+    "conditional_assumptions": []
+  },
+  "audit_seconds": 26.364019400032703
+}

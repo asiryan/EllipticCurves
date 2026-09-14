@@ -1,0 +1,37 @@
+{
+  "policy": {
+    "version": 1,
+    "area_exponents": [
+      20,
+      24,
+      28,
+      32,
+      36,
+      40
+    ],
+    "denominator_exponents": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20
+    ],
+    "model_order": "interleave coefficient size, anchor height, fixed shuffle",
+    "random_seed": 20260914,
+    "batch_size": 32,
+    "rebuild_on_certified_growth": true,
+    "reference_access": false
+  },
+  "code_sha256": {
+    "blind_search.py": "94bf9a8dfbfc74efaefe6c3338f57f4edb464989fd922fd0b5623b1183e8dcd5",
+    "point_search.py": "156aab95508357f25c0aa929d9dffffcb9af9f0df35e8fe5bf7bb05426eab556",
+    "point_anchor_pool.py": "e9f159822ed480204150d0f97d850b1dc8a346c332802edf88999f5fdb2d8b69",
+    "point_arithmetic.py": "175814487c989cb1b64621e73e891e8a02938d9fa8af0c97d18b74971ca6e937"
+  },
+  "input_sha256": "9c3ae524d9ae91306e7c9f23567b33101e80fca893cc06ed6f0c36de211dcc0c",
+  "anchors": 2048,
+  "job_seconds": 2,
+  "workers": 2,
+  "target": 31
+}

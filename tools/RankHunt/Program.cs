@@ -54,7 +54,7 @@ try
     else if (mode == "enrich")
         Structured302.Enrich(Get("input-dir", "artifacts/rank-hunt/h10000"),
             Get("output", "artifacts/rank-structure-audit/enriched-h10000"), cancellation.Token);
-    else if (mode is "verify" or "relations")
+    else if (mode is "verify" or "relations" or "basis")
     {
         using var data = JsonDocument.Parse(File.ReadAllText(Get("input", "")));
         var a = data.RootElement.GetProperty("ainvs").EnumerateArray().Select(x => Q(x.GetString()!)).ToArray();
@@ -62,6 +62,25 @@ try
         var points = data.RootElement.GetProperty("points").EnumerateArray()
             .Select(x => new EllipticCurvePoint(Q(x[0].GetString()!), Q(x[1].GetString()!))).ToArray();
         var cert = curve.GetRankLowerBound(points, Number("prime-bound", 1009, 3, 10000), cancellation.Token);
+        if (mode == "basis")
+        {
+            var relations = KummerRelations.Find(curve, points, Number("prime-bound", 1009, 3, 10000));
+            var nonpivots = relations.Select(r => r.Max()).ToHashSet();
+            var indices = Enumerable.Range(0, points.Length).Where(i => !nonpivots.Contains(i)).ToArray();
+            var selected = indices.Select(i => points[i]).ToArray();
+            var selectedCert = curve.GetRankLowerBound(selected, Number("prime-bound", 1009, 3, 10000), cancellation.Token);
+            // Character independence alone may include rational 2-torsion.
+            // Only expose a basis for the height search after proving every
+            // selected point independent modulo torsion by the lower bound.
+            bool independent = selectedCert.LowerBound == selected.Length;
+            Console.WriteLine(JsonSerializer.Serialize(new { point_count = points.Length,
+                cert.LowerBound, cert.ImageDimension, cert.NoTwoTorsionPrime,
+                selected_indices = indices, selected_lower_bound = selectedCert.LowerBound,
+                all_selected_independent = independent,
+                points = independent ? selected.Select(p => new[] { p.X.ToString(), p.Y.ToString() }).ToArray() : [],
+                hypotheses = Array.Empty<string>() }, Hunt.JsonOptions));
+            return;
+        }
         if (mode == "relations")
         {
             var relations = KummerRelations.Find(curve, points, Number("prime-bound", 1009, 3, 10000));
