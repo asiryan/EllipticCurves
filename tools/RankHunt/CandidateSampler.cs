@@ -20,18 +20,34 @@ static class CandidateSampler
     {
         public readonly int P;
         readonly int[] inverse, scores;
+        readonly ulong reciprocal;
         public Table(int p)
         {
-            P = p; inverse = new int[p]; scores = new int[p + 1]; inverse[1] = 1;
+            if(p<2 || p>65535)throw new ArgumentOutOfRangeException(nameof(p));
+            P = p; reciprocal=(1UL<<32)/(uint)p;
+            inverse = new int[p]; scores = new int[p + 1]; inverse[1] = 1;
             for (int i = 2; i < p; i++) inverse[i] = p - (int)((long)(p / i) * inverse[p % i] % p);
             var local = new Local302(p);
             for (int i = 0; i <= p; i++) scores[i] = (int)Math.Round(Scale * local.Score(i), MidpointRounding.AwayFromZero);
         }
         public int Score(int u, int v)
         {
-            int d = v % P;
-            return scores[d == 0 ? P : (int)((long)Local302.Mod(u, P) * inverse[d] % P)];
+            int d=Reduce((uint)v);
+            if(d==0)return scores[P];
+            int n=Reduce((uint)(u<0 ? -(long)u : u));
+            if(u<0 && n!=0)n=P-n;
+            return scores[Reduce((uint)n*(uint)inverse[d])];
         }
+        int Reduce(uint value)
+        {
+            // floor(2^32/P) underestimates the quotient by at most one.
+            uint quotient=(uint)(((ulong)value*reciprocal)>>32);
+            uint remainder=value-quotient*(uint)P;
+            return (int)(remainder>=(uint)P ? remainder-(uint)P : remainder);
+        }
+        public int Inverse(long value) => inverse[(int)(value % P)];
+        public int[] FavoredResidues() => Enumerable.Range(0,P).OrderByDescending(i=>scores[i])
+            .ThenBy(i=>i).Take(Math.Max(1,(P+3)/4)).ToArray();
     }
     static ulong Next(ref ulong state)
     {
@@ -51,16 +67,53 @@ static class CandidateSampler
         public long Draws { get; set; }
         public long PrimitiveDraws { get; set; }
         public Candidate[][] Retained { get; set; } = [[], [], [], []];
+        public bool CongruenceSampling { get; set; }
+        public bool DenseBands { get; set; }
+        public long CongruenceDraws { get; set; }
+        public long CongruencePrimitiveDraws { get; set; }
     }
 
-    public static void RunBands(SampleOptions options, string directory, CancellationToken token)
+    sealed record CrtPlan(long Modulus,long Residue);
+
+    static CrtPlan[] CrtPlans(int height,int seed,Table[] tables)
+    {
+        ulong state=(ulong)seed ^ 0x43525420260914UL;
+        var small=tables.Where(t=>t.P<=101).ToArray();
+        var favored=small.ToDictionary(t=>t.P,t=>t.FavoredResidues());
+        var plans=new CrtPlan[1024];
+        for(int k=0;k<plans.Length;k++)
+        {
+            var order=small.ToArray();
+            for(int i=order.Length-1;i>0;i--)
+            {int j=(int)(Next(ref state)%(uint)(i+1));(order[i],order[j])=(order[j],order[i]);}
+            long modulus=1,residue=0;int count=0;
+            var conditions=new List<(int P,int R)>();
+            foreach(var table in order)
+            {
+                if(modulus*table.P>2L*height)continue;
+                var choices=favored[table.P];int target=choices[Next(ref state)%(uint)choices.Length];
+                long step=(long)Local302.Mod(target-residue,table.P)*table.Inverse(modulus)%table.P;
+                residue+=modulus*step;modulus*=table.P;conditions.Add((table.P,target));
+                if(++count==4)break;
+            }
+            if(conditions.Any(c=>residue%c.P!=c.R) || residue<0 || residue>=modulus)
+                throw new InvalidOperationException("CRT construction failed.");
+            plans[k]=new(modulus,residue);
+        }
+        return plans;
+    }
+
+    public static void RunBands(SampleOptions options, string directory, CancellationToken token,
+        bool congruenceSampling=false, bool denseBands=false)
     {
         Directory.CreateDirectory(directory);
         string checkpoint = Path.Combine(directory, "band-checkpoint.json");
         var state = File.Exists(checkpoint)
             ? JsonSerializer.Deserialize<BandCheckpoint>(File.ReadAllText(checkpoint))!
-            : new BandCheckpoint { Options = options, RandomState = (ulong)options.Seed };
-        if (state.Options != options) throw new ArgumentException("Band sampling options differ from checkpoint.");
+            : new BandCheckpoint { Options = options, RandomState = (ulong)options.Seed,
+                CongruenceSampling=congruenceSampling, DenseBands=denseBands };
+        if (state.Options != options || state.CongruenceSampling!=congruenceSampling || state.DenseBands!=denseBands)
+            throw new ArgumentException("Band sampling options differ from checkpoint.");
         if (File.Exists(Path.Combine(directory, "complete.json"))) return;
         var watch = Stopwatch.StartNew();
         int[] Spread(int low, int high, int count)
@@ -70,7 +123,9 @@ static class CandidateSampler
         }
         // Independent channels: a poor small-prime score cannot veto the later bands.
         // The fourth channel is a fixed-size random reservoir, independent of scores.
-        var bands = new[] { Local302.Primes(1021), Spread(1021,8191,12), Spread(8191,32749,8) };
+        var bands = new[] { Local302.Primes(1021),
+            denseBands ? Local302.Primes(16381).Where(p=>p>1021).ToArray() : Spread(1021,8191,12),
+            Spread(8191,32749,8) };
         var tables = new Table[bands.Length][];
         for (int band = 0; band < bands.Length; band++)
         {
@@ -80,6 +135,7 @@ static class CandidateSampler
                 i => tables[current][i] = new Table(bands[current][i]));
             Console.WriteLine($"band tables {band+1}/{bands.Length}: {watch.Elapsed.TotalSeconds:F2}s");
         }
+        var plans=congruenceSampling ? CrtPlans(options.Height,options.Seed,tables[0]) : [];
         int quota = Math.Max(1, options.Keep/4);
         var queues = Enumerable.Range(0,4).Select(_ => new PriorityQueue<Candidate,(double,int,int)>()).ToArray();
         var members = Enumerable.Range(0,4).Select(_ => new HashSet<(int,int)>()).ToArray();
@@ -108,10 +164,29 @@ static class CandidateSampler
             while(state.PrimitiveDraws<options.Samples && state.Draws<8L*options.Samples)
             {
                 token.ThrowIfCancellationRequested();state.Draws++;
-                int u=(int)(Next(ref randomState)%(uint)(2L*options.Height+1))-options.Height;
-                int v=1+(int)(Next(ref randomState)%(uint)options.Height);
+                int u,v;bool conditioned=congruenceSampling && Next(ref randomState)%5!=0;
+                if(conditioned)
+                {
+                    // u = R*v (mod M), with a representative in [-H,H].
+                    // M <= 2H guarantees a nonempty interval for every v.
+                    var plan=plans[Next(ref randomState)%(uint)plans.Length];
+                    v=1+(int)(Next(ref randomState)%(uint)options.Height);
+                    long residue=plan.Residue*v%plan.Modulus;
+                    long first=residue-((residue+options.Height)/plan.Modulus)*plan.Modulus;
+                    long count=(options.Height-first)/plan.Modulus+1;
+                    u=(int)(first+(long)(Next(ref randomState)%(ulong)count)*plan.Modulus);
+                    if(u < -options.Height || u > options.Height || (u-plan.Residue*v)%plan.Modulus!=0)
+                        throw new InvalidOperationException("CRT draw failed.");
+                    state.CongruenceDraws++;
+                }
+                else
+                {
+                    u=(int)(Next(ref randomState)%(uint)(2L*options.Height+1))-options.Height;
+                    v=1+(int)(Next(ref randomState)%(uint)options.Height);
+                }
                 if(Gcd(u,v)!=1)continue;
                 state.PrimitiveDraws++;
+                if(conditioned)state.CongruencePrimitiveDraws++;
                 double randomPriority=(Next(ref randomState)>>11)*(1.0/(1UL<<53));
                 if(u!=164518 || v!=924945)
                 {
@@ -154,6 +229,9 @@ static class CandidateSampler
         }
         Hunt.Save(Path.Combine(directory,"candidates.json"),output);
         Hunt.Save(Path.Combine(directory,"complete.json"),new{options,selection="independent bands plus random reservoir",
+            congruence_sampling=congruenceSampling,crt_plan_count=plans.Length,
+            dense_middle_band=denseBands,
+            state.CongruenceDraws,state.CongruencePrimitiveDraws,
             bands,state.Draws,state.PrimitiveDraws,rescored=candidates.Count,exported=output.Count,
             seconds=watch.Elapsed.TotalSeconds,score_is_not_a_rank_bound=true,
             full_rescore_uses_screening_primes=true,unbiased_holdout_claimed=false});

@@ -103,6 +103,47 @@ def adaptive_promoted(rows,count):
     return chosen
 
 
+def prepare_multiscale(output,samples,heights,workers,seed):
+    """One pooled input, with separate bounded samples at several heights."""
+    output=Path(output).resolve()
+    if output==ROOT or not output.is_relative_to(ROOT):raise ValueError('Use a dedicated workspace directory')
+    output.mkdir(parents=True,exist_ok=True)
+    dll=ROOT/'tools/RankHunt/bin/Release/net8.0/RankHunt.dll'
+    config={'samples':samples,'heights':heights,'workers':workers,'seed':seed,'dll_sha256':digest(dll)}
+    checkpoint=output/'generation.json'
+    if checkpoint.exists():
+        old=read(checkpoint)
+        if old['config']!=config:raise ValueError('Generation settings changed')
+        if old['status']=='completed':return
+    save(checkpoint,{'config':config,'status':'running'})
+    def one(index,height):
+        count=samples//len(heights)+int(index<samples%len(heights))
+        folder=output/f'h{height}'
+        command=['dotnet',str(dll),'sample','--selection','bands','--samples',str(count),
+            '--height',str(height),'--keep','256','--refine-keep','256','--final-keep','48',
+            '--prime-bound','65521','--workers',str(workers),'--seed',str(seed+index),'--output',str(folder)]
+        process=subprocess.run(command,capture_output=True,text=True,timeout=1200)
+        if process.returncode:raise RuntimeError(process.stdout[-2000:]+'\n'+process.stderr)
+        meta=read(folder/'complete.json')
+        print(json.dumps({'generated_height':height,'primitive_draws':meta['PrimitiveDraws'],
+                          'finalists':meta['exported'],'seconds':round(meta['seconds'],2)}),flush=True)
+        return height,read(folder/'candidates.json'),meta
+    results=[]
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures=[executor.submit(one,i,h) for i,h in enumerate(heights)]
+        for future in as_completed(futures):results.append(future.result())
+    seen={str(j_invariant({'ainvs':RECORD_A}))};rows=[]
+    for height,candidates,meta in sorted(results):
+        for row in candidates:
+            if row['j_invariant'] in seen:continue
+            seen.add(row['j_invariant'])
+            rows.append({**row,'file':f'h{height}/'+row['file'],'sampling_height':height})
+    save(output/'candidates.json',rows)
+    save(checkpoint,{'config':config,'status':'completed','primitive_draws':sum(r[2]['PrimitiveDraws'] for r in results),
+                    'sampling_with_replacement':True,'distinct_finalists':len(rows)})
+    print(f'Pooled {len(rows)} different candidate j-invariants.',flush=True)
+
+
 def run_fast(args):
     from fast_search import search,independent_result
     check_engine()
@@ -129,6 +170,7 @@ def run_fast(args):
     config={'inputs':{r['id']:r['input_sha256'] for r in selected},
         'counts':args.counts,'seconds':args.seconds,'target':args.target,'anchors':args.anchors,
         'workers':args.point_workers,'parallel':args.parallel_curves,'job_seconds':args.job_seconds,
+        'batch_size':args.batch_size,
         'confirmation_bound':args.confirmation_bound,
         'controller_sha256':digest(Path(__file__)),'point_engine_sha256':digest(ROOT/'tools/RankHunt/fast_search.py')}
     checkpoint=out/'campaign.json'
@@ -147,7 +189,7 @@ def run_fast(args):
             previous=read(folder/'checkpoint.json');used=previous['wall_seconds'];old=previous['lower_bound']
         if used<budget and old<args.target:
             search(row['input'],folder,max(1,budget-used),args.point_workers,args.anchors,args.target,
-                   job_seconds=args.job_seconds)
+                   batch_size=args.batch_size,job_seconds=args.job_seconds)
         result=read(folder/'checkpoint.json');elapsed=result['wall_seconds']
         initial=result['initial_lower_bound'];bound=result['lower_bound']
         return {**row,'seed_lower_bound':initial,'lower_bound':bound,'search_seconds':elapsed,
@@ -365,11 +407,23 @@ if __name__=='__main__':
     p.add_argument('--previously-studied',action='store_true',help='Record prior work on these curves in the audit context')
     p.add_argument('--fast',action='store_true',help='Batch point searches with compact checkpoints and adaptive selection')
     p.add_argument('--confirmation-bound',type=int,default=262139,help='Later-prime check for --fast; 0 disables it')
+    p.add_argument('--generate',action='store_true',help='Prepare a multiscale candidate pool before --fast')
+    p.add_argument('--samples',type=int,default=10000000)
+    p.add_argument('--heights',type=int,nargs='+',default=[3000,10000,30000,100000,1000000])
+    p.add_argument('--generation-workers',type=int,default=4)
+    p.add_argument('--generation-seed',type=int,default=20260916)
+    p.add_argument('--batch-size',type=int,default=8,help='Pointed models per PARI process in --fast')
     args=p.parse_args()
     if not (len(args.counts)==len(args.seconds) and 1<=len(args.counts)<=8
         and all(1<=v<=1000 for v in args.counts) and all(1<=v<=86400 for v in args.seconds)
         and args.counts==sorted(args.counts,reverse=True) and args.seconds==sorted(set(args.seconds))
-        and 1<=args.point_workers<=8 and 1<=args.parallel_curves<=4 and args.point_workers*args.parallel_curves<=16
+        and 1<=args.point_workers<=8 and 1<=args.parallel_curves<=4 and args.point_workers*args.parallel_curves<=32
         and 1<=args.anchors<=4096 and .05<=args.job_seconds<=60 and 1<=args.target<=100
-        and (args.confirmation_bound==0 or 65521<args.confirmation_bound<=262139)):p.error('Invalid bounded campaign settings')
+        and 1<=args.batch_size<=32 and (args.confirmation_bound==0 or 65521<args.confirmation_bound<=262139)):p.error('Invalid bounded campaign settings')
+    if args.generate:
+        if not (args.fast and len(args.heights)==len(set(args.heights)) and 1<=len(args.heights)<=10
+                and len(args.heights)<=args.samples<=100000000 and all(1<=h<=1000000000 for h in args.heights)
+                and 1<=args.generation_workers<=8 and 0<=args.generation_seed<=2147483637):
+            p.error('Invalid bounded generation settings')
+        prepare_multiscale(args.candidates,args.samples,args.heights,args.generation_workers,args.generation_seed)
     (run_fast if args.fast else run)(args)

@@ -33,9 +33,13 @@ try
         string selection = Get("selection", "cumulative");
         if (selection == "bands")
             CandidateSampler.RunBands(cfg, Get("output", "artifacts/record-hunt/candidates"), cancellation.Token);
+        else if (selection == "crt")
+            CandidateSampler.RunBands(cfg, Get("output", "artifacts/record-hunt/candidates"), cancellation.Token, true);
+        else if (selection == "dense")
+            CandidateSampler.RunBands(cfg, Get("output", "artifacts/record-hunt/candidates"), cancellation.Token, false, true);
         else if (selection == "cumulative")
             CandidateSampler.Run(cfg, Get("output", "artifacts/record-hunt/candidates"), cancellation.Token);
-        else throw new ArgumentException("Selection must be cumulative or bands.");
+        else throw new ArgumentException("Selection must be cumulative, bands, crt or dense.");
     }
     else if (mode == "rescore")
     {

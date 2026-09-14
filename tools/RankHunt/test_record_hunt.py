@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -36,6 +37,48 @@ class RecordHuntTests(unittest.TestCase):
 
     def test_preserved_engine_is_unchanged(self):
         self.assertEqual(len(check_engine()),5)
+
+    def test_multiscale_generation_counts_deduplicates_and_resumes(self):
+        from record_hunt import prepare_multiscale
+        calls=[]
+        def sample(command,**kwargs):
+            count=int(command[command.index('--samples')+1]);calls.append(count)
+            folder=Path(command[command.index('--output')+1]);folder.mkdir()
+            save(folder/'candidates.json',[{'file':'curve.json','j_invariant':'1728','u':1,'v':1}])
+            save(folder/'complete.json',{'PrimitiveDraws':count,'exported':1,'seconds':.1})
+            return SimpleNamespace(returncode=0,stdout='',stderr='')
+        out=self.root/'multiscale'
+        with patch('record_hunt.subprocess.run',side_effect=sample):
+            prepare_multiscale(out,11,[100,200],1,10)
+            prepare_multiscale(out,11,[100,200],1,10)
+            with self.assertRaises(ValueError):prepare_multiscale(out,12,[100,200],1,10)
+        self.assertEqual(sorted(calls),[5,6])
+        meta=json.loads((out/'generation.json').read_text())
+        self.assertEqual(meta['primitive_draws'],11)
+        rows=json.loads((out/'candidates.json').read_text())
+        self.assertEqual(len(rows),1)
+        self.assertEqual(rows[0]['file'],'h100/curve.json')
+
+    def test_crt_sampler_repeats_and_keeps_valid_specializations(self):
+        dll=os.environ.get('RANKHUNT_TEST_DLL',str(ROOT/'tools/RankHunt/bin/Release/net8.0/RankHunt.dll'))
+        outputs=[]
+        for name in ['crt-a','crt-b']:
+            folder=self.root/name
+            command=['dotnet',dll,'sample','--selection','crt','--samples','100','--height','1000',
+                '--keep','8','--refine-keep','8','--final-keep','2','--prime-bound','16382',
+                '--workers','2','--seed','101','--output',str(folder)]
+            process=subprocess.run(command,capture_output=True,text=True,timeout=45)
+            self.assertEqual(process.returncode,0,process.stdout+process.stderr)
+            meta=json.loads((folder/'complete.json').read_text())
+            self.assertTrue(meta['congruence_sampling'])
+            self.assertGreater(meta['CongruencePrimitiveDraws'],0)
+            rows=json.loads((folder/'candidates.json').read_text());outputs.append(rows)
+            from blind_search import clean,certify
+            for row in rows:
+                path=folder/row['file'];data=clean(json.loads(path.read_text()))
+                self.assertEqual(str(j_invariant(data)),row['j_invariant'])
+                self.assertEqual(certify(path)['LowerBound'],row['seed_lower_bound'])
+        self.assertEqual(outputs[0],outputs[1])
 
     def test_adaptive_selection_keeps_best_and_reserves_exploration(self):
         from record_hunt import adaptive_promoted
