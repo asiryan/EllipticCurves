@@ -131,6 +131,30 @@ before returning. Parallel scheduling may change covering representatives, work
 counts and partial lower bounds; an upper bound still requires complete descent.
 See [the descent construction and proof conditions](docs/two-descent.md).
 
+## Equation-only lower-bound search
+
+For an equation-only search that computes **only a lower bound**, use
+`SearchRankLowerBound`. It searches rational coordinates with a modular sieve
+and certifies the points it finds, without factorization or full descent:
+
+```csharp
+var result = e.SearchRankLowerBound(new RankLowerBoundSearchOptions
+{
+    NumeratorRadius = 1200000000,
+    DenominatorRootBound = 1, // integer x; increase to include x = m/d²
+    TimeLimit = TimeSpan.FromSeconds(10),
+    TargetLowerBound = 17 // optional early-stop target
+});
+Console.WriteLine(result.LowerBound);
+Console.WriteLine(result.StopReason);
+```
+
+Time and work limits preserve the established bound and point witnesses.
+A zero result does not prove rank zero. Large-coordinate points can be beyond
+the searched box, and finite reduction characters may not certify all found
+points. See [equation-only lower-bound search](docs/rank-lower-bound-search.md)
+for coordinate conventions, limitations and measured examples.
+
 ## Analytic rank and BSD
 
 ```csharp
@@ -310,5 +334,16 @@ Parameter windows feed a results panel with session history, progress, cancellat
 and time limits. Native computations run locally; only the explicit LMFDB search and fetch
 commands require internet access.
 
+The [September 2026 rank-search package audit](docs/rank-package-audit-20260914.md)
+reproduces the supplied ICARM #302 family, exact point certificates, parameter
+sieve and CRT candidates using a [local audit harness](tools/RankPackageAudit).
+Its candidate scores are heuristics; only checked point certificates give rank bounds.
+
+The [RankHunt command-line experiments](docs/rank-hunt-20260914.md) extend this
+to checkpointed searches, independent validation primes, bounded PARI point
+searches and exact point certificates. The first campaign checked 121,589,943
+parameters and independently certified a specialization of rank at least 15.
+
 # License
+
 **MIT**  

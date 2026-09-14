@@ -1,0 +1,50 @@
+[
+  {
+    "mode": "rank",
+    "minimal_model_preprocessing": true,
+    "pari_stack_limit_mb": 1024,
+    "height": 10000,
+    "anchors": 32,
+    "timeout_seconds": 120.0,
+    "seconds": 120.026,
+    "timed_out": true,
+    "process_exit_code": null,
+    "finished": false,
+    "initial_distinct_up_to_sign": 4,
+    "new_distinct_up_to_sign": 0,
+    "new_points_are_not_automatically_independent": true,
+    "gp_errors_detected": false,
+    "exact_certificate": {
+      "point_count": 4,
+      "LowerBound": 3,
+      "ImageDimension": 3,
+      "NoTwoTorsionPrime": 7,
+      "hypotheses": []
+    },
+    "parameter": "1/4"
+  },
+  {
+    "mode": "rank",
+    "minimal_model_preprocessing": true,
+    "pari_stack_limit_mb": 1024,
+    "height": 10000,
+    "anchors": 32,
+    "timeout_seconds": 120.0,
+    "seconds": 120.026,
+    "timed_out": true,
+    "process_exit_code": null,
+    "finished": false,
+    "initial_distinct_up_to_sign": 4,
+    "new_distinct_up_to_sign": 0,
+    "new_points_are_not_automatically_independent": true,
+    "gp_errors_detected": false,
+    "exact_certificate": {
+      "point_count": 4,
+      "LowerBound": 3,
+      "ImageDimension": 3,
+      "NoTwoTorsionPrime": 13,
+      "hypotheses": []
+    },
+    "parameter": "4/3"
+  }
+]

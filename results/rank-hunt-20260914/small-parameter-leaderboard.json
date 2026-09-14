@@ -1,0 +1,232 @@
+[
+  {
+    "curve": "curve_-1_4",
+    "mode": "rank",
+    "lower_bound": 15,
+    "new_points": 14,
+    "seconds": 7.207,
+    "timed_out": false,
+    "finished": true,
+    "error": null
+  },
+  {
+    "curve": "curve_-1_1",
+    "mode": "rank",
+    "lower_bound": 14,
+    "new_points": 13,
+    "seconds": 12.788,
+    "timed_out": false,
+    "finished": true,
+    "error": null
+  },
+  {
+    "curve": "curve_-2_1",
+    "mode": "rank",
+    "lower_bound": 14,
+    "new_points": 12,
+    "seconds": 11.033,
+    "timed_out": false,
+    "finished": true,
+    "error": null
+  },
+  {
+    "curve": "curve_-1_3",
+    "mode": "rank",
+    "lower_bound": 12,
+    "new_points": 10,
+    "seconds": 0.501,
+    "timed_out": false,
+    "finished": true,
+    "error": null
+  },
+  {
+    "curve": "curve_0_1",
+    "mode": "rank",
+    "lower_bound": 12,
+    "new_points": 10,
+    "seconds": 3.154,
+    "timed_out": false,
+    "finished": true,
+    "error": null
+  },
+  {
+    "curve": "curve_-1_2",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 17.994,
+    "timed_out": false,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_-2_3",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.022,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_-3_1",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.026,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_-3_2",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.022,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_-3_4",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.024,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_-4_1",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.028,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_-4_3",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.038,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_1_1",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 18.687,
+    "timed_out": false,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_1_2",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.017,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_1_3",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.0,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_1_4",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.02,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_2_1",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.012,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_2_3",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.02,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_3_1",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.019,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_3_2",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 20.387,
+    "timed_out": false,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_3_4",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.008,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_4_1",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.019,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  },
+  {
+    "curve": "curve_4_3",
+    "mode": "rank",
+    "lower_bound": 3,
+    "new_points": 0,
+    "seconds": 30.02,
+    "timed_out": true,
+    "finished": false,
+    "error": null
+  }
+]
