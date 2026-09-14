@@ -63,7 +63,7 @@ class EquationSearchTests(unittest.TestCase):
         source=self.folder/'curve.json';b.save(source,{'ainvs':list(map(str,a))})
         out=self.folder/'run'
         process=subprocess.run([sys.executable,str(HERE/'run.py'),'--input',str(source),'--output',str(out),
-            '--bootstrap-seconds','10','--search-seconds','10','--target','2','--workers','2','--anchors','16'],
+            '--bootstrap-seconds','10','--search-seconds','10','--target','2','--workers','2','--anchors','16','--seed-limit','1'],
             text=True,capture_output=True,timeout=35)
         self.assertEqual(process.returncode,0,process.stdout+'\n'+process.stderr)
         result=json.loads((out/'result.json').read_text())
@@ -71,6 +71,7 @@ class EquationSearchTests(unittest.TestCase):
         self.assertEqual(result['initial_points'],0)
         self.assertTrue(result['verification']['all_points_independent_modulo_torsion'])
         self.assertEqual(result['bootstrap_errors'],[])
+        self.assertEqual(len(json.loads((out/'seed.json').read_text())['points']),1)
         secret=self.folder/'reference.json';b.save(secret,{'points':[['0','2']]})
         script=('import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
                 'from run import data_boundary;data_boundary(Path(sys.argv[2]),Path(sys.argv[3]));'
@@ -87,6 +88,36 @@ class EquationSearchTests(unittest.TestCase):
         self.assertGreaterEqual(result['rank_lower_bound'],2)
         verified=independent_result(result,result['rank_lower_bound'])
         self.assertTrue(verified['verification']['all_points_independent_modulo_torsion'])
+
+    def test_projection_inverse_and_companion_group_relation(self):
+        from geometry import to_quartic,from_quartic
+        from point_arithmetic import add,multiply,negate
+        a=list(map(b.Q,[0,0,0,-25,4]));p=(b.Q(0),b.Q(2));q=(b.Q(5),b.Q(2))
+        checked=0
+        for i in range(-3,4):
+            for j in range(-3,4):
+                candidate=add(a,multiply(a,p,i),multiply(a,q,j))
+                if candidate is None or candidate[0]==p[0]:continue
+                t,z=to_quartic(a,p,candidate)
+                self.assertEqual(from_quartic(a,p,(t,z)),candidate)
+                self.assertEqual(from_quartic(a,p,(t,-z)),negate(a,add(a,p,candidate)))
+                checked+=1
+        self.assertGreater(checked,30)
+
+    def test_denominator_square_search_reaches_nonintegral_points(self):
+        from geometry import small_points
+        from point_arithmetic import multiply,negate
+        a=list(map(b.Q,[0,0,0,-25,4]));twice=multiply(a,(b.Q(0),b.Q(2)),2)
+        observed={p for p,_ in small_points(a,700,4)}
+        self.assertIn(min(twice,negate(a,twice)),observed)
+        self.assertTrue(all(b.on_curve(a,p) for p in observed))
+
+    def test_fixed_single_anchor_finds_new_direction(self):
+        from seeded import search,independent_result
+        source=self.folder/'single.json';b.save(source,{'ainvs':['0','0','0','-25','4'],'points':[['0','2']]})
+        result=search(source,self.folder/'fixed',5,1,16,2,anchor_mode='fixed')
+        self.assertGreaterEqual(result['rank_lower_bound'],2)
+        self.assertTrue(independent_result(result,result['rank_lower_bound'])['verification']['all_points_independent_modulo_torsion'])
 
 
 if __name__=='__main__':unittest.main()

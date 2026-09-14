@@ -174,12 +174,12 @@ def select_basis(data):
     return {**basis,'rank_lower_bound':claim['rank_lower_bound'],'certificate':cert,'verification':claim}
 
 
-def discover(data, output, seconds=120, workers=12, job_seconds=2):
+def discover(data, output, seconds=120, workers=12, job_seconds=2, seed_limit=None):
     output=Path(output); output.mkdir(parents=True,exist_ok=True)
     start=time.perf_counter(); deadline=start+seconds
     a=list(map(Q,data['ainvs'])); observed={}; jobs=[]; models=[]; errors=[]
     state={'equation_only':True,'status':'preparing','points':[], 'lower_bound':0,
-           'workers':workers,'job_seconds':job_seconds,'budget_seconds':seconds}
+           'workers':workers,'job_seconds':job_seconds,'budget_seconds':seconds,'seed_limit':seed_limit}
     def checkpoint(status):
         state.update(status=status,seconds=time.perf_counter()-start,points=list(observed),
                      jobs=len(jobs),models=len(models),errors=errors)
@@ -197,6 +197,22 @@ def discover(data, output, seconds=120, workers=12, job_seconds=2):
     if prepared is None:
         checkpoint('preparation_timeout'); return None,state
     save(output/'minimal.json',prepared)
+    if seed_limit==1:
+        from geometry import small_points
+        u,r,s,t=map(Q,prepared['change'])
+        for (x,y),origin in small_points(prepared['ainvs']):
+            point=canonical_point(a,(u*u*x+r,u**3*y+s*u*u*x+t))
+            keep([point],{'method':'square_denominator',**origin})
+            basis=select_basis({'ainvs':data['ainvs'],'points':[point]})
+            if basis and basis['rank_lower_bound']==1:
+                state['lower_bound']=1
+                save(output/'seed.json',basis)
+                save(output/'origins.json',[{'point':point,**observed[point]}])
+                checkpoint('seed_found')
+                print(json.dumps({'phase':'bootstrap','lower_bound':1,'seconds':state['seconds'],
+                                  'input_points':0,'method':'square_denominator'}),flush=True)
+                return basis,state
+            if time.perf_counter()>=deadline: break
     # An additional coefficient-derived search: divisors of b6, with no assumption
     # that the remaining cofactor is prime. Every generated divisor is exact.
     divisors=[1]
@@ -260,6 +276,10 @@ def discover(data, output, seconds=120, workers=12, job_seconds=2):
                 if observed:
                     basis=select_basis({'ainvs':data['ainvs'],'points':list(observed)})
                     if basis and basis['rank_lower_bound']:
+                        if seed_limit is not None and len(basis['points'])>seed_limit:
+                            points=sorted(basis['points'],key=lambda p:tuple(
+                                max(abs(Q(v).numerator),Q(v).denominator) for v in p))[:seed_limit]
+                            basis=select_basis({'ainvs':data['ainvs'],'points':points})
                         state['lower_bound']=basis['rank_lower_bound']
                         save(output/'seed.json',basis)
                         save(output/'origins.json',[{'point':p,**origin} for p,origin in observed.items()])

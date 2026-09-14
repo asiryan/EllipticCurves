@@ -74,7 +74,8 @@ def independent_result(data, expected):
 
 
 def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
-           batch_size=8, job_seconds=2, import_run=None):
+           batch_size=8, job_seconds=2, import_run=None, anchor_mode='adaptive'):
+    if anchor_mode not in ('adaptive','fixed'): raise ValueError('Unknown anchor policy')
     source, output = Path(source).resolve(), Path(output).resolve()
     if output == ROOT or not output.is_relative_to(ROOT): raise ValueError('Use a dedicated workspace directory')
     output.mkdir(parents=True, exist_ok=True)
@@ -83,7 +84,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                   for name in ['seeded.py','blind_search.py','point_search.py','bounded_anchor_pool.py',
                                'anchor_diversity.py','point_arithmetic.py']},
               'policy':POLICY, 'anchors':anchors, 'target':target, 'batch_size':batch_size,
-              'job_seconds':job_seconds, 'workers':workers}
+              'job_seconds':job_seconds, 'workers':workers,'anchor_mode':anchor_mode}
     state_path = output/'checkpoint.json'
     if state_path.exists():
         state = read(state_path)
@@ -110,6 +111,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
     if not proof['all_selected_independent'] or not proof['points']: raise ValueError('No independent seed basis')
     known = set(map(tuple, found['points']))
     if 'initial_lower_bound' not in state: state['initial_lower_bound'] = proof['LowerBound']
+    initial_basis=clean(read(source))
     started = time.perf_counter(); deadline = started + seconds; before = state['wall_seconds']
     last_save = started; last_progress = started; status = 'running'
     def checkpoint():
@@ -129,8 +131,12 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                     save(output/'basis.json', {'ainvs':found['ainvs'], 'points':proof['points']})
                     with tempfile.TemporaryDirectory(prefix='preparation-', dir=output) as temp:
                         folder = Path(temp)
-                        pool = generate(output/'basis.json', folder/'pool', anchors, anchors,
-                                        min(90,max(1,deadline-time.perf_counter())), selector=diverse_vectors)
+                        if anchor_mode=='fixed':
+                            pool={'ainvs':initial_basis['ainvs'],'points':initial_basis['points'],
+                                  'approximate_heights':[0]*len(initial_basis['points'])}
+                        else:
+                            pool = generate(output/'basis.json', folder/'pool', anchors, anchors,
+                                            min(90,max(1,deadline-time.perf_counter())), selector=diverse_vectors)
                         models = order_models(profile_models(pool, folder, min(90,max(1,deadline-time.perf_counter()))))
                     if not models: raise RuntimeError('No usable pointed models')
                     checkpoint()
@@ -174,7 +180,9 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                                      'seconds':before+time.perf_counter()-started,
                                      'attempted_models':state['attempted_models']}
                             state['events'].append(event); print(json.dumps(event),flush=True)
-                            state['generation'] += 1; models = None; improved = True; checkpoint(); break
+                            state['generation'] += 1
+                            if anchor_mode=='adaptive': models = None
+                            improved = True; checkpoint(); break
                         if time.perf_counter()-last_save >= 5: checkpoint()
                         if time.perf_counter()-last_progress >= 30:
                             print(json.dumps({'run':output.name, 'lower_bound':proof['LowerBound'],
