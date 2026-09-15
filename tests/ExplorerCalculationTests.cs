@@ -118,14 +118,32 @@ public sealed class ExplorerCalculationTests
             field.Text = workers;
             Assert.True(form.CanRun);
             var request = form.CreateRequest();
-            Assert.Equal("Result: 32", (await CalculationEngine.ExecuteAsync(request)).Trim());
+            var output = await CalculationEngine.ExecuteAsync(request);
+            Assert.Contains("Conductor: 32", output);
+            Assert.Contains("[2, 5]", output);
             using var repeat = new CalculationFormViewModel(operation, request.Equation, workbench, request);
             Assert.Equal(workers, repeat.Fields.Single(f => f.Parameter.Key == degree.Key).Text);
         }
         // Existing history entries without this setting use the default CPU limit.
-        Assert.Equal("Result: 32", (await CalculationEngine.ExecuteAsync(new(operation.Id, Classic, new()))).Trim());
+        Assert.Contains("Conductor: 32", await CalculationEngine.ExecuteAsync(new(operation.Id, Classic, new())));
         await Assert.ThrowsAsync<FormatException>(() => CalculationEngine.ExecuteAsync(
             new(operation.Id, Classic, new() { [degree.Key] = "-1" })));
+    }
+
+    [Fact]
+    public async Task ConductorReportShowsPrimeExponentRowsAndPersistsInHistory()
+    {
+        var request = Request(Operation(nameof(EllipticCurveQ.GetConductor))) with { Equation = "y^2 = x^3 - 17*x^2 + 72*x" };
+        var result = await CalculationEngine.ExecuteAsync(request);
+        Assert.Equal("Result:\n  Conductor: 48\n  Factorization (prime, exponent):\n    [2, 4]\n    [3, 1]\n",
+            result.Replace("\r\n", "\n"));
+        var job = new CalculationJobViewModel(request, "Conductor") { Result = result, Status = "Completed" };
+        Assert.Equal(job.Report, CalculationJobViewModel.FromSession(job.CaptureSession()).Report);
+        var limited = await CalculationEngine.ExecuteAsync(request with { MaxItems = 1 });
+        Assert.Contains("Conductor: 48", limited);
+        Assert.Contains("[2, 4]", limited);
+        Assert.DoesNotContain("[3, 1]", limited);
+        Assert.Contains("OUTPUT TRUNCATED", limited);
     }
 
     [Fact]

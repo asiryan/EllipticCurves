@@ -58,19 +58,22 @@ public static class CalculationEngine
             }
             try
             {
-                result = target is EllipticCurveQ conductorCurve && method.Name == nameof(EllipticCurveQ.GetConductor)
-                    ? conductorCurve.GetConductor(new FactorizationOptions
+                if (target is EllipticCurveQ conductorCurve && method.Name == nameof(EllipticCurveQ.GetConductor))
+                {
+                    var conductor = conductorCurve.GetConductor(new FactorizationOptions
                     {
                         MaxDegreeOfParallelism = (int)CalculationInput.ParseScalar(typeof(int), arguments[CalculationInput.FactorizationWorkersKey])
-                    }, token)
-                    : target is EllipticCurveQ rankCurve && method.Name == nameof(EllipticCurveQ.GetRankBounds)
-                    && parameters[0].ParameterType == typeof(int)
-                    ? rankCurve.GetRankBounds(new RankComputationOptions
+                    }, out var factorization, token);
+                    result = new ConductorCalculationResult(conductor, factorization);
+                }
+                else if (target is EllipticCurveQ rankCurve && method.Name == nameof(EllipticCurveQ.GetRankBounds)
+                    && parameters[0].ParameterType == typeof(int))
+                    result = rankCurve.GetRankBounds(new RankComputationOptions
                     {
                         SearchBound = (int)inputs[0]!, MaxSquareClasses = (int)inputs[1]!,
                         MaxDegreeOfParallelism = (int)CalculationInput.ParseScalar(typeof(int), arguments["execution.MaxDegreeOfParallelism"])
-                    }, token)
-                    : method.Invoke(method.IsStatic ? null : target, inputs);
+                    }, token);
+                else result = method.Invoke(method.IsStatic ? null : target, inputs);
             }
             catch (TargetInvocationException error) when (error.InnerException != null)
             { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }

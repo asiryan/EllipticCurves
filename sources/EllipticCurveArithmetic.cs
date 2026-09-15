@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -63,7 +65,20 @@ namespace EllipticCurves
             return GetConductorCore(cancellationToken, options.WorkerLimit());
         }
 
-        private BigInteger GetConductorCore(CancellationToken cancellationToken, int maxWorkers)
+        /// <summary>Compute the exact conductor and its prime factorization in one calculation.
+        /// The returned read-only dictionary maps each prime to its conductor exponent, in increasing prime order.</summary>
+        public BigInteger GetConductor(FactorizationOptions options,
+            out IReadOnlyDictionary<BigInteger, int> factorization, CancellationToken cancellationToken = default)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            var factors = new SortedDictionary<BigInteger, int>();
+            var conductor = GetConductorCore(cancellationToken, options.WorkerLimit(), factors);
+            factorization = new ReadOnlyDictionary<BigInteger, int>(factors);
+            return conductor;
+        }
+
+        private BigInteger GetConductorCore(CancellationToken cancellationToken, int maxWorkers,
+            IDictionary<BigInteger, int> conductorFactors = null)
         {
             var model = GetGlobalMinimalModelCore(cancellationToken, maxWorkers);
             BigInteger conductor = 1;
@@ -74,6 +89,7 @@ namespace EllipticCurves
                 int exponent = model.C4.Num % p != 0 ? 1
                     : p > 3 ? 2 : WildConductorExponent(model, (int)p, pair.Value, cancellationToken);
                 if (exponent < 1) throw new InvalidOperationException("Invalid conductor exponent on a minimal model.");
+                conductorFactors?.Add(p, exponent);
                 conductor *= BigInteger.Pow(p, exponent);
             }
             return conductor;

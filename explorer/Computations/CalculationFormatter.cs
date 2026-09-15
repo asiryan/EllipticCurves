@@ -54,6 +54,22 @@ public static class CalculationFormatter
             token.ThrowIfCancellationRequested();
             if (text.Length >= MaxCharacters || depth > 14) { shortened = true; return; }
             if (value == null) { Line(depth, label + ": unavailable / not applicable"); return; }
+            if (value is ConductorCalculationResult conductor)
+            {
+                Line(depth, label + ":");
+                Write("Conductor", conductor.Conductor, depth + 1);
+                Line(depth + 1, "Factorization (prime, exponent):");
+                int count = 0;
+                foreach (var factor in conductor.Factorization)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (count >= maxItems || text.Length >= MaxCharacters) { shortened = true; break; }
+                    Line(depth + 2, "[" + factor.Key.ToString(CultureInfo.InvariantCulture)
+                        + ", " + factor.Value.ToString(CultureInfo.InvariantCulture) + "]");
+                    count++;
+                }
+                return;
+            }
             if (value is EllipticCurveQ curve) { Line(depth, label + ": " + CurveEquationText.Format(curve)); return; }
             if (value is EllipticCurvePoint or EllipticCurvePointFp or EllipticCurvePointFq or FiniteFieldElement)
             { Line(depth, label + ": " + value); return; }

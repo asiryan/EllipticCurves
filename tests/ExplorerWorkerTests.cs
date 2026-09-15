@@ -64,6 +64,10 @@ public sealed class ExplorerWorkerTests
             .WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Equal("Completed", result.Status);
         Assert.Contains("1103561624055499058867562340698878392772504928025988266715523317532246643920", result.Text);
+        Assert.Contains("Factorization (prime, exponent):", result.Text);
+        Assert.Contains("[2, 4]", result.Text);
+        Assert.Contains("[3, 1]", result.Text);
+        Assert.Contains("[81274068710384465721193186106423, 1]", result.Text);
     }
 
     [Theory]

@@ -6,6 +6,34 @@ namespace EllipticCurves.Tests;
 
 public class NativeArithmeticTests
 {
+    [Fact]
+    public void ConductorFactorizationReturnsConductorExponentsAndCannotBeModified()
+    {
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        var conductor = curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = 1 }, out var factors);
+        Assert.Equal(new BigInteger(32), conductor);
+        var factor = Assert.Single(factors);
+        Assert.Equal(new BigInteger(2), factor.Key);
+        Assert.Equal(5, factor.Value); // The discriminant is 64 = 2^6, not the conductor.
+        Assert.Throws<NotSupportedException>(() => { ((IDictionary<BigInteger, int>)factors)[2] = 99; });
+        Assert.Throws<ArgumentNullException>(() => curve.GetConductor(null, out _));
+        Assert.Throws<ArgumentOutOfRangeException>(() => curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = -1 }, out _));
+        Assert.Throws<OperationCanceledException>(() => curve.GetConductor(new FactorizationOptions(), out _, new CancellationToken(true)));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(12)]
+    public void ConductorFactorizationPreservesPowersUnderCoordinateChanges(int workers)
+    {
+        var curve = ChangeCoordinates(new EllipticCurveQ(0, -17, 0, 72, 0), new BigRational(2, 3), 5, -3, 7);
+        var conductor = curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = workers }, out var factors);
+        Assert.Equal(new BigInteger(48), conductor);
+        Assert.Equal(new BigInteger[] { 2, 3 }, factors.Keys);
+        Assert.Equal(new[] { 4, 1 }, factors.Values);
+        Assert.Equal(conductor, factors.Aggregate(BigInteger.One, (n, factor) => n * BigInteger.Pow(factor.Key, factor.Value)));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]

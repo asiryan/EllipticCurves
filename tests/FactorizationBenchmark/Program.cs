@@ -6,6 +6,11 @@ using EllipticCurves;
 // Run from any directory. Every invocation recomputes the result and proves all
 // prime factors; no factor hints or cached factorizations enter the measurement.
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+if (args.Length > 0 && args[0] == "--conductor-worker")
+{
+    await ConductorWorkerBenchmark.RunAsync(args);
+    return;
+}
 if (args.Length > 0 && args[0] == "--conductor-cpu")
 {
     var largeCurve = new EllipticCurveQ(1, 0, 0,
@@ -13,14 +18,16 @@ if (args.Length > 0 && args[0] == "--conductor-cpu")
         new BigRational(BigInteger.Parse("36732936589138673862895758597955508398047757956")));
     var expected = BigInteger.Parse("21785392458764315483988614758901932764423833726404496768609056369259382575196330");
     var limits = args.Length > 1 ? args.Skip(1).Select(int.Parse).ToArray() : new[] { 4, 8, 12, 0 };
-    Console.WriteLine("worker_limit,logical_cpus,elapsed_ms");
+    Console.WriteLine("worker_limit,logical_cpus,elapsed_ms,cpu_ms");
     foreach (int workers in limits)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        using var process = Process.GetCurrentProcess();
+        var cpuStarted = process.TotalProcessorTime;
         var watch = Stopwatch.StartNew();
         var result = largeCurve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = workers }, timeout.Token);
         if (result != expected) throw new InvalidOperationException("Conductor mismatch.");
-        Console.WriteLine($"{workers},{Environment.ProcessorCount},{watch.Elapsed.TotalMilliseconds:F1}");
+        Console.WriteLine($"{workers},{Environment.ProcessorCount},{watch.Elapsed.TotalMilliseconds:F1},{(process.TotalProcessorTime - cpuStarted).TotalMilliseconds:F1}");
     }
     return;
 }
