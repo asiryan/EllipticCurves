@@ -12,11 +12,11 @@ are separate applications in the repository.
 ```csharp
 using EllipticCurves;
 
-var e = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);  // 37.a1
 var p = new EllipticCurvePoint(0, 0);
 
 var twice = e.Double(p);
-var conductor = e.Conductor;                // 37
+var conductor = e.Conductor;                 // 37
 var bounds = e.GetRankBounds();
 var rank = bounds.ExactRank;                 // null unless proved
 var local = e.GetLocalData(37);
