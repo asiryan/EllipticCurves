@@ -1,1 +1,0 @@
-  ***   Warning: new maximum stack size = 536870912 (512.000 Mbytes).

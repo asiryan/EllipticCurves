@@ -1,2 +1,0 @@
-{"run": "rank24-extension-20260915-quick", "initial_lower_bound": 24, "budget": 180.0}
-Prepared 2048 anchors from 32768 bounded candidates in 0.828s
