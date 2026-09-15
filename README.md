@@ -330,7 +330,7 @@ exploration sliders, an interactive real-locus plot, a linked period-lattice and
 3D complex-torus view, exact invariants and bounded rational-point samples.
 The Tools menu exposes the library's computations,
 including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
-**Verify rank from supplied points** accepts exact coordinates and reports
+Verify rank from supplied points accepts exact coordinates and reports
 a proved rank lower bound with its independence certificate.
 Parameter windows feed a results panel with session history, progress, cancellation
 and time limits. Native computations run locally; only the explicit LMFDB search and fetch
