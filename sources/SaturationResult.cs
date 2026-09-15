@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace EllipticCurves
 {
-    /// <summary>Exact saturation of a subgroup modulo the entire rational torsion subgroup.</summary>
+    /// <summary>Result of saturation at requested primes, modulo rational torsion; may be incomplete.</summary>
     public sealed class SaturationResult
     {
         /// <summary>Generators of the resulting subgroup, modulo rational torsion, on the input model.</summary>

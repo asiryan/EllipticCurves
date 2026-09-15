@@ -10,7 +10,7 @@ namespace EllipticCurves
         public BigInteger X { get; }
         /// <summary>Canonical y-coordinate; unused at infinity.</summary>
         public BigInteger Y { get; }
-        /// <summary>Prime modulus of an affine point; zero for the universal point at infinity.</summary>
+        /// <summary>Prime modulus of an affine point; zero at infinity or for an invalid default point.</summary>
         public BigInteger Prime { get; }
         /// <summary>Whether this is the point at infinity.</summary>
         public bool IsInfinity { get; }

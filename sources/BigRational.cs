@@ -5,17 +5,8 @@ using System.Numerics;
 namespace EllipticCurves
 {
     /// <summary>
-    /// A minimal, allocation-friendly rational type for exact arithmetic over Q.
-    /// 
-    /// Invariants:
-    ///  • Num and Den expose canonical form: gcd(|Num|, Den) = 1
-    ///  • Denominator is strictly positive (Den > 0)
-    ///  • Zero, including default(BigRational), is represented as 0/1
-    /// 
-    /// Notes:
-    ///  • This is an immutable value type with value semantics (Equals/GetHashCode implemented).
-    ///  • Designed for exact math in number theory (elliptic curves, invariants, etc.),
-    ///    not for floating-point approximations.
+    /// Immutable exact rational number in canonical form: gcd(|Num|, Den) = 1 and Den > 0.
+    /// Zero, including default(BigRational), exposes Num = 0 and Den = 1.
     /// </summary>
     public readonly partial struct BigRational : IEquatable<BigRational>, IComparable<BigRational>
     {
@@ -213,8 +204,7 @@ namespace EllipticCurves
         public static implicit operator BigRational(sbyte value) => new BigRational(value, 1);
 
         /// <summary>
-        /// Lexicographic-free comparison via cross-multiplication:
-        /// compare Num/Den and other.Num/other.Den exactly.
+        /// Exact rational comparison by cross-multiplication.
         /// </summary>
         public int CompareTo(BigRational other)
         {
@@ -243,7 +233,6 @@ namespace EllipticCurves
 
         /// <summary>
         /// Culture-invariant string: "n" for integers, "n/d" for nonintegral rationals.
-        /// Intended for logs/debugging and round-trippable parsing in simple cases.
         /// </summary>
         public override string ToString()
         {

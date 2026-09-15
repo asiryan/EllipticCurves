@@ -7,7 +7,7 @@ namespace EllipticCurves
     {
         /// <summary>Maximum counted polynomial and root-isolation steps; excludes torsion preparation.</summary>
         public long MaxWork { get; set; } = 2000000;
-        /// <summary>Maximum degree n^2 of a multiplication equation, between 1 and 100000.</summary>
+        /// <summary>Maximum degree n^2 of a multiplication equation for an affine target, between 1 and 100000.</summary>
         public int MaxDivisionDegree { get; set; } = 1024;
         internal PointDivisionOptions Snapshot()
         {

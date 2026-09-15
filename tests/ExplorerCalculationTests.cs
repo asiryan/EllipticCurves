@@ -99,7 +99,7 @@ public sealed class ExplorerCalculationTests
     [Fact]
     public async Task ConductorExposesCpuLimitAndPreservesItWhenRepeated()
     {
-        var operation = Assert.Single(CalculationCatalog.All.Where(o => o.Member?.Name == nameof(EllipticCurveQ.GetConductor)));
+        var operation = Assert.Single(CalculationCatalog.All, o => o.Member?.Name == nameof(EllipticCurveQ.GetConductor));
         Assert.Equal("EllipticCurveQ.GetConductor(CancellationToken)", operation.Id);
         var degree = Assert.Single(operation.Parameters);
         Assert.Equal(CalculationInput.FactorizationWorkersKey, degree.Key);
