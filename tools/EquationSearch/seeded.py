@@ -17,6 +17,7 @@ from blind_search import (GP, ROOT, POLICY, boxes, clean,
 from bootstrap import save, checked_script
 from models import prepare_models, parity_vectors, parity_order, record_coverage, search_script
 from torsion_certificate import certify
+from point_models import divide_basis,prepare_covers
 
 
 # Isolated module namespace: preserve the archived engine and other importers.
@@ -114,19 +115,22 @@ def independent_result(data, expected):
 
 def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
            batch_size=8, job_seconds=2, import_run=None, anchor_mode='adaptive'):
-    if anchor_mode not in ('adaptive','fixed','frozen','parity'): raise ValueError('Unknown anchor policy')
+    if anchor_mode not in ('adaptive','fixed','frozen','parity','geometric'): raise ValueError('Unknown anchor policy')
     source, output = Path(source).resolve(), Path(output).resolve()
     if output == ROOT or not output.is_relative_to(ROOT): raise ValueError('Use a dedicated workspace directory')
     output.mkdir(parents=True, exist_ok=True)
     config = {'input_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
-              'code_sha256':{name:hashlib.sha256(((Path(__file__).parent/name) if name in ('seeded.py','models.py','bootstrap.py','certificate.py','torsion_certificate.py') else (ROOT/'tools/RankHunt'/name)).read_bytes()).hexdigest()
-                  for name in ['seeded.py','models.py','bootstrap.py','certificate.py','torsion_certificate.py','blind_search.py','point_search.py','bounded_anchor_pool.py',
+              'code_sha256':{name:hashlib.sha256(((Path(__file__).parent/name) if name in ('seeded.py','models.py','bootstrap.py','certificate.py','torsion_certificate.py','point_models.py') else (ROOT/'tools/RankHunt'/name)).read_bytes()).hexdigest()
+                  for name in ['seeded.py','models.py','bootstrap.py','certificate.py','torsion_certificate.py','point_models.py','blind_search.py','point_search.py','bounded_anchor_pool.py',
                                'anchor_diversity.py','point_arithmetic.py']},
               'policy':POLICY, 'anchors':anchors, 'target':target, 'batch_size':batch_size,
               'job_seconds':job_seconds, 'workers':workers,'anchor_mode':anchor_mode,
               'search_policy':{'cached_inverse_maps':True,'denominator_slices':256,
                                'parity_balanced':anchor_mode=='parity',
-                               'profile_budget_fraction':0.25,'profile_budget_max_seconds':2}}
+                               'profile_budget_fraction':0.25,'profile_budget_max_seconds':2,
+                               'small_point_division':[2,3,5] if anchor_mode=='geometric' else [],'division_depth':3,
+                               'isogeny_cover_divisor_beam':256,'isogeny_cover_limit':4 if anchor_mode=='geometric' else 0,
+                               'box_order':'balanced, integer, remaining denominators' if anchor_mode=='geometric' else 'original'}}
     state_path = output/'checkpoint.json'
     if state_path.exists():
         state = read(state_path)
@@ -149,7 +153,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
             # Old profiling files do not contain inverse maps; rebuild them.
             models = None
         if not found['points']: raise ValueError('Known seed points are required')
-    save(output/'basis.json', found)
+    save(output/'basis.json', {'ainvs':found['ainvs'],'points':state.get('certified_basis',found['points'])})
     proof = certify(output/'basis.json')
     if not proof['all_selected_independent'] or not proof['points']: raise ValueError('No independent seed basis')
     known = set(map(tuple, found['points']))
@@ -165,6 +169,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
     def checkpoint():
         nonlocal last_save
         state.update(found=found, done=sorted(done), models=models, status=status,
+                     certified_basis=proof['points'],
                      lower_bound=proof['LowerBound'], wall_seconds=before+time.perf_counter()-started)
         save(output/'checkpoint.json', state)
         save(output/'points.json', {'ainvs':found['ainvs'], 'points':proof['points'],
@@ -173,6 +178,18 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
     checkpoint()
     print(json.dumps({'run':output.name, 'initial_lower_bound':proof['LowerBound'], 'budget':seconds}), flush=True)
     try:
+        if anchor_mode=='geometric' and proof['LowerBound']<target and 'seed_division' not in state:
+            refined,division=divide_basis({'ainvs':found['ainvs'],'points':proof['points']},
+                                         min(.2,max(.01,(deadline-time.perf_counter())*.1)))
+            state['seed_division']=division
+            if division['steps']:
+                save(output/'basis.json',refined);candidate=certify(output/'basis.json')
+                if candidate['all_selected_independent'] and candidate['LowerBound']>=proof['LowerBound']:
+                    proof=candidate;models=None
+                    for p in proof['points']:
+                        if tuple(p) not in known:found['points'].append(p);known.add(tuple(p))
+                else:state['seed_division']['certificate_inconclusive']=True
+            checkpoint()
         with ThreadPoolExecutor(max_workers=workers) as executor:
             while time.perf_counter() < deadline and proof['LowerBound'] < target:
                 if models is None:
@@ -201,13 +218,24 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                             fallback_budget=min(1,(deadline-time.perf_counter())*.25)
                             models=prepare_models(pool,fallback_budget,model_cache,minimal=False)
                         models = parity_order(models) if anchor_mode=='parity' else order_models(models)
+                        if anchor_mode=='geometric' and anchors>=4 and deadline-time.perf_counter()>.1:
+                            from torsion_certificate import torsion_points
+                            if torsion_points(tuple(found['ainvs'])):
+                                covers=prepare_covers({'ainvs':found['ainvs'],'points':proof['points']},
+                                    min(.3,(deadline-time.perf_counter())*.1),model_cache,min(4,anchors//4))
+                                interleaved=[]
+                                for i in range(max(len(models),len(covers))):
+                                    if i<len(models):interleaved.append(models[i])
+                                    if i<len(covers):interleaved.append(covers[i])
+                                models=interleaved[:anchors]
                     # Coefficients refer to an exactly checked independent basis.
                     # Mark only provable use of directions outside the initial span.
                     retained=initial_points<=set(map(tuple,pool_basis['points']))
                     extra=[i for i,p in enumerate(pool_basis['points']) if tuple(p) not in initial_points]
                     for model in models:
                         model['preparation']=len(state['preparations'])
-                        model['uses_new_direction']=(False if anchor_mode in ('fixed','frozen') else
+                        model['uses_new_direction']=(None if model.get('kind')=='isogeny_cover' else
+                            False if anchor_mode in ('fixed','frozen') else
                             any(pool['vectors'][model['pool_index']][i] for i in extra) if retained else None)
                     state['preparations'].append({'generation':state['generation'],
                         'basis_lower_bound':proof['LowerBound'],'seconds':time.perf_counter()-preparing,
@@ -215,6 +243,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                         'torsion_translations':pool.get('torsion_translations'),
                         'basis_points':pool_basis['points'],
                         'models':[{'key':m['key'],'pool_index':m['pool_index'],
+                                   'kind':m.get('kind','pointed'),
                                    'coefficient_bits':m['coefficient_bits'],
                                    'uses_new_direction':m['uses_new_direction']} for m in models]})
                     if not models:
@@ -230,7 +259,14 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                         'parity_classes':len({m['parity'] for m in models if 'parity' in m}),
                         'model_count':len(models)}
                 improved = False
-                for n,d in boxes():
+                search_boxes=list(boxes())
+                if anchor_mode=='geometric':
+                    areas=sorted({n*d for n,d in search_boxes});ordered=[]
+                    for area in areas:
+                        group=sorted((b for b in search_boxes if b[0]*b[1]==area),key=lambda b:-b[1])
+                        ordered+=group[:1]+[b for b in group[1:] if b[1]==1]+[b for b in group[1:] if b[1]!=1]
+                    search_boxes=ordered
+                for n,d in search_boxes:
                     pending = [m for m in models if job_key(m,n,d) not in done]
                     for offset in range(0, len(pending), 32):
                         remaining = deadline-time.perf_counter()
@@ -315,7 +351,7 @@ if __name__=='__main__':
     parser.add_argument('--workers',type=int,default=2)
     parser.add_argument('--anchors',type=int,default=64)
     parser.add_argument('--target',type=int,default=32)
-    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity'),default='adaptive',
+    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity','geometric'),default='adaptive',
                         help='fixed: supplied anchors; frozen: their initial generated pool; adaptive/parity: rebuild after growth')
     args=parser.parse_args()
     if not (0<args.seconds<=7200 and 1<=args.workers<=24 and 1<=args.anchors<=4096 and 1<=args.target<=100):

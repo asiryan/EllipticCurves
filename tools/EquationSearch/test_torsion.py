@@ -82,6 +82,65 @@ class TorsionTests(unittest.TestCase):
         result=batch_search(pool,models,256,16,1)
         self.assertTrue(result['observations'])
 
+    def test_point_division_preserves_span_with_an_exact_witness(self):
+        from point_models import divide_basis
+        a=['0','0','0','-25','4'];p=(Q(0),Q(2));triple=multiply(list(map(Q,a)),p,3)
+        data={'ainvs':a,'points':[list(map(str,triple))]}
+        refined,stats=divide_basis(data,.3)
+        self.assertTrue(stats['steps']);self.assertEqual(refined['points'],[['0','-2']])
+        for step in stats['steps']:
+            r=tuple(map(Q,step['point']));t=tuple(map(Q,step['torsion_shift'])) if step['torsion_shift'] else None
+            self.assertEqual(multiply(list(map(Q,a)),r,step['multiplier']),
+                             add(list(map(Q,a)),tuple(map(Q,step['original'])),t))
+
+    def test_interrupted_division_keeps_only_complete_exact_witnesses(self):
+        from unittest.mock import patch
+        from point_models import divide_basis
+        a=['0','0','0','-25','4'];triple=multiply(list(map(Q,a)),(Q(0),Q(2)),3)
+        data={'ainvs':a,'points':[list(map(str,triple))]}
+        stdout='DIVIDED [1,-3,["0","-2"],[],1]\nDIVIDED [1,2,'
+        with patch('point_models.gp',return_value=(stdout,{'timed_out':True})):
+            result,stats=divide_basis(data)
+        self.assertEqual(result['points'],[['0','-2']]);self.assertEqual(len(stats['steps']),1)
+        with patch('point_models.gp',return_value=(stdout+'\n',{'timed_out':False})):
+            with self.assertRaises(json.JSONDecodeError):divide_basis(data)
+
+    def test_two_isogeny_map_in_general_weierstrass_coordinates(self):
+        from point_models import cover_point
+        self.assertEqual(cover_point(self.a,0,3,4,24),self.p)
+        self.assertEqual(cover_point(['2','-1','2','-38','-1'],0,3,4,24),(Q(12),Q(23)))
+        self.assertEqual(cover_point(self.a,0,1,5,7),(Q(25,4),Q(35,8)))
+        with self.assertRaises(ValueError):cover_point(self.a,0,3,4,25)
+
+    def test_cover_reductions_and_search_produce_exact_curve_points(self):
+        from point_models import prepare_covers
+        from seeded import batch_search
+        data={'ainvs':self.a,'points':[list(map(str,self.p))]};cache={}
+        models=prepare_covers(data,.3,cache,8)
+        self.assertTrue(models);self.assertTrue(any(m['known_class'] for m in models))
+        self.assertEqual(prepare_covers(data,.3,cache,8),models)
+        found=batch_search(data,models,256,16,1)
+        points=[o['point'] for o in found['observations']]
+        self.assertTrue(points)
+        old.validate_curve_and_points({'ainvs':self.a,'points':points})
+
+    def test_geometric_search_and_resume_keep_the_divided_basis(self):
+        import tempfile
+        from bootstrap import save
+        from seeded import search,independent_result
+        root=Path(__file__).resolve().parents[2]/'artifacts/equation-search-tests'
+        root.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as temporary:
+            folder=Path(temporary).resolve();self.assertTrue(folder.is_relative_to(root.resolve()))
+            a=['0','0','0','-25','4'];p=(Q(0),Q(2));triple=multiply(list(map(Q,a)),p,3)
+            source=folder/'seed.json';save(source,{'ainvs':a,'points':[list(map(str,triple))]})
+            result=search(source,folder/'run',1,1,16,2,anchor_mode='geometric')
+            self.assertGreaterEqual(result['rank_lower_bound'],2)
+            self.assertTrue(independent_result(result,result['rank_lower_bound'])['verification']['all_points_independent_modulo_torsion'])
+            state=json.loads((folder/'run/checkpoint.json').read_text());self.assertTrue(state['seed_division']['steps'])
+            resumed=search(source,folder/'run',1,1,16,2,anchor_mode='geometric')
+            self.assertEqual(result['points'],resumed['points'])
+
     def test_gp_exponent_normalization_is_limited_to_lattice(self):
         from seeded import normalize_lattice_output
         raw='LATTICE [[[1,0],[0,1]],[[1.0,-2.34 E-95],[-2.34 E-95,4.0]]]\nBASIS ["1", "2"]\nPOOL_END\n'

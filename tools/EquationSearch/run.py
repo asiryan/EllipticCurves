@@ -41,7 +41,7 @@ def run(args):
     reads=data_boundary(source,output)
     raw=source.read_bytes(); data=equation(json.loads(raw.decode('utf-8-sig')))
     save(output/'equation.json',data)
-    modules=[HERE/name for name in ('run.py','bootstrap.py','seeded.py','certificate.py','geometry.py','models.py','lattice.py')]
+    modules=[HERE/name for name in ('run.py','bootstrap.py','seeded.py','certificate.py','geometry.py','models.py','lattice.py','point_models.py','torsion_certificate.py')]
     modules += [ROOT/'tools/RankHunt'/name for name in ('blind_search.py','point_search.py',
                  'bounded_anchor_pool.py','anchor_diversity.py','point_arithmetic.py')]
     config={'input_sha256':hashlib.sha256(raw).hexdigest(),
@@ -94,7 +94,7 @@ if __name__=='__main__':
     parser.add_argument('--target',type=int,default=31)
     parser.add_argument('--job-seconds',type=float,default=3)
     parser.add_argument('--seed-limit',type=int,default=None,help='Pass at most this many independently found points to expansion')
-    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity'),default='adaptive')
+    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity','geometric'),default='adaptive')
     parser.add_argument('--lattice-seconds',type=float,default=0,help='Optional tangent-lattice stage within the bootstrap budget')
     args=parser.parse_args()
     if not (0<args.bootstrap_seconds<=3600 and 0<=args.search_seconds<=7200 and

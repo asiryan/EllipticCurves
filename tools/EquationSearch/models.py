@@ -115,25 +115,34 @@ def search_script(data, models, n, d, coverage=None, slice_width=256):
     script=prefix(data['ainvs'])+'E0=E;\n'
     for i,model in enumerate(models,1):
         e,matrix,h = model['transform'];aa,b,c,dd=matrix
-        x0,y0 = model['minimal_anchor']
-        script += ('E=ellinit('+vec(model['minimal_ainvs'])+');change='+vec(model['change'])+';'
-                   'C=['+poly(model['f'])+','+poly(model['q'])+'];\n')
-        script += (f'x0={x0};v0=2*({y0})+E.a1*x0+E.a3;\n'
-                   'D=x^4-2*(12*x0+E.b2)*x^2+32*v0*x+E.b2^2-8*E.b2*x0-48*x0^2-32*E.b4;\n')
-        script += ('emit(t,z)={my(xx,yy,W);if(z^2!=subst(D,x,t),error("Cached quartic inverse"));'
-                   'xx=(t^2-E.b2-4*x0+z)/8;yy=(v0+t*(xx-x0)-E.a1*xx-E.a3)/2;'
-                   'W=ellchangepointinv([xx,yy],change);if(!ellisoncurve(E0,W),error("Cached curve inverse"));'
-                   'print("POINT ",W);};\n')
+        den=model.get('den','1')
+        script+='C=['+poly(model['f'])+','+poly(model['q'])+'];\n'
+        if model.get('kind')=='isogeny_cover':
+            alpha,dclass=model['alpha'],model['d']
+            script+=(f'alpha={alpha};dclass={dclass};AA=3*alpha+E0.b2;BB=3*alpha^2+2*E0.b2*alpha+8*E0.b4;'
+                     'D=dclass*x^4+AA*x^2+BB/dclass;\n'
+                     'emit(t,z)={my(U,V,xx,yy,W);if(z^2!=subst(D,x,t),error("Isogeny quartic inverse"));'
+                     'U=dclass*t^2;V=dclass*t*z;xx=(U+alpha)/4;yy=(V-4*E0.a1*xx-4*E0.a3)/8;'
+                     'W=[xx,yy];if(!ellisoncurve(E0,W),error("Isogeny curve inverse"));print("POINT ",W);};\n')
+        else:
+            x0,y0 = model['minimal_anchor']
+            script += ('E=ellinit('+vec(model['minimal_ainvs'])+');change='+vec(model['change'])+';\n')
+            script += (f'x0={x0};v0=2*({y0})+E.a1*x0+E.a3;\n'
+                       'D=x^4-2*(12*x0+E.b2)*x^2+32*v0*x+E.b2^2-8*E.b2*x0-48*x0^2-32*E.b4;\n')
+            script += ('emit(t,z)={my(xx,yy,W);if(z^2!=subst(D,x,t),error("Cached quartic inverse"));'
+                       'xx=(t^2-E.b2-4*x0+z)/8;yy=(v0+t*(xx-x0)-E.a1*xx-E.a3)/2;'
+                       'W=ellchangepointinv([xx,yy],change);if(!ellisoncurve(E0,W),error("Cached curve inverse"));'
+                       'print("POINT ",W);};\n')
         script += (f'print("ANCHOR_BEGIN ",{i});\n'
             f'if({c}!=0 && issquare(polcoef(C[2],2)^2+4*polcoef(C[1],4),&zz),'
             'Z=Set([(-polcoef(C[2],2)+zz)/2,(-polcoef(C[2],2)-zz)/2]);'
-            f'for(j=1,#Z,emit(({aa})/({c}),(({e})*Z[j]+({h[2]}))/({c})^2/({model["den"]}))));\n')
+            f'for(j=1,#Z,emit(({aa})/({c}),(({e})*Z[j]+({h[2]}))/({c})^2/({den}))));\n')
         for low,high in missing_intervals(coverage.get(model['key'],[]),n,d):
             script += (f'lo={low};while(lo<={high},hi=min({high},min(lo+{slice_width-1},max(lo,4*lo-1)));'
                 f'H=hyperellratpoints(C,[{n},[lo,hi]]);'
                 'for(j=1,#H,t=H[j][1];z=H[j][2];'
                 f'dd=({c})*t+({dd});if(dd==0,next);'
-                f'emit((({aa})*t+({b}))/dd,(({e})*z+subst({poly(h)},x,t))/dd^2/({model["den"]})));'
+                f'emit((({aa})*t+({b}))/dd,(({e})*z+subst({poly(h)},x,t))/dd^2/({den})));'
                 f'print("SLICE_DONE ",[{i},{n},lo,hi]);lo=hi+1);\n')
         script+=f'print("ANCHOR_DONE ",{i});\n'
     return script+'print("SEARCH_END");quit;\n'

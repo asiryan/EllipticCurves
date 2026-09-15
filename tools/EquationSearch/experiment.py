@@ -57,7 +57,7 @@ def worker(args):
         data=equation(data);basis,state=discover(data,out,args.seconds,args.workers,2,seed_limit=1)
         result={**(basis or {'ainvs':data['ainvs'],'points':[],'rank_lower_bound':0}),
                 'status':state['status'],'seconds':time.perf_counter()-started,'bootstrap':state}
-    elif args.mode in ('fixed','frozen','adaptive'):
+    elif args.mode in ('fixed','frozen','adaptive','geometric'):
         if set(data)!={'ainvs','points'} or len(data['points'])!=1: raise ValueError('Exactly one seed is required')
         from seeded import search,independent_result
         found=search(source,out,args.seconds,args.workers,args.anchors,args.target,batch_size=4,anchor_mode=args.mode)
@@ -248,7 +248,7 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);sub=p.add_subparsers(dest='command',required=True)
     f=sub.add_parser('fetch');f.add_argument('--output',default=str(HERE/'icarm-equations.json'))
     w=sub.add_parser('worker');w.add_argument('--input',required=True);w.add_argument('--output',required=True)
-    w.add_argument('--mode',choices=('seed','direct','fixed','frozen','adaptive'),required=True)
+    w.add_argument('--mode',choices=('seed','direct','fixed','frozen','adaptive','geometric'),required=True)
     w.add_argument('--seconds',type=float,default=30);w.add_argument('--workers',type=int,default=6)
     w.add_argument('--anchors',type=int,default=512);w.add_argument('--target',type=int,required=True)
     c=sub.add_parser('run');c.add_argument('--sample',default=str(HERE/'icarm-equations.json'));c.add_argument('--output',required=True)
@@ -257,7 +257,7 @@ if __name__=='__main__':
     c.add_argument('--anchors',type=int,default=512);c.add_argument('--ranks',type=int,nargs='+')
     s=sub.add_parser('published');s.add_argument('--sample',required=True);s.add_argument('--output',required=True)
     s.add_argument('--selection',choices=('all','leaders'),default='all')
-    s.add_argument('--mode',choices=('fixed','frozen','adaptive'),default='adaptive')
+    s.add_argument('--mode',choices=('fixed','frozen','adaptive','geometric'),default='adaptive')
     s.add_argument('--seconds',type=float,default=3);s.add_argument('--workers',type=int,default=2)
     s.add_argument('--anchors',type=int,default=16)
     s.add_argument('--retry-report',help='Retest only failures from a report using this identical sample')
