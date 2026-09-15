@@ -86,9 +86,9 @@ These computations do not assume BSD, GRH, parity, or finiteness of Sha.
 ```csharp
 var e = new EllipticCurveQ(0, 0, 1, -7, 6);
 var rank = e.GetRankBounds();
-Console.WriteLine(rank.ExactRank);           // 3
+Console.WriteLine(rank.ExactRank);             // 3
 Console.WriteLine(rank.UsedGeneralTwoDescent); // True
-Console.WriteLine(rank.TwoSelmerDimension);  // 3
+Console.WriteLine(rank.TwoSelmerDimension);    // 3
 ```
 
 A complete descent gives a proved upper bound, which can exceed the rank because
@@ -145,7 +145,7 @@ var certificate = e.GetRankLowerBound(new[]
     new EllipticCurvePoint(1, 0),
     new EllipticCurvePoint(2, 0)
 });
-Console.WriteLine(certificate.LowerBound);             // 3
+Console.WriteLine(certificate.LowerBound);              // 3
 Console.WriteLine(certificate.IndependenceCertified);   // True
 Console.WriteLine(certificate.Reason);
 ```
@@ -244,7 +244,7 @@ and [rank algorithm notes](docs/native-arithmetic.md) for conventions and limits
 ## Coefficients, CM, division points and isogenies
 
 ```csharp
-var e = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);  // 37.a1
 var p = new EllipticCurvePoint(0, 0);
 var ap = e.GetFrobeniusTrace(5);             // -2
 var coefficients = e.GetFourierCoefficients(100); // a[n], with a[0]=0
