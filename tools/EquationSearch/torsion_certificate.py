@@ -65,7 +65,11 @@ def singleton_certificate(data):
 
 
 def translate_pool(pool, limit):
-    """Use torsion cosets, and torsion itself, as additional exact projections."""
+    """Preserve original anchors, then balance exact torsion-coset projections.
+
+    Each shift is applied across the free-anchor pool before trying the next
+    shift. A small limit must not spend every slot on the first free anchor.
+    """
     ts=torsion_points(tuple(pool['ainvs']))
     if not ts: return pool
     a=list(map(Q,pool['ainvs']));group={None}
@@ -80,11 +84,15 @@ def translate_pool(pool, limit):
         if p is None or p in seen or len(points)>=limit:return
         seen.add(p);points.append(list(map(str,p)));heights.append(height)
         vectors.append(vector);translations.append(None if shift is None else list(map(str,shift)))
-    for i,raw in enumerate(pool['points']):
-        p=tuple(map(Q,raw));v=pool['vectors'][i]
-        for shift in shifts: insert(add(a,p,shift),pool['approximate_heights'][i],v,shift)
-        if i==0:
-            for shift in shifts[1:]: insert(shift,0,[0]*len(v),shift)
+    anchors=[tuple(map(Q,raw)) for raw in pool['points']]
+    for i,p in enumerate(anchors):
+        insert(p,pool['approximate_heights'][i],pool['vectors'][i],None)
+    for shift in shifts[1:]:
+        if len(points)>=limit:break
+        for i,p in enumerate(anchors):
+            if len(points)>=limit:break
+            insert(add(a,p,shift),pool['approximate_heights'][i],pool['vectors'][i],shift)
+        if anchors:insert(shift,0,[0]*len(pool['vectors'][0]),shift)
     return {**pool,'points':points,'approximate_heights':heights,'vectors':vectors,
             'torsion_translations':translations}
 

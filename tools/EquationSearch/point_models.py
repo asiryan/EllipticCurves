@@ -137,6 +137,95 @@ The bounded loop tests small divisors and torsion shifts without rank calls.
     return {'ainvs':data['ainvs'],'points':[list(map(str,p)) for p in points]}, {'steps':steps,**stats}
 
 
+def refine_observed(data, timeout, cache, count=8):
+    """Try exact halves of locally dependent combinations of observed points.
+
+    A vanishing local 2-character column is only a candidate: it need not
+    imply rational divisibility, nor rational dependence. In particular,
+    Q=P+2R is invisible beside P to these characters even when R is a new
+    independent direction. Testing the combination Q-P can recover R.
+    Every accepted half and finite torsion shift is checked by exact Python
+    group arithmetic. No rank or Selmer routine is called.
+
+    ``points`` starts with the current certified basis; optional ``basis_size``
+    prioritizes relations involving the remaining observations. Completed
+    relation tests are cached by their actual point, independently of the
+    changing basis. Interrupted tests remain available for a later call.
+    """
+    from torsion_certificate import torsion_points
+    import certificate as local
+    from point_arithmetic import negate
+    if not 1<=count<=64 or timeout<=0:raise ValueError('Invalid refinement budget')
+    started=time.perf_counter();deadline=started+timeout
+    a,points,_,_=local.validate_curve_and_points(data)
+    output={'ainvs':list(map(str,a)),'points':[]}
+    stats={'steps':[],'character_prime_bound':251,'candidate_relations':0,
+           'tested_relations':0,'cache_hits':0,'timed_out':False}
+    if not points:return output,{**stats,'seconds':time.perf_counter()-started}
+    ts=torsion_points(tuple(map(str,a)))
+    torsion=[tuple(map(Q,p)) for _,p in ts];all_points=torsion+points;k=len(torsion)
+    cert=local.build_certificate({'ainvs':a,'points':[list(map(str,p)) for p in all_points]},max_prime=251)
+    rows=cert['independent_rows'];basis={};relations=[]
+    basis_size=data.get('basis_size',0)
+    if type(basis_size) is not int or not 0<=basis_size<=len(points):
+        raise ValueError('Invalid certified basis size')
+    for j in range(len(all_points)):
+        column=sum((r['bits'][j]=='1')<<i for i,r in enumerate(rows));relation=1<<j
+        while column:
+            pivot=column.bit_length()-1
+            if pivot not in basis:
+                basis[pivot]=(column,relation);break
+            old,combination=basis[pivot];column^=old;relation^=combination
+        if not column and j>=k:
+            indices=[i for i in range(j) if relation>>i&1]
+            relations.append((j<k+basis_size,len(indices),j,indices))
+    relations.sort();stats['candidate_relations']=len(relations)
+    tried=cache.setdefault('observed_refinement',{});jobs=[];queued=set()
+    for _,_,j,indices in relations:
+        if len(jobs)>=count or time.perf_counter()>=deadline:break
+        source=all_points[j]
+        for i in indices:source=add(a,source,negate(a,all_points[i]))
+        if source is None:continue
+        canonical=min(source,negate(a,source))
+        key=hashlib.sha256(json.dumps([a,list(map(str,canonical))]).encode()).hexdigest()
+        if key in tried:stats['cache_hits']+=1;continue
+        if key in queued:continue
+        queued.add(key)
+        jobs.append({'key':key,'source':list(map(str,source)),
+                     'positive':list(map(str,all_points[j])),
+                     'negative':[list(map(str,all_points[i])) for i in indices]})
+    remaining=deadline-time.perf_counter()
+    if not jobs or remaining<=.005:
+        return output,{**stats,'timed_out':remaining<=0,'seconds':time.perf_counter()-started}
+    script=prefix(a)+'P=['+','.join(vec(job['source']) for job in jobs)+'];'
+    script+=('T=elltors(E);G=List([[0]]);for(i=1,#T[2],B=Vec(G);'
+             'for(j=1,T[2][i]-1,S=ellmul(E,T[3][i],j);for(l=1,#B,listput(G,elladd(E,B[l],S)))));'
+             'for(k=1,#P,for(i=1,#G,S=elladd(E,P[k],G[i]);if(#S==1,next);'
+             'if(ellisdivisible(E,S,2,&R),if(#R==1,next);'
+             'if(ellmul(E,R,2)!=S,error("Observed relation division identity"));'
+             'print("REFINED ",[k,vector(2,l,Str(R[l])),if(#G[i]==1,[],vector(2,l,Str(G[i][l]))),T[1]]);break));'
+             'print("REFINEMENT_DONE ",k));print("REFINEMENT_END");quit;\n')
+    out,runstats=gp(script,remaining);known=set(points)
+    for index,raw,shift,order in complete_records(out,'REFINED ',runstats['timed_out']):
+        if type(index) is not int or not 1<=index<=len(jobs) or type(order) is not int or not 1<=order<=16:
+            raise ValueError('Malformed observed refinement witness')
+        r=tuple(map(Q,raw));t=tuple(map(Q,shift)) if shift else None
+        job=jobs[index-1];s=tuple(map(Q,job['source']))
+        if not on_curve(a,r) or not on_curve(a,t) or multiply(a,t,order) is not None:
+            raise ValueError('Invalid observed refinement or torsion point')
+        if multiply(a,r,2)!=add(a,s,t):raise ValueError('Incorrect observed refinement identity')
+        stats['steps'].append({**{key:job[key] for key in ('source','positive','negative')},
+            'point':list(map(str,r)),'multiplier':2,'torsion_shift':shift,'torsion_order_multiple':order})
+        canonical=min(r,negate(a,r))
+        if canonical not in known and negate(a,canonical) not in known:
+            output['points'].append(list(map(str,canonical)));known.add(canonical)
+    for index in complete_records(out,'REFINEMENT_DONE ',runstats['timed_out']):
+        if type(index) is not int or not 1<=index<=len(jobs):raise ValueError('Malformed completed refinement')
+        tried[jobs[index-1]['key']]=True;stats['tested_relations']+=1
+    return output,{**stats,'timed_out':runstats['timed_out'],
+                   'script_sha256':runstats['script_sha256'],'seconds':time.perf_counter()-started}
+
+
 def cover_point(ainvs,alpha,d,t,z):
     """Exact forward map, also used independently by the algebraic tests."""
     a=list(map(Q,ainvs));alpha,d,t,z=map(Q,(alpha,d,t,z))
@@ -152,7 +241,10 @@ def prepare_covers(data, timeout, cache, count=8):
     """Bounded candidate divisors; local residue tests are necessary filters only."""
     basis_key=hashlib.sha256(json.dumps(data,sort_keys=True).encode()).hexdigest()
     old=cache.get('isogeny_covers',{})
-    if old.get('basis_key')==basis_key:return old['models']
+    if old.get('basis_key')!=basis_key:old={}
+    attempts=old.get('attempts',{})
+    if any(int(n)>=count and (attempt['complete'] or attempt['budget']>=timeout)
+           for n,attempt in attempts.items()):return old['models'][:count]
     candidate_limit=4*count
     script=prefix(data['ainvs'])+'P=['+','.join(vec(p) for p in data['points'])+'];'
     script+=('RF=factor(x^3+E.b2*x^2+8*E.b4*x+16*E.b6);RR=List();'
@@ -201,6 +293,11 @@ def prepare_covers(data, timeout, cache, count=8):
         # priority or whether its square class has become known meanwhile.
         model['key']=hashlib.sha256(json.dumps([data['ainvs'],alpha,d,f,q,transform],sort_keys=True).encode()).hexdigest()
         models.append(model)
+    # A larger budget or candidate count may extend a partial preparation.
+    # Keep every previously checked map even if the repeated process times out
+    # before producing it again. Coverage keys therefore remain usable.
+    retained={m['key']:m for m in old.get('models',[])}
+    retained.update((m['key'],m) for m in models);models=list(retained.values())
     groups={}
     for model in models:groups.setdefault(model['alpha'],[]).append(model)
     ordered=[]
@@ -208,8 +305,12 @@ def prepare_covers(data, timeout, cache, count=8):
         group.sort(key=lambda m:m['coefficient_bits'])
         known=next((m for m in group if m['known_class']),None)
         ordered.append(([known] if known else [])+[m for m in group if m is not known])
-    models=[group[i] for i in range(max(map(len,ordered),default=0)) for group in ordered if i<len(group)][:count]
-    # A completed or partially successful preparation is reused. An interrupted
-    # empty attempt may be retried after a different certified basis is found.
-    if models or 'COVERS_END' in out:cache['isogeny_covers']={'basis_key':basis_key,'models':models}
-    return models
+    models=[group[i] for i in range(max(map(len,ordered),default=0)) for group in ordered if i<len(group)]
+    attempts=dict(attempts);previous=attempts.get(str(count),{})
+    attempts[str(count)]={'budget':max(timeout,previous.get('budget',0)),
+                         'complete':'COVERS_END' in out or previous.get('complete',False)}
+    largest=max(map(int,attempts))
+    cache['isogeny_covers']={'basis_key':basis_key,'models':models,'attempts':attempts,
+        'count':largest,'budget':max(a['budget'] for a in attempts.values()),
+        'complete':attempts[str(largest)]['complete']}
+    return models[:count]

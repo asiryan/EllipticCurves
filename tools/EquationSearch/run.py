@@ -94,7 +94,7 @@ if __name__=='__main__':
     parser.add_argument('--target',type=int,default=31)
     parser.add_argument('--job-seconds',type=float,default=3)
     parser.add_argument('--seed-limit',type=int,default=None,help='Pass at most this many independently found points to expansion')
-    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity','geometric'),default='adaptive')
+    parser.add_argument('--anchor-mode',choices=('unified','adaptive','fixed','frozen','parity','geometric'),default='unified')
     parser.add_argument('--lattice-seconds',type=float,default=0,help='Optional tangent-lattice stage within the bootstrap budget')
     args=parser.parse_args()
     if not (0<args.bootstrap_seconds<=3600 and 0<=args.search_seconds<=7200 and

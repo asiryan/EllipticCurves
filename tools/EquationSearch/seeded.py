@@ -154,7 +154,15 @@ def independent_result(data, expected):
 
 
 def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
-           batch_size=8, job_seconds=2, import_run=None, anchor_mode='adaptive'):
+           batch_size=8, job_seconds=2, import_run=None, anchor_mode='unified'):
+    if anchor_mode=='unified':
+        from unified import search as unified_search
+        return unified_search(source,output,seconds,workers,anchors,target,batch_size,job_seconds,import_run)
+    return reference_search(source,output,seconds,workers,anchors,target,batch_size,job_seconds,import_run,anchor_mode)
+
+
+def reference_search(source, output, seconds=300, workers=4, anchors=2048, target=32,
+                     batch_size=8, job_seconds=2, import_run=None, anchor_mode='adaptive'):
     if anchor_mode not in ('adaptive','fixed','frozen','parity','geometric'): raise ValueError('Unknown anchor policy')
     source, output = Path(source).resolve(), Path(output).resolve()
     if output == ROOT or not output.is_relative_to(ROOT): raise ValueError('Use a dedicated workspace directory')
@@ -408,8 +416,8 @@ if __name__=='__main__':
     parser.add_argument('--workers',type=int,default=2)
     parser.add_argument('--anchors',type=int,default=64)
     parser.add_argument('--target',type=int,default=32)
-    parser.add_argument('--anchor-mode',choices=('adaptive','fixed','frozen','parity','geometric'),default='adaptive',
-                        help='fixed: supplied anchors; frozen: their initial generated pool; adaptive/parity: rebuild after growth')
+    parser.add_argument('--anchor-mode',choices=('unified','adaptive','fixed','frozen','parity','geometric'),default='unified',
+                        help='unified solver by default; older policies are explicit reference experiments only')
     args=parser.parse_args()
     if not (0<args.seconds<=7200 and 1<=args.workers<=24 and 1<=args.anchors<=4096 and 1<=args.target<=100):
         parser.error('Invalid bounded search settings')
