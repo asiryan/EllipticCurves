@@ -45,6 +45,10 @@ public sealed class CalculationOperation
                 && method.GetParameters()[0].ParameterType == typeof(int))
                 parameters.AddRange(CalculationInput.Describe(typeof(int), "execution.MaxDegreeOfParallelism",
                     CalculationInput.DefaultRankWorkers, true));
+            if (method.DeclaringType == typeof(EllipticCurveQ) && method.Name == nameof(EllipticCurveQ.GetConductor))
+                parameters.Add(new(CalculationInput.FactorizationWorkersKey, "options · Max Degree Of Parallelism",
+                    CalculationInput.DefaultFactorizationWorkers.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    CalculationInput.FactorizationWorkersHelp, typeof(int)));
         }
         if (extra != null) parameters.AddRange(extra);
         Parameters = parameters;

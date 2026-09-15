@@ -59,7 +59,7 @@ public sealed class ExplorerWorkerTests
         var operation = CalculationCatalog.All.Single(o => o.Member?.Name == "GetConductor");
         var request = new CalculationRequest(operation.Id,
             "y^2 = x^3 + x^2 - 221556180740323405132844117936*x + 35386140191724122461245294467670188433973860",
-            new(), TimeoutSeconds: 15);
+            new() { [CalculationInput.FactorizationWorkersKey] = "8" }, TimeoutSeconds: 15);
         var result = await new CalculationRunner(() => StartInfo()).RunAsync(request, _ => { })
             .WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Equal("Completed", result.Status);

@@ -64,6 +64,8 @@ namespace EllipticCurves
 
         internal static BigInteger FindDivisor(BigInteger n, CancellationToken token, int maxWorkers = 0)
         {
+            token.ThrowIfCancellationRequested();
+            if (maxWorkers < 0) throw new ArgumentOutOfRangeException(nameof(maxWorkers));
             int digits = (int)(BigInteger.Log10(n) + 1);
             int bound = digits < 30 ? 2000 : digits < 40 ? 8000 : digits < 50 ? 25000
                 : digits < 60 ? 60000 : digits < 70 ? 150000 : 300000;
@@ -74,8 +76,7 @@ namespace EllipticCurves
                 if (n % p == 0) return p;
             }
             int multiplier = ChooseMultiplier(n, primes);
-            int workers = digits < 45 ? 1 : Math.Max(1,
-                Math.Min(4, Math.Min(Environment.ProcessorCount, maxWorkers == 0 ? 4 : maxWorkers)));
+            int workers = WorkerCount(digits, maxWorkers, Environment.ProcessorCount);
             if (workers == 1) return new NativeQuadraticSieve(n, multiplier, primes, token).Run();
             using (var stop = CancellationTokenSource.CreateLinkedTokenSource(token))
             {
@@ -86,17 +87,36 @@ namespace EllipticCurves
                     Parallel.For(0, workers, new ParallelOptions
                     { MaxDegreeOfParallelism = workers, CancellationToken = stop.Token }, index =>
                     {
-                        var worker = index == 0 ? owner : new NativeQuadraticSieve(n, multiplier, primes, stop.Token, owner);
-                        worker.randomState ^= unchecked((uint)index * 0x85ebca6bU);
-                        var divisor = worker.Run();
-                        lock (owner.relationLock) if (result.IsOne) result = divisor;
-                        stop.Cancel();
+                        try
+                        {
+                            var worker = index == 0 ? owner : new NativeQuadraticSieve(n, multiplier, primes, stop.Token, owner);
+                            worker.randomState ^= unchecked((uint)index * 0x85ebca6bU);
+                            var divisor = worker.Run();
+                            lock (owner.relationLock) if (result.IsOne) result = divisor;
+                            stop.Cancel();
+                        }
+                        catch
+                        {
+                            // A failed worker must stop its peers before Parallel.For joins them.
+                            stop.Cancel();
+                            throw;
+                        }
                     });
                 }
                 catch (OperationCanceledException) when (!token.IsCancellationRequested && result > 1) { }
                 token.ThrowIfCancellationRequested();
                 return result;
             }
+        }
+
+        internal static int WorkerCount(int digits, int requested, int available)
+        {
+            if (requested < 0) throw new ArgumentOutOfRangeException(nameof(requested));
+            if (available < 1) throw new ArgumentOutOfRangeException(nameof(available));
+            // Small jobs cannot amortize extra sieve instances. Large residuals
+            // can use all CPUs, while explicit limits also reach recursive proofs.
+            if (digits < 45) return 1;
+            return Math.Min(available, requested == 0 ? (digits < 70 ? 4 : available) : requested);
         }
 
         private NativeQuadraticSieve(BigInteger n, int multiplier, int[] primes, CancellationToken token,

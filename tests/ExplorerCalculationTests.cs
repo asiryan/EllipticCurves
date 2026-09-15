@@ -36,7 +36,11 @@ public sealed class ExplorerCalculationTests
         foreach (var type in new[] { typeof(EllipticCurveQ), typeof(EllipticCurveFp), typeof(EllipticCurveFq), typeof(FiniteField), typeof(BigRational) })
             foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
                 .Where(CalculationCatalog.IsMathematicalMethod))
-                Assert.Contains(CalculationCatalog.All, o => Equals(o.Member, method));
+                Assert.Contains(CalculationCatalog.All, o => Equals(o.Member, method)
+                    || (method.DeclaringType == typeof(EllipticCurveQ) && method.Name == nameof(EllipticCurveQ.GetConductor)
+                        && method.GetParameters()[0].ParameterType == typeof(FactorizationOptions)
+                        && o.Member?.Name == nameof(EllipticCurveQ.GetConductor)
+                        && o.Parameters.Any(p => p.Key == CalculationInput.FactorizationWorkersKey)));
         foreach (var operation in CalculationCatalog.All)
         {
             Assert.Equal(operation.Parameters.Count, operation.Parameters.Select(p => p.Key).Distinct().Count());
@@ -90,6 +94,38 @@ public sealed class ExplorerCalculationTests
         Assert.Contains("Point Count: 3", output);
         Assert.Contains("Independence Certified: True", output);
         Assert.Contains("Reason:", output);
+    }
+
+    [Fact]
+    public async Task ConductorExposesCpuLimitAndPreservesItWhenRepeated()
+    {
+        var operation = Assert.Single(CalculationCatalog.All.Where(o => o.Member?.Name == nameof(EllipticCurveQ.GetConductor)));
+        Assert.Equal("EllipticCurveQ.GetConductor(CancellationToken)", operation.Id);
+        var degree = Assert.Single(operation.Parameters);
+        Assert.Equal(CalculationInput.FactorizationWorkersKey, degree.Key);
+        Assert.Equal(CalculationInput.DefaultFactorizationWorkers.ToString(), degree.Default);
+        Assert.Equal("options · Max Degree Of Parallelism", degree.Label);
+        Assert.Contains("1 runs sequentially", degree.Help);
+        using var workbench = new WorkbenchViewModel();
+        using var form = new CalculationFormViewModel(operation, Classic, workbench);
+        var field = form.Fields.Single(f => f.Parameter.Key == degree.Key);
+        field.Text = "-1";
+        Assert.False(form.CanRun);
+        field.Text = "0";
+        Assert.False(form.CanRun);
+        foreach (var workers in new[] { "1", "4", "12", "24" })
+        {
+            field.Text = workers;
+            Assert.True(form.CanRun);
+            var request = form.CreateRequest();
+            Assert.Equal("Result: 32", (await CalculationEngine.ExecuteAsync(request)).Trim());
+            using var repeat = new CalculationFormViewModel(operation, request.Equation, workbench, request);
+            Assert.Equal(workers, repeat.Fields.Single(f => f.Parameter.Key == degree.Key).Text);
+        }
+        // Existing history entries without this setting use the default CPU limit.
+        Assert.Equal("Result: 32", (await CalculationEngine.ExecuteAsync(new(operation.Id, Classic, new()))).Trim());
+        await Assert.ThrowsAsync<FormatException>(() => CalculationEngine.ExecuteAsync(
+            new(operation.Id, Classic, new() { [degree.Key] = "-1" })));
     }
 
     [Fact]

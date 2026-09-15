@@ -58,7 +58,12 @@ public static class CalculationEngine
             }
             try
             {
-                result = target is EllipticCurveQ rankCurve && method.Name == nameof(EllipticCurveQ.GetRankBounds)
+                result = target is EllipticCurveQ conductorCurve && method.Name == nameof(EllipticCurveQ.GetConductor)
+                    ? conductorCurve.GetConductor(new FactorizationOptions
+                    {
+                        MaxDegreeOfParallelism = (int)CalculationInput.ParseScalar(typeof(int), arguments[CalculationInput.FactorizationWorkersKey])
+                    }, token)
+                    : target is EllipticCurveQ rankCurve && method.Name == nameof(EllipticCurveQ.GetRankBounds)
                     && parameters[0].ParameterType == typeof(int)
                     ? rankCurve.GetRankBounds(new RankComputationOptions
                     {

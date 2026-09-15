@@ -6,6 +6,24 @@ using EllipticCurves;
 // Run from any directory. Every invocation recomputes the result and proves all
 // prime factors; no factor hints or cached factorizations enter the measurement.
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+if (args.Length > 0 && args[0] == "--conductor-cpu")
+{
+    var largeCurve = new EllipticCurveQ(1, 0, 0,
+        new BigRational(BigInteger.Parse("-20820207864197471248300179976626")),
+        new BigRational(BigInteger.Parse("36732936589138673862895758597955508398047757956")));
+    var expected = BigInteger.Parse("21785392458764315483988614758901932764423833726404496768609056369259382575196330");
+    var limits = args.Length > 1 ? args.Skip(1).Select(int.Parse).ToArray() : new[] { 4, 8, 12, 0 };
+    Console.WriteLine("worker_limit,logical_cpus,elapsed_ms");
+    foreach (int workers in limits)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        var watch = Stopwatch.StartNew();
+        var result = largeCurve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = workers }, timeout.Token);
+        if (result != expected) throw new InvalidOperationException("Conductor mismatch.");
+        Console.WriteLine($"{workers},{Environment.ProcessorCount},{watch.Elapsed.TotalMilliseconds:F1}");
+    }
+    return;
+}
 Console.WriteLine("case,digits,first_ms,median_ms");
 void Measure(string label, int digits, Action<CancellationToken> calculation)
 {

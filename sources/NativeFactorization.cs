@@ -7,7 +7,7 @@ namespace EllipticCurves
 {
     internal static partial class NativeNumberTheory
     {
-        private static BigInteger FindDivisor(BigInteger n, CancellationToken token)
+        private static BigInteger FindDivisor(BigInteger n, CancellationToken token, int maxWorkers)
         {
             int bits = RealArithmetic.BitLength(n);
             int rhoWork = n <= ulong.MaxValue || bits > 200 ? 131072 : bits < 160 ? 8192 : 32768;
@@ -33,7 +33,7 @@ namespace EllipticCurves
                         divisor = NativeEcmFactorization.FindDivisor(n, 16, 2000, 20000, token);
                         if (divisor > 1) return divisor;
                     }
-                    return NativeQuadraticSieve.FindDivisor(n, token);
+                    return NativeQuadraticSieve.FindDivisor(n, token, maxWorkers);
                 }
             }
         }

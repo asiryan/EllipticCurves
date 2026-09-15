@@ -113,6 +113,23 @@ The torsion API does not currently accept a cancellation token.
 The convenience properties recompute their results; callers doing repeated work
 can retain the returned minimal model, conductor and rank bounds.
 
+`GetConductor(FactorizationOptions, CancellationToken)` accepts a per-call
+`MaxDegreeOfParallelism` limit. The limit follows every factorization needed for
+minimization, the discriminant and recursive primality proofs; recursive calls
+do not start nested worker groups. One requests sequential execution. Zero (the
+library default) selects automatically by residual size: one worker below 45
+decimal digits, up to four for 45–69 digits, and all available logical CPUs for
+70 or more digits. An explicit positive limit can exceed four, but never the
+available processor count; small jobs may still use fewer workers.
+
+Explorer's existing **Conductor** action exposes **options · Max Degree Of
+Parallelism**, like rank computation. Its default is up to 12 available logical
+CPUs, a conservative starting point rather than a ceiling; enter any positive
+worker limit, including one for sequential execution. More workers can increase
+memory traffic and need not make a calculation faster.
+The setting is included in calculation history and preserved by Repeat. Existing
+history entries without the field use the default; their operation ID is unchanged.
+
 ### Integer factorization
 
 ECM uses Suyama's parametrization of Montgomery curves and projective x/z
@@ -142,11 +159,11 @@ recursive factorization and primality certification.
 
 Logarithmic scores, multiplier selection and sieve sizes are performance heuristics;
 they never certify primality or a factorization. Sieve memory is bounded, and the
-polynomial, relation and elimination loops check cancellation. For residuals of
-at least 45 decimal digits, SIQS uses up to four CPU workers, bounded by the
-available processor count. Workers have independent polynomial families and
+polynomial, relation and elimination loops check cancellation. SIQS distributes
+independent polynomial families across the selected CPU workers. Workers
 share relation collection and elimination. All workers stop and are joined before
-success or cancellation returns. This is an independent C# implementation of
+success, cancellation or a worker failure returns. Preliminary Pollard–Brent and
+ECM searches remain sequential. This is an independent C# implementation of
 published algorithms; it adds no native-process dependency. The primality
 certification still uses the full n-1 criterion described above.
 

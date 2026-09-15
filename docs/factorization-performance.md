@@ -1,8 +1,8 @@
 # Certified factorization performance
 
 Measured on 2026-09-16 on Windows x64, .NET 8.0.31, with 24 logical processors
-available. SIQS uses at most **four workers** for inputs of at least 45 decimal
-digits; the GP comparison explicitly uses **one thread**. These are wall-clock
+available. The original measurements below use up to **four workers**; the CPU
+scaling section measures larger limits. GP explicitly uses **one thread**. These are wall-clock
 measurements, not equal-CPU-work comparisons or guarantees for other inputs.
 
 Both implementations prove primality of every returned factor. GP is PARI/GP
@@ -53,7 +53,50 @@ GP is faster on the smallest cases here. Parallel sieving gives the native
 implementation lower wall-clock times on the larger cases. Factorization remains
 input dependent; the same decimal size can have very different difficulty.
 
-## Reproduce
+## CPU scaling on the larger curve
+
+```
+y^2 + x*y = x^3 - 20820207864197471248300179976626*x
+            + 36732936589138673862895758597955508398047757956
+```
+
+After removing small prime powers, the discriminant has a 75-digit composite
+cofactor. The earlier implementation had a hard limit of four sieve workers.
+An explicit worker limit now reaches all recursive factorization and primality
+proof calls, without creating nested worker groups.
+
+Single-run measurements of the **complete conductor calculation**, in Release,
+on the same machine with 24 logical CPUs:
+
+| Explicit worker limit | Elapsed |
+| --- | ---: |
+| 4 | 80.77 s |
+| 8 | 52.33 s |
+| 12 | 37.05 s |
+| 24 | 57.91 s |
+
+The library's automatic mode (zero), which uses up to four workers for smaller
+recursive subproblems, took 68.06 s in a separate run. The direct GP calculation
+with one thread and `factor_proven=1` took 80.66 s. Every result was checked against
+the same exact conductor; no known factors were provided to either factorizer.
+
+More workers are not always faster: the complete 24-worker calculation was slower
+than the 12-worker one. Twelve is therefore Explorer's default ceiling, bounded
+by the available CPU count. It is editable and is **not** a hard limit. Timings
+are individual samples, not medians or a claim that 12 is optimal on every CPU.
+The user's 106-second Explorer observation also includes application overhead
+and can depend on build configuration; it is not used as the benchmark baseline.
+
+To compare complete calculations at explicit worker limits:
+
+```powershell
+dotnet run --project tests/FactorizationBenchmark/FactorizationBenchmark.csproj -c Release -- --conductor-cpu 4 8 12 24
+```
+
+This mode prints one CSV row per fresh calculation and has a five-minute timeout
+per run. To include the library's automatic policy, add `0` to the worker list.
+
+## Reproduce the original comparison
 
 From the repository root, with .NET 8 or newer installed:
 

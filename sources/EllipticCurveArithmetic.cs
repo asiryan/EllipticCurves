@@ -19,6 +19,9 @@ namespace EllipticCurves
         /// integral reconstruction. Integer factorization can be expensive; cancellation is supported.
         /// </summary>
         public EllipticCurveQ GetGlobalMinimalModel(CancellationToken cancellationToken = default)
+            => GetGlobalMinimalModelCore(cancellationToken, 0);
+
+        private EllipticCurveQ GetGlobalMinimalModelCore(CancellationToken cancellationToken, int maxWorkers)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("A singular curve has no elliptic minimal model.");
@@ -26,7 +29,7 @@ namespace EllipticCurves
             // A scaling at p requires p^4 | c4 and p^6 | c6, so only common
             // prime divisors can change the model. Avoid factoring the often
             // much larger discriminant just to discover irrelevant primes.
-            foreach (var p in Factor(BigInteger.GreatestCommonDivisor(c4, c6), cancellationToken).Keys.OrderBy(p => p))
+            foreach (var p in Factor(BigInteger.GreatestCommonDivisor(c4, c6), cancellationToken, maxWorkers).Keys.OrderBy(p => p))
             {
                 var p4 = BigInteger.Pow(p, 4);
                 var p6 = BigInteger.Pow(p, 6);
@@ -50,10 +53,21 @@ namespace EllipticCurves
         /// This method performs no network access and does not require external mathematical software.
         /// </summary>
         public BigInteger GetConductor(CancellationToken cancellationToken = default)
+            => GetConductorCore(cancellationToken, 0);
+
+        /// <summary>Compute the exact conductor with a per-call limit on parallel sieve workers.
+        /// The limit also applies to factorization during minimization and recursive primality proofs.</summary>
+        public BigInteger GetConductor(FactorizationOptions options, CancellationToken cancellationToken)
         {
-            var model = GetGlobalMinimalModel(cancellationToken);
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            return GetConductorCore(cancellationToken, options.WorkerLimit());
+        }
+
+        private BigInteger GetConductorCore(CancellationToken cancellationToken, int maxWorkers)
+        {
+            var model = GetGlobalMinimalModelCore(cancellationToken, maxWorkers);
             BigInteger conductor = 1;
-            foreach (var pair in Factor(model.Discriminant.Num, cancellationToken))
+            foreach (var pair in Factor(model.Discriminant.Num, cancellationToken, maxWorkers))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var p = pair.Key;

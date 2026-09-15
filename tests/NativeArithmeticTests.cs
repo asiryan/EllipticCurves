@@ -6,6 +6,30 @@ namespace EllipticCurves.Tests;
 
 public class NativeArithmeticTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(8)]
+    public void ConductorWorkerOptionsPreserveExactResultsAcrossModels(int workers)
+    {
+        var options = new FactorizationOptions { MaxDegreeOfParallelism = workers };
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        Assert.Equal(new BigInteger(32), curve.GetConductor(options, default));
+        var changed = ChangeCoordinates(curve, new BigRational(2, 3), 5, -3, 7);
+        Assert.Equal(new BigInteger(32), changed.GetConductor(options, default));
+        Assert.Equal(new BigInteger(32), curve.GetConductor(default));
+        Assert.Equal(workers, options.MaxDegreeOfParallelism);
+        Assert.Throws<OperationCanceledException>(() => curve.GetConductor(options, new CancellationToken(true)));
+    }
+
+    [Fact]
+    public void ConductorRejectsInvalidWorkerOptions()
+    {
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        Assert.Throws<ArgumentNullException>(() => curve.GetConductor((FactorizationOptions)null, default));
+        Assert.Throws<ArgumentOutOfRangeException>(() => curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = -1 }, default));
+    }
+
     [Fact]
     public void LargeDiscriminantConductorMatchesPari()
     {

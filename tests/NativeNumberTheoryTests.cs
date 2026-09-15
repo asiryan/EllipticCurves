@@ -61,6 +61,8 @@ public class NativeNumberTheoryTests
     [InlineData("1575838430456954508271967", "81274068710384465721193186106423", 4)]
     [InlineData("3093889989073154286827653", "5930788502963551593663361", 1)]
     [InlineData("3093889989073154286827653", "5930788502963551593663361", 4)]
+    [InlineData("1575838430456954508271967", "81274068710384465721193186106423", 8)]
+    [InlineData("3093889989073154286827653", "5930788502963551593663361", 24)]
     public void QuadraticSieveSplitsWithoutKnownFactors(string left, string right, int workers)
     {
         var p = BigInteger.Parse(left);
@@ -73,6 +75,7 @@ public class NativeNumberTheoryTests
     [Theory]
     [InlineData(1)]
     [InlineData(4)]
+    [InlineData(24)]
     public void FactorizationHonorsCancellationAndUnitConventions(int workers)
     {
         Assert.Empty(NativeNumberTheory.Factor(1, default));
@@ -82,6 +85,35 @@ public class NativeNumberTheoryTests
         var n = BigInteger.Parse("128074800873422933261289680790071262754898704850689544041");
         using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         Assert.Throws<OperationCanceledException>(() => NativeQuadraticSieve.FindDivisor(n, timeout.Token, workers));
+    }
+
+    [Fact]
+    public void WorkerLimitsAllowAvailableCpusWithoutOversubscription()
+    {
+        Assert.Equal(24, NativeQuadraticSieve.WorkerCount(75, 0, 24));
+        Assert.Equal(12, NativeQuadraticSieve.WorkerCount(75, 12, 24));
+        Assert.Equal(8, NativeQuadraticSieve.WorkerCount(57, 8, 24));
+        Assert.Equal(4, NativeQuadraticSieve.WorkerCount(57, 0, 24));
+        Assert.Equal(4, NativeQuadraticSieve.WorkerCount(75, int.MaxValue, 4));
+        Assert.Equal(1, NativeQuadraticSieve.WorkerCount(75, 0, 1));
+        Assert.Equal(1, NativeQuadraticSieve.WorkerCount(75, 1, 24));
+        Assert.Equal(1, NativeQuadraticSieve.WorkerCount(30, 24, 24));
+        Assert.Throws<ArgumentOutOfRangeException>(() => NativeQuadraticSieve.WorkerCount(75, -1, 24));
+        Assert.Throws<ArgumentOutOfRangeException>(() => NativeNumberTheory.Factor(1, default, -1));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(8)]
+    public void FactorizationWithExplicitWorkerLimitsCertifiesLargeFactors(int workers)
+    {
+        var p = BigInteger.Parse("1575838430456954508271967");
+        var q = BigInteger.Parse("81274068710384465721193186106423");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var factors = NativeNumberTheory.Factor(p * q, timeout.Token, workers);
+        Assert.Equal(2, factors.Count);
+        Assert.Equal(1, factors[p]);
+        Assert.Equal(1, factors[q]);
     }
 
     [Fact]

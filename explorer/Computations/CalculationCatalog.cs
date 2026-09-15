@@ -63,6 +63,10 @@ public static class CalculationCatalog
             .Where(IsMathematicalMethod).ToArray();
         foreach (var method in methods)
         {
+            // One Conductor action keeps its saved operation ID and exposes the
+            // worker setting for both public overloads through CalculationEngine.
+            if (method.DeclaringType == typeof(EllipticCurveQ) && method.Name == nameof(EllipticCurveQ.GetConductor)
+                && method.GetParameters()[0].ParameterType == typeof(FactorizationOptions)) continue;
             var signature = string.Join(",", method.GetParameters().Select(p => p.ParameterType.Name));
             var title = Title(method.Name);
             if (methods.Count(other => other.Name == method.Name) > 1)
