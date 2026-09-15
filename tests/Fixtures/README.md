@@ -24,6 +24,15 @@ database. See the [PARI elliptic-curve reference](https://pari.math.u-bordeaux.f
 The committed CSV files contain unique rows encoded as UTF-8. Tests only read
 these files; PARI/GP is not required to build or run the tests.
 
+`factorization.csv` contains eight independently generated prime pairs, whose
+products have 38–66 decimal digits. `generate-factorization.gp` uses seed
+20260916 and explicitly proves both primes with `isprime`; the native tests
+receive only the product to factor and certify. `benchmark-factorization.gp`
+uses `factor_proven=1`, one GP thread, wall-clock measurements, and fresh `ellinit`
+objects for each conductor run. The C# counterpart is
+`tests/FactorizationBenchmark/FactorizationBenchmark.csproj`; see
+[benchmark methodology](../../docs/factorization-performance.md).
+
 - `conductors.csv`: input a1,a2,a3,a4,a6; conductor; reduced minimal a1,a2,a3,a4,a6;
   PARI Kodaira codes at 2 and 3. The last two columns record coverage metadata.
 - `ranks.csv`: a,b,proved rank for y²=x³+a*x²+b*x. Only cases where PARI's lower

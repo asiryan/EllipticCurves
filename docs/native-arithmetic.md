@@ -96,7 +96,10 @@ by these work counters. Higher descents and Cassels-Tate pairings are not implem
 Native computations, including the torsion divisor helpers, certify their prime
 factors: deterministic Miller–Rabin
 below 2^64, and recursive full n-1 primality proofs above it, with an exact trial
-division fallback. Pollard rho supplies candidate factors; no probable-prime
+division fallback. The factorizer extracts perfect powers, then uses bounded
+Pollard–Brent rho attempts with batched gcds, two-stage elliptic-curve factorization
+(ECM), and a self-initializing quadratic sieve (SIQS). Preliminary work is scaled
+with the input size: a small composite can be cheaper to sieve directly. No probable-prime
 result is accepted as a proof. Large integers can still be prohibitively expensive
 to factor or prove prime. APIs accepting a cancellation token check it in the
 factorization and search loops; a single BigInteger operation cannot be interrupted
@@ -109,6 +112,58 @@ The torsion API does not currently accept a cancellation token.
 
 The convenience properties recompute their results; callers doing repeated work
 can retain the returned minimal model, conductor and rank bounds.
+
+### Integer factorization
+
+ECM uses Suyama's parametrization of Montgomery curves and projective x/z
+arithmetic. Stage one multiplies by the largest prime powers below B1. Stage two
+uses baby steps and giant steps with a 210-wheel: for a prime `p = 210*m +/- r`,
+projective equality of the x-coordinates of `[210*m]Q` and `[r]Q supplies a gcd
+candidate. Batched gcds are replayed individually when a batch contains multiple
+factors. Singular or unproductive curves are discarded; a failed bounded search
+does not assert primality.
+
+SIQS uses polynomials `Q(x) = A*x^2 + 2*B*x + C` with
+`B^2 - A*C = k*n`, where `k` is a small multiplier. The leading coefficient A
+is a product of distinct factor-base primes. Chinese remaindering supplies a
+family of square roots B modulo A; Gray-code sign changes move between them.
+The sieve roots change by precomputed offsets, avoiding fresh modular inversions
+for every polynomial. Contributions of small prime powers are pre-sieved over
+a 10080-period wheel and copied in blocks after a cyclic shift.
+
+The identity `(A*x+B)^2 = A*Q(x) (mod n)` gives an exact relation. A logarithmic
+sieve over small primes and their powers selects candidates, which are then
+divided exactly, including the factors of A in the exponent vector. Two partial
+relations with the same remaining cofactor can be combined: that cofactor occurs
+squared, so its primality need not be assumed. Binary Gaussian elimination finds
+even exponent sums and produces a congruence of squares. Gcds of the sum and
+difference give candidate divisors, which are checked by exact division before
+recursive factorization and primality certification.
+
+Logarithmic scores, multiplier selection and sieve sizes are performance heuristics;
+they never certify primality or a factorization. Sieve memory is bounded, and the
+polynomial, relation and elimination loops check cancellation. For residuals of
+at least 45 decimal digits, SIQS uses up to four CPU workers, bounded by the
+available processor count. Workers have independent polynomial families and
+share relation collection and elimination. All workers stop and are joined before
+success or cancellation returns. This is an independent C# implementation of
+published algorithms; it adds no native-process dependency. The primality
+certification still uses the full n-1 criterion described above.
+
+References: [Brent, An Improved Monte Carlo Factorization Algorithm](https://maths-people.anu.edu.au/~brent/pub/pub051.html),
+[Silverman, The Multiple Polynomial Quadratic Sieve](https://doi.org/10.1090/S0025-5718-1987-0866119-8),
+[Montgomery x/z formulas](https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html),
+and [Belabas, Advanced Computational Number Theory, §§4.2–4.3](https://www.math.u-bordeaux.fr/~kbelabas/teach/N1MA9W11/book.pdf).
+
+The large-discriminant regression curve has coefficients
+`[0,1,0,-221556180740323405132844117936,35386140191724122461245294467670188433973860]`.
+Its conductor and all nine bad-prime valuations are checked against PARI/GP
+`ellglobalred`, with `default(factor_proven,1)`. Its 57-digit residual composite is
+also tested directly, alongside unrelated semiprimes, repeated factors, perfect
+powers, pseudoprime rejection and cancellation.
+The independent 38–66 digit semiprime fixtures, sequential/parallel sieve tests,
+both ECM stages and an actual Explorer worker calculation cover the extended
+factorizer. See [performance measurements and reproduction commands](factorization-performance.md).
 
 ## Native analytic rank
 

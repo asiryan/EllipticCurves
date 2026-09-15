@@ -7,6 +7,26 @@ namespace EllipticCurves.Tests;
 public class NativeArithmeticTests
 {
     [Fact]
+    public void LargeDiscriminantConductorMatchesPari()
+    {
+        var curve = new EllipticCurveQ(0, 1, 0,
+            new BigRational(BigInteger.Parse("-221556180740323405132844117936")),
+            new BigRational(BigInteger.Parse("35386140191724122461245294467670188433973860")));
+        // PARI/GP ellglobalred with default(factor_proven, 1).
+        var expected = BigInteger.Parse("1103561624055499058867562340698878392772504928025988266715523317532246643920");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        Assert.Equal(expected, curve.GetConductor(timeout.Token));
+        var local = curve.GetLocalData(timeout.Token);
+        Assert.Equal(new[] { "2", "3", "5", "11", "31", "157", "670606297099",
+            "1575838430456954508271967", "81274068710384465721193186106423" },
+            local.Select(data => data.Prime.ToString()).ToArray());
+        Assert.Equal(new[] { 10, 8, 2, 4, 3, 2, 1, 1, 1 }, local.Select(data => data.DiscriminantValuation).ToArray());
+        Assert.Equal(new[] { 4, 1, 1, 1, 1, 1, 1, 1, 1 }, local.Select(data => data.ConductorValuation).ToArray());
+        Assert.Equal(expected, local.Aggregate(BigInteger.One,
+            (product, data) => product * BigInteger.Pow(data.Prime, data.ConductorValuation)));
+    }
+
+    [Fact]
     public void LargeDiscriminantDoesNotPreventMinimalModelReduction()
     {
         var minimal = new EllipticCurveQ(0, 1, 0,

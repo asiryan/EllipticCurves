@@ -6,7 +6,7 @@ using System.Threading;
 namespace EllipticCurves
 {
     // Exact arithmetic for certified results, also used by the torsion divisor helpers.
-    internal static class NativeNumberTheory
+    internal static partial class NativeNumberTheory
     {
         internal static BigInteger Mod(BigInteger a, BigInteger m) => (a % m + m) % m;
 
@@ -19,6 +19,7 @@ namespace EllipticCurves
 
         internal static Dictionary<BigInteger, int> Factor(BigInteger n, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             var result = new Dictionary<BigInteger, int>();
             n = BigInteger.Abs(n);
             if (n.IsZero) throw new ArgumentException("Cannot factor zero.", nameof(n));
@@ -45,23 +46,22 @@ namespace EllipticCurves
         {
             token.ThrowIfCancellationRequested();
             if (n.IsOne) return;
-            if (IsPrime(n, token)) { AddFactor(result, n); return; }
-            for (BigInteger c = 1; ; c++)
+            if (TryPerfectPower(n, token, out var root, out int exponent))
             {
-                BigInteger x = 2, y = 2, d = 1;
-                while (d.IsOne)
+                foreach (var factor in Factor(root, token))
                 {
-                    token.ThrowIfCancellationRequested();
-                    x = (x * x + c) % n;
-                    y = (y * y + c) % n;
-                    y = (y * y + c) % n;
-                    d = BigInteger.GreatestCommonDivisor(BigInteger.Abs(x - y), n);
+                    result.TryGetValue(factor.Key, out int count);
+                    result[factor.Key] = count + exponent * factor.Value;
                 }
-                if (d == n) continue;
-                FactorRecursive(d, result, token);
-                FactorRecursive(n / d, result, token);
                 return;
             }
+            if (IsPrime(n, token)) { AddFactor(result, n); return; }
+            var divisor = FindDivisor(n, token);
+            // Search heuristics can only supply an exactly verified proper divisor.
+            if (divisor <= 1 || divisor >= n || n % divisor != 0)
+                throw new InvalidOperationException("Invalid divisor in native factorization.");
+            FactorRecursive(divisor, result, token);
+            FactorRecursive(n / divisor, result, token);
         }
 
         internal static bool IsPrime(BigInteger n, CancellationToken token)
