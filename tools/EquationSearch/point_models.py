@@ -11,10 +11,88 @@ No Selmer group, upper rank bound, or completeness assertion is computed.
 from fractions import Fraction as Q
 import hashlib
 import json
+import time
 
 from bootstrap import gp,prefix,vec
 from point_arithmetic import add,multiply,on_curve
 from point_search import quartic_reduction_code
+
+
+def isogeny_data(ainvs, alpha):
+    """E -> E' after X=4x, V=4(2y+a1*x+a3), U=X-alpha.
+
+    E: V^2=U(U^2+A*U+B), E': v^2=u(u^2-2*A*u+A^2-4*B).
+    The two degree-two maps compose to [2]. They can change search heights,
+    but their finite kernels cannot create independent directions by themselves.
+    """
+    a1,a2,a3,a4,a6=map(Q,ainvs);alpha=Q(alpha)
+    b2=a1*a1+4*a2;b4=a1*a3+2*a4;b6=a3*a3+4*a6
+    if alpha**3+b2*alpha**2+8*b4*alpha+16*b6:
+        raise ValueError('Isogeny kernel is not rational two-torsion')
+    A=3*alpha+b2;B=3*alpha**2+2*b2*alpha+8*b4
+    if not B or not A*A-4*B:raise ValueError('Singular isogeny model')
+    return A,B,list(map(str,(0,-2*A,0,A*A-4*B,0)))
+
+
+def isogeny_point(ainvs, alpha, point, inverse=False):
+    """Exact degree-two map or its dual, including the finite kernels."""
+    A,B,dual=isogeny_data(ainvs,alpha);a=list(map(Q,ainvs));alpha=Q(alpha)
+    source=list(map(Q,dual)) if inverse else a
+    p=None if point is None else tuple(map(Q,point))
+    if not on_curve(source,p):raise ValueError('Point off isogeny source')
+    if p is None:return None
+    if inverse:
+        u,v=p
+        if not u:return None
+        U=(u-2*A+(A*A-4*B)/u)/4
+        V=v*(1-(A*A-4*B)/(u*u))/8
+        x=(U+alpha)/4;y=(V-4*a[0]*x-4*a[2])/8
+        result=(x,y);target=a
+    else:
+        x,y=p;U=4*x-alpha;V=4*(2*y+a[0]*x+a[2])
+        if not U:return None
+        result=(U+A+B/U,V*(1-B/(U*U)));target=list(map(Q,dual))
+    if not on_curve(target,result):raise ValueError('Isogeny image off target')
+    return result
+
+
+def isogenous_sources(data, timeout, cache):
+    """Coefficient-derived neighbours, supplied only images of known points."""
+    key=hashlib.sha256(json.dumps(data,sort_keys=True).encode()).hexdigest()
+    old=cache.get('isogenous_sources',{})
+    if old.get('basis_key')==key:return old['sources']
+    deadline=time.perf_counter()+timeout
+    script=prefix(data['ainvs'])+('F=factor(x^3+E.b2*x^2+8*E.b4*x+16*E.b6);'
+        'for(k=1,matsize(F)[1],if(poldegree(F[k,1])==1,'
+        'print("ROOT ",Str(-polcoef(F[k,1],0)/polcoef(F[k,1],1)))));print("ROOTS_END");quit;')
+    out,stats=gp(script,timeout);sources=[]
+    for line in out.splitlines():
+        if not line.startswith('ROOT '):continue
+        alpha=str(Q(line[5:]));_,_,a=isogeny_data(data['ainvs'],alpha);points=[]
+        for p in data['points']:
+            image=isogeny_point(data['ainvs'],alpha,p)
+            if image is None:continue
+            if isogeny_point(data['ainvs'],alpha,image,True)!=multiply(list(map(Q,data['ainvs'])),tuple(map(Q,p)),2):
+                raise ValueError('Dual composition is not doubling')
+            points.append(list(map(str,image)))
+        if not points:continue
+        # The divisor beam on a nonminimal isogenous equation can be quite
+        # different, even though each resulting quartic is later minimized.
+        script=prefix(a)+'M=ellminimalmodel(E,&c);P=['+','.join(vec(p) for p in points)+'];'
+        script+=('print("MINIMAL ",[vector(5,j,Str(M[j])),vector(4,j,Str(c[j])),'
+                 'vector(#P,k,vector(2,j,Str(ellchangepoint(P[k],c)[j])))]);quit;')
+        outmin,st=gp(script,max(.02,deadline-time.perf_counter()))
+        records=list(complete_records(outmin,'MINIMAL ',st['timed_out']))
+        if not records:continue
+        ma,change,mp=records[0];u,r,s,t=map(Q,change)
+        if not u or len(points)!=len(mp):raise ValueError('Invalid isogenous model change')
+        for old,p in zip(points,mp):
+            x,y=map(Q,p)
+            if (u*u*x+r,u**3*y+s*u*u*x+t)!=tuple(map(Q,old)) or not on_curve(list(map(Q,ma)),(x,y)):
+                raise ValueError('Isogenous minimal model identity')
+        sources.append({'ainvs':ma,'points':mp,'transport_alpha':alpha,'transport_change':change})
+    if 'ROOTS_END' in out:cache['isogenous_sources']={'basis_key':key,'sources':sources}
+    return sources
 
 
 def complete_records(output, label, timed_out):

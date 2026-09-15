@@ -149,5 +149,71 @@ class TorsionTests(unittest.TestCase):
         self.assertEqual(parsed[1][0][1],-2.34e-95)
         self.assertEqual(result.splitlines()[1:],raw.splitlines()[1:])
 
+    def test_large_gp_input_cannot_block_before_the_timeout(self):
+        import time
+        from bootstrap import gp
+        started=time.perf_counter()
+        _,stats=gp('while(1,1);\n'+'\n'*200000,.1)
+        self.assertTrue(stats['timed_out'])
+        self.assertLess(time.perf_counter()-started,2)
+
+    def test_dual_isogeny_composition_is_exact_doubling(self):
+        from point_models import isogeny_data,isogeny_point
+        for a,p in ((self.a,self.p),(['2','-1','2','-38','-1'],(Q(12),Q(23))),
+                    (['0','0','0','-576','0'],(Q(48),Q(288)))):
+            aa=list(map(Q,a))
+            for alpha in (0,24,-24) if a==self.a else (0,):
+                _,_,dual=isogeny_data(a,alpha)
+                self.assertIsNone(isogeny_point(a,alpha,None))
+                self.assertIsNone(isogeny_point(a,alpha,(0,0),True))
+                for n in (1,2,3,-1):
+                    q=multiply(aa,p,n);image=isogeny_point(a,alpha,q)
+                    self.assertEqual(isogeny_point(a,alpha,image,True),multiply(aa,q,2))
+                x=Q(alpha)/4;kernel=(x,-(aa[0]*x+aa[2])/2)
+                self.assertIsNone(isogeny_point(a,alpha,kernel))
+        with self.assertRaises(ValueError):isogeny_data(self.a,1)
+        with self.assertRaises(ValueError):isogeny_point(self.a,0,(1,1))
+
+    def test_transported_quartic_and_cover_maps_reach_original_equation(self):
+        from point_models import isogenous_sources,divide_basis,prepare_covers
+        from models import prepare_models
+        from seeded import batch_search
+        a=['2','-1','2','-38','-1'];data={'ainvs':a,'points':[['12','23']]}
+        sources=isogenous_sources(data,.2,{})
+        self.assertEqual(len(sources),3)
+        for source in sources:
+            divided,_=divide_basis(source,.2)
+            models=prepare_models({**divided,'approximate_heights':[0]},.3,{})
+            models+=prepare_covers(divided,.3,{},4)
+            for model in models:
+                model.update(transport_alpha=source['transport_alpha'],search_ainvs=source['ainvs'],
+                             transport_change=source['transport_change'])
+            result=batch_search(data,models,64,16,.5)
+            self.assertTrue(result['observations'])
+            old.validate_curve_and_points({**data,'points':[o['point'] for o in result['observations']]})
+            self.assertTrue(all(o['method']=='dual_isogeny' for o in result['observations']))
+
+    def test_interrupted_model_output_ignores_only_unfinished_record(self):
+        from unittest.mock import patch
+        from models import prepare_models
+        pool={'ainvs':self.a,'points':[list(map(str,self.p))],'approximate_heights':[0]}
+        with patch('models.gp',return_value=('CACHED [1,["12',{'timed_out':True})):
+            self.assertEqual(prepare_models(pool,.1,{}),[])
+        with patch('models.gp',return_value=('CACHED [1,["12\n',{'timed_out':False})):
+            with self.assertRaises(json.JSONDecodeError):prepare_models(pool,.1,{})
+
+    def test_optional_isogeny_pool_timeout_does_not_abort_original_search(self):
+        import tempfile,subprocess
+        from unittest.mock import patch
+        from seeded import transported_models
+        root=Path(__file__).resolve().parents[2]/'artifacts/equation-search-tests'
+        data={'ainvs':self.a,'points':[list(map(str,self.p))]}
+        with tempfile.TemporaryDirectory(dir=root) as temp:
+            with patch('seeded.generate',side_effect=subprocess.TimeoutExpired('gp',.1)):
+                models,records=transported_models(data,Path(temp),8,.4,{})
+            self.assertEqual(models,[])
+            self.assertTrue(records)
+            self.assertTrue(all(r['status']=='pool_budget_exhausted' for r in records))
+
 
 if __name__=='__main__':unittest.main()

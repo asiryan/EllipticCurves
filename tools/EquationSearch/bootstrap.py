@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import time
 
 import certificate
@@ -51,11 +52,22 @@ def equation(data):
     return {'ainvs':list(map(str,a))}
 
 
+def gp_process(script, seconds):
+    """Feed GP from a file: Windows communicate(input=...) can block writing
+    a large pipe before its timeout starts, while GP is busy on an early line.
+    The temporary script is removed on completion or timeout.
+    """
+    checked_script(script)
+    with tempfile.TemporaryFile(mode='w+',encoding='utf-8',newline='\n') as source:
+        source.write(script);source.seek(0)
+        return subprocess.run([str(GP),'-fq','-s','64M'],stdin=source,text=True,
+                              capture_output=True,timeout=max(.01,seconds))
+
+
 def gp(script, seconds):
     checked_script(script); started=time.perf_counter(); timed_out=False
     try:
-        p=subprocess.run([str(GP),'-fq','-s','64M'],input=script,text=True,
-                         capture_output=True,timeout=max(.05,seconds))
+        p=gp_process(script,max(.05,seconds))
         stdout,stderr,code=p.stdout,p.stderr,p.returncode
     except subprocess.TimeoutExpired as error:
         stdout,stderr,code=error.stdout or '',error.stderr or '',None; timed_out=True

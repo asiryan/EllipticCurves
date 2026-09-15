@@ -14,16 +14,15 @@ import time
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'RankHunt'))
 from blind_search import (GP, ROOT, POLICY, boxes, clean,
                          diverse_vectors, order_models)
-from bootstrap import save, checked_script
+from bootstrap import save, checked_script, gp_process
 from models import prepare_models, parity_vectors, parity_order, record_coverage, search_script
 from torsion_certificate import certify
-from point_models import divide_basis,prepare_covers
+from point_models import divide_basis,prepare_covers,isogenous_sources
 
 
 # Isolated module namespace: preserve the archived engine and other importers.
 _pool_spec=importlib.util.spec_from_file_location('equation_anchor_pool',ROOT/'tools/RankHunt/bounded_anchor_pool.py')
 _pool=importlib.util.module_from_spec(_pool_spec);_pool_spec.loader.exec_module(_pool)
-_raw_pool_gp=_pool.call_gp
 
 
 def normalize_lattice_output(stdout):
@@ -34,7 +33,10 @@ def normalize_lattice_output(stdout):
 
 
 def _pool_gp(script,prefix,timeout):
-    return normalize_lattice_output(_raw_pool_gp(script,prefix,timeout))
+    p=gp_process(script,timeout)
+    if p.returncode or 'POOL_END' not in p.stdout or any('***' in l and 'Warning:' not in l for l in p.stderr.splitlines()):
+        raise RuntimeError('Bounded anchor preparation failed: '+p.stderr)
+    return normalize_lattice_output(p.stdout)
 
 
 _pool.call_gp=_pool_gp
@@ -49,14 +51,48 @@ def job_key(model, n, d):
     return f'{model["key"]}:{n}:{d}'
 
 
+def transported_models(data, folder, count, timeout, cache):
+    """Search neighbours using the same certified input span, then map to E."""
+    from torsion_certificate import translate_pool
+    deadline=time.perf_counter()+timeout;result=[];records=[]
+    sources=isogenous_sources(data,min(.12,timeout),cache)
+    for i,source in enumerate(sources):
+        if deadline-time.perf_counter()<.05:break
+        basis,division=divide_basis(source,min(.08,(deadline-time.perf_counter())*.2))
+        path=folder/f'isogeny-{i}.json';save(path,basis)
+        try:
+            pool=generate(path,folder/f'isogeny-pool-{i}',count,count,
+                          max(.05,deadline-time.perf_counter()),selector=diverse_vectors)
+        except subprocess.TimeoutExpired:
+            records.append({'alpha':source['transport_alpha'],'status':'pool_budget_exhausted'})
+            continue
+        pool=translate_pool(pool,count)
+        models=order_models(prepare_models(pool,max(.05,(deadline-time.perf_counter())*.65),cache))
+        covers=[]
+        if deadline-time.perf_counter()>.03:
+            covers=prepare_covers(basis,min(.1,deadline-time.perf_counter()),cache,4)
+        local=[]
+        for k in range(max(len(models),len(covers))):
+            if k<len(models):local.append(models[k])
+            if k<len(covers):local.append(covers[k])
+        for model in local[:count]:
+            model=dict(model,search_ainvs=source['ainvs'],transport_alpha=source['transport_alpha'],
+                       transport_change=source['transport_change'],
+                       pool_index=None)
+            model['key']=hashlib.sha256(json.dumps([data['ainvs'],model['transport_alpha'],model['key']]).encode()).hexdigest()
+            result.append(model)
+        records.append({'alpha':source['transport_alpha'],'source':source,'divisions':division,
+                        'models':len(local[:count])})
+    return result,records
+
+
 def batch_search(data, models, n, d, timeout, coverage=None):
     script = search_script(data, models, n, d, coverage)
     checked_script(script)
     started = time.perf_counter()
     timed_out = False
     try:
-        p = subprocess.run([str(GP), '-fq', '-s', '64M'], input=script,
-                           text=True, capture_output=True, timeout=timeout)
+        p = gp_process(script,timeout)
         stdout, stderr, code = p.stdout, p.stderr, p.returncode
     except subprocess.TimeoutExpired as error:
         timed_out = True
@@ -81,8 +117,12 @@ def batch_search(data, models, n, d, timeout, coverage=None):
             match = re.fullmatch(r'POINT \[(-?\d+(?:/\d+)?), (-?\d+(?:/\d+)?)\]', line)
             if match is None or current is None: raise ValueError('Malformed point output')
             point = clean({'ainvs':data['ainvs'], 'points':[match.groups()]})['points'][0]
-            observations.append({'point':point, 'anchor':models[current]['anchor'],
-                                 'n':n, 'd':d, 'model':models[current]['key']})
+            model=models[current]
+            observations.append({'point':point, 'anchor':model['anchor'],
+                                 'n':n, 'd':d, 'model':model['key'],
+                                 'method':('dual_isogeny' if 'transport_alpha' in model else model.get('kind','pointed')),
+                                 **({'transport_alpha':model['transport_alpha'],'anchor_ainvs':model['search_ainvs']}
+                                    if 'transport_alpha' in model else {})})
     if not timed_out and ('SEARCH_END' not in stdout or len(complete) != len(models)):
         raise RuntimeError('Incomplete successful PARI batch')
     return {'complete':complete, 'observations':observations, 'slices':slices, 'timed_out':timed_out,
@@ -130,6 +170,9 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                                'profile_budget_fraction':0.25,'profile_budget_max_seconds':2,
                                'small_point_division':[2,3,5] if anchor_mode=='geometric' else [],'division_depth':3,
                                'isogeny_cover_divisor_beam':256,'isogeny_cover_limit':4 if anchor_mode=='geometric' else 0,
+                               'isogenous_neighbours':anchor_mode=='geometric',
+                               'isogenous_trigger_quartic_bits':80,'isogenous_models_limit':8,
+                               'isogenous_max_initial_lower_bound':3,'isogenous_model_slice_seconds':.12,
                                'box_order':'balanced, integer, remaining denominators' if anchor_mode=='geometric' else 'original'}}
     state_path = output/'checkpoint.json'
     if state_path.exists():
@@ -223,9 +266,17 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                             if torsion_points(tuple(found['ainvs'])):
                                 covers=prepare_covers({'ainvs':found['ainvs'],'points':proof['points']},
                                     min(.3,(deadline-time.perf_counter())*.1),model_cache,min(4,anchors//4))
+                                neighbours=[]
+                                if (proof['LowerBound']<=3 and models and
+                                        min(m['coefficient_bits'] for m in models)>80 and deadline-time.perf_counter()>.2):
+                                    neighbours,records=transported_models(pool_basis,folder,min(8,anchors//2),
+                                        min(.4,(deadline-time.perf_counter())*.12),model_cache)
+                                    state.setdefault('isogeny_preparations',[]).append(records)
+                                # Distinct projection geometries share every new certified basis.
                                 interleaved=[]
-                                for i in range(max(len(models),len(covers))):
+                                for i in range(max(len(models),len(covers),len(neighbours))):
                                     if i<len(models):interleaved.append(models[i])
+                                    if i<len(neighbours):interleaved.append(neighbours[i])
                                     if i<len(covers):interleaved.append(covers[i])
                                 models=interleaved[:anchors]
                     # Coefficients refer to an exactly checked independent basis.
@@ -234,7 +285,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                     extra=[i for i,p in enumerate(pool_basis['points']) if tuple(p) not in initial_points]
                     for model in models:
                         model['preparation']=len(state['preparations'])
-                        model['uses_new_direction']=(None if model.get('kind')=='isogeny_cover' else
+                        model['uses_new_direction']=(None if model.get('kind')=='isogeny_cover' or 'transport_alpha' in model else
                             False if anchor_mode in ('fixed','frozen') else
                             any(pool['vectors'][model['pool_index']][i] for i in extra) if retained else None)
                     state['preparations'].append({'generation':state['generation'],
@@ -244,6 +295,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                         'basis_points':pool_basis['points'],
                         'models':[{'key':m['key'],'pool_index':m['pool_index'],
                                    'kind':m.get('kind','pointed'),
+                                   'transport_alpha':m.get('transport_alpha'),
                                    'coefficient_bits':m['coefficient_bits'],
                                    'uses_new_direction':m['uses_new_direction']} for m in models]})
                     if not models:
@@ -272,8 +324,13 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                         remaining = deadline-time.perf_counter()
                         if remaining <= .05: break
                         group = pending[offset:offset+32]
-                        chunks = [group[i:i+batch_size] for i in range(0,len(group),batch_size)]
+                        # An expensive first projection must not hide all the
+                        # other geometries behind it in the same GP process.
+                        transporting=any('transport_alpha' in m for m in models)
+                        chunk_size=1 if transporting else batch_size
+                        chunks = [group[i:i+chunk_size] for i in range(0,len(group),chunk_size)]
                         limit = min(job_seconds*batch_size, max(.05,remaining/((len(chunks)+workers-1)//workers)))
+                        if transporting:limit=min(limit,.12)
                         futures = [executor.submit(batch_search,found,chunk,n,d,limit,coverage) for chunk in chunks]
                         observations = []; old_bound = proof['LowerBound']; new = []
                         for chunk,future in zip(chunks,futures):

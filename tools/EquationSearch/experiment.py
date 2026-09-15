@@ -213,6 +213,10 @@ def published_campaign(args):
                              preparation_seconds=sum(p['seconds'] for p in state.get('preparations',[])),
                              attempted_models=state['attempted_models'],
                              events=[{k:e[k] for k in ('lower_bound','seconds','attempted_models')} for e in state['events']])
+                trial['distinct_points_observed']=len(state['found']['points'])
+                trial['isogeny_preparations']=state.get('isogeny_preparations',[])
+                trial['selected_point_methods']=[o.get('method','pointed') for e in state['events']
+                                                 for o in e.get('selected_new_points',[])]
             if process.returncode==0 and (out/'result.json').exists():
                 result=json.loads((out/'result.json').read_text())
                 trial.update(result=result,rank_lower_bound=result['rank_lower_bound'],

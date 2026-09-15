@@ -60,10 +60,9 @@ def prepare_models(pool, timeout, cache=None, minimal=True):
             'Str(den),vector(5,j,Str(E[j])),vector(4,j,Str(change[j])),vector(2,j,Str(A[j])),'
             '[Str(m[1]),vector(4,j,Str(m[2][(j-1)\\2+1,(j-1)%2+1])),vector(3,j,Str(polcoef(m[3],j-1)))]]));\n'
             'print("CACHE_END");quit;\n')
-        out, _ = gp(script, timeout)
-        for line in out.splitlines():
-            if not line.startswith('CACHED '): continue
-            i,f,q,den,ma,change,anchor,transform = json.loads(line[7:])
+        out, stats = gp(script, timeout)
+        from point_models import complete_records
+        for i,f,q,den,ma,change,anchor,transform in complete_records(out,'CACHED ',stats['timed_out']):
             point = missing[i-1]
             key = hashlib.sha256(json.dumps([point,f,q]).encode()).hexdigest()
             cache[cache_key(point)] = {'key':key,'anchor':point,'f':f,'q':q,'den':den,
@@ -116,22 +115,36 @@ def search_script(data, models, n, d, coverage=None, slice_width=256):
     for i,model in enumerate(models,1):
         e,matrix,h = model['transform'];aa,b,c,dd=matrix
         den=model.get('den','1')
+        script+='ES=ellinit('+vec(model.get('search_ainvs',data['ainvs']))+');\n'
+        transport=''
+        if 'transport_alpha' in model:
+            from point_models import isogeny_data
+            alpha=model['transport_alpha'];A,B,dual=isogeny_data(data['ainvs'],alpha)
+            change=model.get('transport_change',['1','0','0','0'])
+            script+='EC=ellchangecurve(ellinit('+vec(dual)+'),'+vec(change)+');'
+            script+='for(j=1,5,if(EC[j]!=ES[j],error("Isogeny model source mismatch")));\n'
+            transport=('W=ellchangepointinv(W,'+vec(change)+');'+
+                f'if(W[1]==0,return());UU=(W[1]-2*({A})+({A*A-4*B})/W[1])/4;'
+                f'VV=W[2]*(1-({A*A-4*B})/W[1]^2)/8;'
+                f'xx=(UU+({alpha}))/4;yy=(VV-4*E0.a1*xx-4*E0.a3)/8;W=[xx,yy];')
         script+='C=['+poly(model['f'])+','+poly(model['q'])+'];\n'
         if model.get('kind')=='isogeny_cover':
             alpha,dclass=model['alpha'],model['d']
-            script+=(f'alpha={alpha};dclass={dclass};AA=3*alpha+E0.b2;BB=3*alpha^2+2*E0.b2*alpha+8*E0.b4;'
+            script+=(f'alpha={alpha};dclass={dclass};AA=3*alpha+ES.b2;BB=3*alpha^2+2*ES.b2*alpha+8*ES.b4;'
                      'D=dclass*x^4+AA*x^2+BB/dclass;\n'
-                     'emit(t,z)={my(U,V,xx,yy,W);if(z^2!=subst(D,x,t),error("Isogeny quartic inverse"));'
-                     'U=dclass*t^2;V=dclass*t*z;xx=(U+alpha)/4;yy=(V-4*E0.a1*xx-4*E0.a3)/8;'
-                     'W=[xx,yy];if(!ellisoncurve(E0,W),error("Isogeny curve inverse"));print("POINT ",W);};\n')
+                     'emit(t,z)={my(U,V,xx,yy,W,UU,VV);if(z^2!=subst(D,x,t),error("Isogeny quartic inverse"));'
+                     'U=dclass*t^2;V=dclass*t*z;xx=(U+alpha)/4;yy=(V-4*ES.a1*xx-4*ES.a3)/8;'
+                     'W=[xx,yy];if(!ellisoncurve(ES,W),error("Cover source inverse"));'+transport+
+                     'if(!ellisoncurve(E0,W),error("Isogeny curve inverse"));print("POINT ",W);};\n')
         else:
             x0,y0 = model['minimal_anchor']
             script += ('E=ellinit('+vec(model['minimal_ainvs'])+');change='+vec(model['change'])+';\n')
             script += (f'x0={x0};v0=2*({y0})+E.a1*x0+E.a3;\n'
                        'D=x^4-2*(12*x0+E.b2)*x^2+32*v0*x+E.b2^2-8*E.b2*x0-48*x0^2-32*E.b4;\n')
-            script += ('emit(t,z)={my(xx,yy,W);if(z^2!=subst(D,x,t),error("Cached quartic inverse"));'
+            script += ('emit(t,z)={my(xx,yy,W,UU,VV);if(z^2!=subst(D,x,t),error("Cached quartic inverse"));'
                        'xx=(t^2-E.b2-4*x0+z)/8;yy=(v0+t*(xx-x0)-E.a1*xx-E.a3)/2;'
-                       'W=ellchangepointinv([xx,yy],change);if(!ellisoncurve(E0,W),error("Cached curve inverse"));'
+                       'W=ellchangepointinv([xx,yy],change);if(!ellisoncurve(ES,W),error("Cached source inverse"));'+transport+
+                       'if(!ellisoncurve(E0,W),error("Cached curve inverse"));'
                        'print("POINT ",W);};\n')
         script += (f'print("ANCHOR_BEGIN ",{i});\n'
             f'if({c}!=0 && issquare(polcoef(C[2],2)^2+4*polcoef(C[1],4),&zz),'
