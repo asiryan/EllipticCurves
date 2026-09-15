@@ -12,10 +12,32 @@ import tempfile
 import time
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'RankHunt'))
-from blind_search import (GP, ROOT, POLICY, boxes, clean, certify, generate,
+from blind_search import (GP, ROOT, POLICY, boxes, clean,
                          diverse_vectors, order_models)
 from bootstrap import save, checked_script
 from models import prepare_models, parity_vectors, parity_order, record_coverage, search_script
+from torsion_certificate import certify
+
+
+# Isolated module namespace: preserve the archived engine and other importers.
+_pool_spec=importlib.util.spec_from_file_location('equation_anchor_pool',ROOT/'tools/RankHunt/bounded_anchor_pool.py')
+_pool=importlib.util.module_from_spec(_pool_spec);_pool_spec.loader.exec_module(_pool)
+_raw_pool_gp=_pool.call_gp
+
+
+def normalize_lattice_output(stdout):
+    # GP writes tiny approximate heights as "1.23 E-95", which is not JSON.
+    # Only the numeric lattice record is touched; exact point records are not.
+    return '\n'.join(re.sub(r'(?<=[\d.])\s+[Ee]\s*([+-]?)\s*(\d+)',r'e\1\2',line)
+                     if line.startswith('LATTICE ') else line for line in stdout.splitlines())
+
+
+def _pool_gp(script,prefix,timeout):
+    return normalize_lattice_output(_raw_pool_gp(script,prefix,timeout))
+
+
+_pool.call_gp=_pool_gp
+generate=_pool.generate
 
 
 def read(path):
@@ -72,8 +94,19 @@ def independent_result(data, expected):
         raise ValueError('Independent verifier changed')
     spec = importlib.util.spec_from_file_location('independent_certificate', path)
     verifier = importlib.util.module_from_spec(spec); spec.loader.exec_module(verifier)
-    certificate = verifier.build_certificate(data, max_prime=2000)
-    claim = verifier.verify_certificate(data, certificate)
+    from torsion_certificate import torsion_points,select_basis,verify_certificate,singleton_certificate
+    torsion=torsion_points(tuple(data['ainvs']))
+    if torsion:
+        result=select_basis(data,torsion,max_prime=2000)
+        if result is None and expected==1:
+            certificate=singleton_certificate(data)
+        elif result is None or result['points']!=data['points']:
+            raise ValueError('Independent verification did not retain the entire selected basis')
+        else:certificate=result['certificate']
+        claim=verify_certificate(data,certificate)
+    else:
+        certificate = verifier.build_certificate(data, max_prime=2000)
+        claim = verifier.verify_certificate(data, certificate)
     if claim['rank_lower_bound'] != expected or not claim['all_points_independent_modulo_torsion']:
         raise ValueError('Independent verification did not confirm the selected basis')
     return {**data, 'rank_lower_bound':expected, 'certificate':certificate, 'verification':claim}
@@ -86,8 +119,8 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
     if output == ROOT or not output.is_relative_to(ROOT): raise ValueError('Use a dedicated workspace directory')
     output.mkdir(parents=True, exist_ok=True)
     config = {'input_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
-              'code_sha256':{name:hashlib.sha256(((Path(__file__).parent/name) if name in ('seeded.py','models.py','bootstrap.py') else (ROOT/'tools/RankHunt'/name)).read_bytes()).hexdigest()
-                  for name in ['seeded.py','models.py','bootstrap.py','blind_search.py','point_search.py','bounded_anchor_pool.py',
+              'code_sha256':{name:hashlib.sha256(((Path(__file__).parent/name) if name in ('seeded.py','models.py','bootstrap.py','certificate.py','torsion_certificate.py') else (ROOT/'tools/RankHunt'/name)).read_bytes()).hexdigest()
+                  for name in ['seeded.py','models.py','bootstrap.py','certificate.py','torsion_certificate.py','blind_search.py','point_search.py','bounded_anchor_pool.py',
                                'anchor_diversity.py','point_arithmetic.py']},
               'policy':POLICY, 'anchors':anchors, 'target':target, 'batch_size':batch_size,
               'job_seconds':job_seconds, 'workers':workers,'anchor_mode':anchor_mode,
@@ -156,10 +189,17 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                             pool = generate(pool_source, folder/'pool', anchors, anchors,
                                             min(90,max(1,deadline-time.perf_counter())),
                                             selector=parity_vectors if anchor_mode=='parity' else diverse_vectors)
+                            from torsion_certificate import translate_pool
+                            pool=translate_pool(pool,anchors)
                         # A difficult later anchor must not consume the entire
                         # search budget after useful earlier models are ready.
                         profile_budget=min(2,max(.05,(deadline-time.perf_counter())*.25))
                         models = prepare_models(pool,profile_budget,model_cache)
+                        if not models and deadline-time.perf_counter()>.1:
+                            # Global minimal-model factorization can stall even
+                            # though reduction without factorization is cheap.
+                            fallback_budget=min(1,(deadline-time.perf_counter())*.25)
+                            models=prepare_models(pool,fallback_budget,model_cache,minimal=False)
                         models = parity_order(models) if anchor_mode=='parity' else order_models(models)
                     # Coefficients refer to an exactly checked independent basis.
                     # Mark only provable use of directions outside the initial span.
@@ -172,6 +212,7 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                     state['preparations'].append({'generation':state['generation'],
                         'basis_lower_bound':proof['LowerBound'],'seconds':time.perf_counter()-preparing,
                         'pool_points':pool['points'],'pool_vectors':pool.get('vectors'),
+                        'torsion_translations':pool.get('torsion_translations'),
                         'basis_points':pool_basis['points'],
                         'models':[{'key':m['key'],'pool_index':m['pool_index'],
                                    'coefficient_bits':m['coefficient_bits'],
@@ -222,9 +263,13 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                             old_points=set(map(tuple,proof['points']))
                             save(output/'basis.json', {'ainvs':found['ainvs'],
                                 'points':proof['points']+[o['point'] for o in new]})
-                            proof = certify(output/'basis.json')
-                            if proof['LowerBound'] < old_bound or not proof['all_selected_independent']:
-                                raise RuntimeError('Independent basis was lost')
+                            candidate = certify(output/'basis.json')
+                            if candidate['LowerBound'] >= old_bound and candidate['all_selected_independent']:
+                                proof = candidate
+                            else:
+                                # An inconclusive certificate cannot erase an
+                                # earlier exact proof or imply Q-dependence.
+                                state['inconclusive_updates']=state.get('inconclusive_updates',0)+1
                             # Only successful discoveries need permanent provenance.
                             with (output/'discoveries.jsonl').open('a',encoding='utf-8') as stream:
                                 for observation in new: stream.write(json.dumps(observation)+'\n')

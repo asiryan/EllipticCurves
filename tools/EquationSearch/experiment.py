@@ -144,6 +144,15 @@ def published_campaign(args):
         raise ValueError('Use a workspace JSON report')
     sample=json.loads(sample_path.read_text(encoding='utf-8-sig'))
     rows=sample['curves']
+    retry_hash=None
+    if args.retry_report:
+        raw=Path(args.retry_report).read_bytes();previous=json.loads(raw)
+        if previous['config']['sample_sha256']!=hashlib.sha256(sample_path.read_bytes()).hexdigest():
+            raise ValueError('Retry requires the identical frozen sample')
+        failed={t['id'] for t in previous['trials'] if not t['target_reached']}
+        rows=[row for row in rows if row['id'] in failed]
+        retry_hash=hashlib.sha256(raw).hexdigest()
+    if args.ids is not None: rows=[row for row in rows if row['id'] in args.ids]
     def order(row):
         conductor=row.get('conductor')
         return (int(conductor) if conductor else float('inf'),row['id'])
@@ -158,7 +167,7 @@ def published_campaign(args):
             'selection':args.selection,'ids':[r['id'] for r in rows],
             'seconds':args.seconds,'workers':args.workers,'anchors':args.anchors,
             'mode':args.mode,'parallel_trials':1,'external_watchdog_seconds':args.seconds+5,
-            'initial_points':1,'published_point_index':0,'direct_search':False,
+            'initial_points':1,'published_point_index':0,'direct_search':False,'retry_report_sha256':retry_hash,
             'timing':'process_wall_seconds includes startup, model preparation, search and final verification; download excluded'}
     output.parent.mkdir(parents=True,exist_ok=True)
     if output.exists():
@@ -251,6 +260,8 @@ if __name__=='__main__':
     s.add_argument('--mode',choices=('fixed','frozen','adaptive'),default='adaptive')
     s.add_argument('--seconds',type=float,default=3);s.add_argument('--workers',type=int,default=2)
     s.add_argument('--anchors',type=int,default=16)
+    s.add_argument('--retry-report',help='Retest only failures from a report using this identical sample')
+    s.add_argument('--ids',type=int,nargs='+',help='Optional explicit subset, recorded in report configuration')
     args=p.parse_args()
     if args.command=='fetch':fetch(args.output)
     elif args.command=='worker':worker(args)

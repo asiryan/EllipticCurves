@@ -35,7 +35,7 @@ def parity_vectors(gram, limit, count):
     return selected, stats
 
 
-def prepare_models(pool, timeout, cache=None):
+def prepare_models(pool, timeout, cache=None, minimal=True):
     """Reduce each new anchor once, retaining its exact inverse map."""
     cache = {} if cache is None else cache
     a = pool['ainvs']
@@ -46,7 +46,13 @@ def prepare_models(pool, timeout, cache=None):
         script += 'P=['+','.join(vec(p) for p in missing)+'];\n'
         script += ('for(k=1,#P,A=ellchangepoint(P[k],change);x0=A[1];v0=2*A[2]+E.a1*x0+E.a3;'
             'D=x^4-2*(12*x0+E.b2)*x^2+32*v0*x+E.b2^2-8*E.b2*x0-48*x0^2-32*E.b4;'
-            'den=denominator(content(D));F=den^2*D;'+quartic_reduction_code(True)+
+            # x(P)=n/q^2: rescale the slope by q before reduction. The old
+            # clearing multiplier introduces a huge, known square factor and
+            # asks minimal-model factorization to rediscover it unnecessarily.
+            'den=denominator(content(D));if(!issquare(denominator(x0),&scale),error("Anchor denominator"));'
+            'F=scale^4*subst(D,x,x/scale);if(denominator(content(F))!=1,error("Scaled quartic integrality"));'
+            +quartic_reduction_code(minimal)+
+            'm=[den*m[1],[1,0;0,scale]*m[2],den*m[3]];F=den^2*D;'
             'dd=m[2][2,1]*x+m[2][2,2];tt=(m[2][1,1]*x+m[2][1,2])/dd;'
             'if(dd^4*subst(F,x,tt)-m[3]^2!=m[1]^2*C[1],error("Cached polynomial identity"));'
             'if(2*m[1]*m[3]!=m[1]^2*C[2],error("Cached linear identity"));'
@@ -62,7 +68,8 @@ def prepare_models(pool, timeout, cache=None):
             key = hashlib.sha256(json.dumps([point,f,q]).encode()).hexdigest()
             cache[cache_key(point)] = {'key':key,'anchor':point,'f':f,'q':q,'den':den,
                 'minimal_ainvs':ma,'change':change,'minimal_anchor':anchor,'transform':transform,
-                'coefficient_bits':max(abs(int(v)).bit_length() for v in f+q)}
+                'coefficient_bits':max(abs(int(v)).bit_length() for v in f+q),
+                'reduction':'minimal' if minimal else 'reduced_only'}
     models = []
     for i,p in enumerate(pool['points']):
         if cache_key(p) not in cache: continue
