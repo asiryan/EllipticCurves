@@ -81,8 +81,8 @@ with one thread and `factor_proven=1` took 80.66 s. Every result was checked aga
 the same exact conductor; no known factors were provided to either factorizer.
 
 More workers are not always faster: the complete 24-worker calculation was slower
-than the 12-worker one. Twelve is therefore Explorer's default ceiling, bounded
-by the available CPU count. It is editable and is **not** a hard limit. Timings
+than the 12-worker one. Explorer defaults to four workers, bounded by the available
+CPU count; the field allows a larger limit to be selected manually. Timings
 are individual samples, not medians or a claim that 12 is optimal on every CPU.
 The user's 106-second Explorer observation also includes application overhead
 and can depend on build configuration; it is not used as the benchmark baseline.

@@ -14,7 +14,7 @@ public static class CalculationInput
     public const string RankWorkersHelp = "Maximum parallel workers for general rank descent. 1 runs sequentially. All workers share the work limits; the 2-isogeny method stays sequential.";
     public const string FactorizationWorkersKey = "options.MaxDegreeOfParallelism";
     // A default, not a ceiling: more workers can lose time to memory traffic.
-    public static int DefaultFactorizationWorkers => Math.Min(12, Environment.ProcessorCount);
+    public static int DefaultFactorizationWorkers => Math.Min(4, Environment.ProcessorCount);
     public static string FactorizationWorkersHelp => $"Maximum parallel workers for integer factorization. 1 runs sequentially. Up to {Environment.ProcessorCount} CPU workers are available; smaller inputs may use fewer workers.";
     public static bool IsOptions(Type type) => type == typeof(RankComputationOptions) || type == typeof(AnalyticRankOptions)
         || type == typeof(RealComputationOptions) || type == typeof(PointDivisionOptions) || type == typeof(SaturationOptions);
@@ -33,6 +33,8 @@ public static class CalculationInput
                     yield return field;
             yield break;
         }
+        if (key.EndsWith("." + nameof(RankComputationOptions.MaxDegreeOfParallelism), StringComparison.Ordinal))
+            advanced = false;
         var label = CalculationOperation.Humanize(key.Replace(".", " · "));
         if (IsPoint(type))
         {

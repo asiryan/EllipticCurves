@@ -123,7 +123,7 @@ decimal digits, up to four for 45–69 digits, and all available logical CPUs fo
 available processor count; small jobs may still use fewer workers.
 
 Explorer's existing **Conductor** action exposes **options · Max Degree Of
-Parallelism**, like rank computation. Its default is up to 12 available logical
+Parallelism**, like rank computation. Its default is up to 4 available logical
 CPUs, a conservative starting point rather than a ceiling; enter any positive
 worker limit, including one for sequential execution. More workers can increase
 memory traffic and need not make a calculation faster.
