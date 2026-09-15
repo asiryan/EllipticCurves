@@ -1,15 +1,5 @@
 <p align="center"><img width="25%" src="docs/png/ec_logo_v3b.png" /></p>
 
-## Standalone Python / PARI rank search
-
-The extracted algorithm is in [elliptic-rank-search](elliptic-rank-search/README.md),
-a self-contained directory ready to become a separate repository. It includes
-the mathematical description, run and test instructions, and exact certificates
-for improved lower bounds on ICARM curves #199, #206, and #212.
-
-Historical search tools, results, and research reports are preserved in
-[obsolete](obsolete/README.md).
-
 # About
 **EllipticCurves** is a C# library for studying elliptic curves over the rationals and finite fields. It provides functionality to compute and explore:
 * coefficients and group structure,  
@@ -141,29 +131,32 @@ before returning. Parallel scheduling may change covering representatives, work
 counts and partial lower bounds; an upper bound still requires complete descent.
 See [the descent construction and proof conditions](docs/two-descent.md).
 
-## Equation-only lower-bound search
+## Rank lower bounds from supplied points
 
-For an equation-only search that computes **only a lower bound**, use
-`SearchRankLowerBound`. It searches rational coordinates with a modular sieve
-and certifies the points it finds, without factorization or full descent:
+`GetRankLowerBound` verifies supplied rational points and proves a lower bound
+using exact good-reduction characters, without factorization, minimalization
+or full descent:
 
 ```csharp
-var result = e.SearchRankLowerBound(new RankLowerBoundSearchOptions
+var e = new EllipticCurveQ(0, 0, 1, -7, 6);
+var certificate = e.GetRankLowerBound(new[]
 {
-    NumeratorRadius = 1200000000,
-    DenominatorRootBound = 1, // integer x; increase to include x = m/d²
-    TimeLimit = TimeSpan.FromSeconds(10),
-    TargetLowerBound = 17 // optional early-stop target
+    new EllipticCurvePoint(0, 2),
+    new EllipticCurvePoint(1, 0),
+    new EllipticCurvePoint(2, 0)
 });
-Console.WriteLine(result.LowerBound);
-Console.WriteLine(result.StopReason);
+Console.WriteLine(certificate.LowerBound);             // 3
+Console.WriteLine(certificate.IndependenceCertified);   // True
+Console.WriteLine(certificate.Reason);
 ```
 
-Time and work limits preserve the established bound and point witnesses.
-A zero result does not prove rank zero. Large-coordinate points can be beyond
-the searched box, and finite reduction characters may not certify all found
-points. See [equation-only lower-bound search](docs/rank-lower-bound-search.md)
-for coordinate conventions, limitations and measured examples.
+Points must use the input model's coordinates. `reductionPrimeBound` controls
+the tested primes (default 1009); cancellation is supported. The returned
+`PointRankCertificate` reports the proved bound, point count, independence status,
+character image dimension and reduction-prime diagnostics. A smaller bound does
+not prove dependence, and zero does not prove rank zero. Neither an upper bound
+nor saturation is asserted. See [the 31-point verification](docs/rank31-verification.md)
+for the certificate construction and a larger example.
 
 ## Analytic rank and BSD
 
@@ -337,22 +330,11 @@ exploration sliders, an interactive real-locus plot, a linked period-lattice and
 3D complex-torus view, exact invariants and bounded rational-point samples.
 The Tools menu exposes the library's computations,
 including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
-The [Elkies family search](explorer/README.md#search-the-elkies-family) comes with
-formulas and 17 initial points, a candidate shortlist, exact rank lower bounds,
-pause/resume and saved checkpoints; no manual mathematical data is needed.
+**Verify rank from supplied points** accepts exact coordinates and reports
+a proved rank lower bound with its independence certificate.
 Parameter windows feed a results panel with session history, progress, cancellation
 and time limits. Native computations run locally; only the explicit LMFDB search and fetch
 commands require internet access.
-
-The archived [September 2026 rank-search package audit](obsolete/docs/rank-package-audit-20260914.md)
-reproduces the supplied ICARM #302 family, exact point certificates, parameter
-sieve and CRT candidates using a [local audit harness](obsolete/tools/RankPackageAudit).
-Its candidate scores are heuristics; only checked point certificates give rank bounds.
-
-The archived [RankHunt command-line experiments](obsolete/docs/rank-hunt-20260914.md) extend this
-to checkpointed searches, independent validation primes, bounded PARI point
-searches and exact point certificates. The first campaign checked 121,589,943
-parameters and independently certified a specialization of rank at least 15.
 
 # License
 

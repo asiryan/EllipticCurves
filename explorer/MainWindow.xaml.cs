@@ -35,7 +35,6 @@ public partial class MainWindow : Window
         Session.ExitRequested += Close;
         Explorer.OperationRequested += OpenCalculation;
         Explorer.ImportCurveRequested += OpenLmfdbImport;
-        Explorer.SearchCurvesRequested += OpenCurveSearch;
         Results.HideRequested += () => SetResultsVisible(false);
         Results.RepeatRequested += request => OpenCalculation(CalculationCatalog.Get(request.OperationId), request);
         ViewModel.ViewResetRequested += ResetView;
@@ -72,9 +71,6 @@ public partial class MainWindow : Window
         base.OnClosing(e);
         if (e.Cancel || allowSessionClose) return;
         if (sessionActionInProgress) { e.Cancel = true; return; }
-        if (searchModel?.IsDirty == true && !ConfirmationWindow.Confirm(this, "Close with an unsaved search?",
-            "Your Elkies search checkpoint has not been saved. Cancel and use Tools → Search the Elkies family → Save search to keep it after exiting Explorer.", "Close Explorer"))
-        { e.Cancel = true; return; }
         if (!HasUnsavedChanges) return;
         var confirmation = RunSessionOperation(ConfirmSessionChangeAsync);
         if (confirmation.IsCompleted) e.Cancel = !confirmation.GetAwaiter().GetResult();
@@ -89,7 +85,6 @@ public partial class MainWindow : Window
     {
         DisposeHistory();
         DisposeSessionStatus();
-        searchModel?.Dispose();
         Workbench.Dispose();
         TorusView.Model.PropertyChanged -= TorusStateChanged;
         TorusView.Dispose();

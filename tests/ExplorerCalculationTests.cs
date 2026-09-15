@@ -72,6 +72,22 @@ public sealed class ExplorerCalculationTests
     }
 
     [Fact]
+    public async Task SuppliedPointsProduceAnIndependenceCertificate()
+    {
+        var operation = Operation(nameof(EllipticCurveQ.GetRankLowerBound));
+        var request = Request(operation, ("points", "0; 2\n1; 0\n2; 0")) with
+        {
+            Equation = "y^2 + y = x^3 - 7*x + 6"
+        };
+        var output = await CalculationEngine.ExecuteAsync(request);
+        Assert.Equal("Verify rank from supplied points", operation.Title);
+        Assert.Contains("Lower Bound: 3", output);
+        Assert.Contains("Point Count: 3", output);
+        Assert.Contains("Independence Certified: True", output);
+        Assert.Contains("Reason:", output);
+    }
+
+    [Fact]
     public async Task BothRankActionsDefaultToParallelExecutionAndAllowSequentialOverride()
     {
         Assert.Equal(1, new RankComputationOptions().MaxDegreeOfParallelism);

@@ -11,7 +11,6 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
 {
     private readonly CalculationRunner runner = runner ?? new();
     private CancellationTokenSource? running;
-    private Action? cancelExternal;
     private bool disposed;
     private int historyChangeDepth;
     private CalculationJobViewModel? selected, active;
@@ -45,14 +44,14 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         }
     }
 
-    public bool IsBusy => running != null || cancelExternal != null;
+    public bool IsBusy => running != null;
     public bool CanRun => !IsBusy && !disposed;
     public bool HasSelection => Selected != null;
     public bool HasResults => Jobs.Count > 0;
     public bool CanClearHistory => CanRun && HasResults;
     public string HistoryHeading => $"SESSION HISTORY · LAST {ExplorerSession.HistoryLimit}";
     public bool CanDelete(CalculationJobViewModel? job) => job != null && job != Active && Jobs.Contains(job);
-    public string Summary => cancelExternal != null ? "Elkies family search in progress" : IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Tools" : Jobs.Count + " calculations this session";
+    public string Summary => IsBusy ? "Calculation in progress" : Jobs.Count == 0 ? "Choose a calculation in Tools" : Jobs.Count + " calculations this session";
     public RelayCommand CancelCommand => new(_ => Cancel());
 
     public void Delete(CalculationJobViewModel? job)
@@ -155,22 +154,8 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
 
     public void Cancel()
     {
-        if (running != null && Active != null) Active.Stage = "Stopping calculation…";
+        if (Active != null) Active.Stage = "Stopping calculation…";
         running?.Cancel();
-        cancelExternal?.Invoke();
-    }
-
-    internal void BeginExternal(Action cancel)
-    {
-        if (!CanRun) throw new InvalidOperationException("A calculation is already running.");
-        cancelExternal = cancel;
-        NotifyState();
-    }
-
-    internal void EndExternal()
-    {
-        cancelExternal = null;
-        NotifyState();
     }
 
     private void ChangeResults(Action change, bool recordHistory = true)

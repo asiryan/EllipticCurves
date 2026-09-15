@@ -12,7 +12,6 @@ public partial class ExplorerMenu : UserControl
 {
     public event Action<CalculationOperation>? OperationRequested;
     public event Action? ImportCurveRequested;
-    public event Action? SearchCurvesRequested;
     public ExplorerMenu()
     {
         InitializeComponent();
@@ -63,7 +62,6 @@ public partial class ExplorerMenu : UserControl
         if (sender is not Button { Tag: CalculationOperation operation }) return;
         Toggle.IsChecked = false;
         if (operation == ExplorerMenuViewModel.ImportCurve) ImportCurveRequested?.Invoke();
-        else if (operation == ExplorerMenuViewModel.SearchCurves) SearchCurvesRequested?.Invoke();
         else OperationRequested?.Invoke(operation);
     }
 }

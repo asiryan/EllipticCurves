@@ -4,7 +4,6 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using EllipticCurves;
 using EllipticCurves.Explorer.Controls;
-using EllipticCurves.Explorer.Computations;
 using EllipticCurves.Explorer.Models;
 
 internal static partial class Program
@@ -12,12 +11,13 @@ internal static partial class Program
     private static void CheckLargeCurvePlotScales()
     {
         CheckManualCurveAutoFit();
-        var search = CurveSearchEngine.Run(new(new()));
-        var examples = search.Results.Select(c => (Name: $"elkies-{c.Numerator}-{c.Denominator}", Curve: ElkiesSearchFamily.Create(c.Numerator, c.Denominator).Curve)).ToList();
-        examples.Add(("elkies-record-parameter", ElkiesSearchFamily.Create(-9529, 5471).Curve));
         var large = new BigRational(System.Numerics.BigInteger.Pow(10, 80));
-        examples.Add(("large-two-components", new EllipticCurveQ(0, 0, 0, -large, 0)));
-        examples.Add(("large-one-component", new EllipticCurveQ(0, 0, 0, large, 0)));
+        var examples = new (string Name, EllipticCurveQ Curve)[]
+        {
+            ("large-two-components", new(0, 0, 0, -large, 0)),
+            ("large-one-component", new(0, 0, 0, large, 0)),
+            ("large-general-model", new(1, 0, 1, -large, large))
+        };
         var first = true;
         foreach (var (name, curve) in examples)
         {
@@ -60,8 +60,7 @@ internal static partial class Program
             for (int i = 0; i < pixels.Length; i += 4)
                 if (pixels[i] == 207 && pixels[i + 1] == 230 && pixels[i + 2] == 99) columns.Add(i / 4 % bitmap.PixelWidth);
             Require(columns.Count > 150, "Exported curve strokes are still confined to a vertical line.");
-            var screenshotCurve = curve.A4.Num == -System.Numerics.BigInteger.Parse("4808474278973187287428061457296740047792");
-            if ((first || screenshotCurve || name == "large-two-components") && Environment.GetEnvironmentVariable("ELLIPTIC_EXPLORER_PREVIEW_DIRECTORY") is { Length: > 0 } directory)
+            if (first && Environment.GetEnvironmentVariable("ELLIPTIC_EXPLORER_PREVIEW_DIRECTORY") is { Length: > 0 } directory)
             {
                 System.IO.Directory.CreateDirectory(directory);
                 using var output = System.IO.File.Create(System.IO.Path.Combine(directory, name + "-plot.png"));
@@ -77,26 +76,6 @@ internal static partial class Program
         ordinary.Arrange(new Rect(0, 0, 800, 500));
         ordinary.Fit();
         Require(ordinary.CaptureView().HorizontalScaleRatio == 1, "The classic curve should retain equal axis units.");
-
-        var window = CreateMainWindow();
-        try
-        {
-            SettleSession(window);
-            window.ResetHistory();
-            var plot = (CurvePlot)window.FindName("Plot");
-            var original = plot.CaptureView();
-            window.OpenSearchCurve(search.Results[0]);
-            SettleSession(window);
-            var fitted = plot.CaptureView();
-            Require(fitted.HorizontalScaleRatio > 1e6, "Opening an Elkies candidate must fit both coordinate ranges.");
-            ApplicationCommands.Undo.Execute(null, window);
-            SettleSession(window);
-            Require(plot.CaptureView() == original, "Undo must restore the previous axis scales.");
-            ApplicationCommands.Redo.Execute(null, window);
-            SettleSession(window);
-            Require(plot.CaptureView() == fitted, "Redo must restore the fitted large-curve view.");
-        }
-        finally { window.Close(); }
     }
 
     private static void CheckManualCurveAutoFit()

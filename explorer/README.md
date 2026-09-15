@@ -173,8 +173,8 @@ Undo history is kept only for the current run and is not written to `.ec` files.
   samples; opening a calculation for the same curve preserves the torus selection.
 - Drag the plot to pan and use the mouse wheel to zoom about the pointer. Ordinary
   curves use equal axis units. When the coordinate ranges differ greatly, fitting
-  uses separate x/y scales so that large curves, including Elkies specializations,
-  remain visible. The plot says **Independent axis scales** in that case; labels
+  uses separate x/y scales so that large curves remain visible.
+  The plot says **Independent axis scales** in that case; labels
   and point coordinates still refer to the entered equation. Small edits preserve
   the viewport; entering a curve with a substantially different coordinate range
   automatically fits it after the normal input delay or pressing Enter. This also
@@ -292,49 +292,23 @@ torsion enumeration and heights require an explicit calculation from Tools.
 
 ## Tools
 
-### Search the Elkies family
+### Verify rank from supplied points
 
-Choose **Tools → Ranks and arithmetic → Search the Elkies family**, then **Start search**.
-No input file, coefficients or point coordinates are required. The published
-family formulas generate a curve and 17 rational points from `t = a/b`.
-The starting range is `−50 ≤ a ≤ 50`, `1 ≤ b ≤ 20`, with two CPU workers;
-equivalent fractions are skipped. All search work runs locally in a separate process.
+Choose **Tools → Ranks and arithmetic → Verify rank from supplied points**.
+Enter one `x; y` pair per line in the current equation's coordinates. Fractions
+are accepted; `O` denotes the point at infinity. Set **reduction Prime Bound**
+to control the tested primes, then run the calculation.
 
-Candidates are ranked by a heuristic from point counts over small finite fields.
-The default shortlist keeps eight curves. **Rank bound ≥ n** is a separately proved
-lower bound from exact rational points, not the heuristic score or an exact rank.
-The fast certificate can return less than 17, even with 17 supplied points; that
-does not prove those points dependent. Advanced settings control the prime limits,
-shortlist length and additional point-search depth. Settings are fixed during a run;
-**New search** unlocks them while retaining their values.
+The report contains a proved lower bound, the number of supplied points,
+**Independence Certified**, the character image dimension, reduction-prime
+diagnostics and an explanation of the result. Independence is certified only
+when the lower bound equals the number of supplied points. A smaller bound does
+not prove dependence, and zero does not prove rank zero. The method neither
+searches for points nor computes an upper bound or saturation.
 
-The additional search is intentionally small: it tries `x = x_section + k/d²`,
-with `|k| ≤ depth` and `1 ≤ d ≤ 4`, and checks for an exact rational square.
-It stops after two seconds or 1024 accumulated points per candidate. Depth zero
-disables it. This does not implement the reduced-covering searches used in record
-computations; finding ranks above the family baseline is not guaranteed.
-The shortlist retains the highest **scores**, so it is not an archive of every
-inspected curve or the largest rank bound ever encountered.
-
-**Pause** stops the worker and retains the last completed checkpoint. **Resume**
-repeats an unfinished batch and continues. Closing this search window also pauses;
-reopening it in the same Explorer window restores its state. **Save search** writes
-the current checkpoint, settings, equations and exact points to a separate
-`.ecsearch` file; it can save a completed batch while the worker is still running.
-**Open search** restores that file. Resume/recheck reconstructs retained curves
-from their parameters and verifies the points again, instead of trusting saved
-equations or rank values. An interrupted application run is recoverable only up
-to the checkpoint you saved. Search files are not part of `.ec` plot sessions.
-
-Pause or finish, select a candidate and use **Open curve in Explorer** to transfer
-its equation to the plot; this is one undoable edit. Its coordinates remain in the
-search report and saved search file. Plot sampling still uses its usual small
-coordinate box, so it need not display these large known points as gold markers.
-The separate Tools action **Verify rank from supplied points** accepts coordinates
-as one `x; y` pair per line and verifies a lower bound without a full descent.
-
-See [the family data and computation notes](../docs/elkies-search.md) for provenance,
-the model transformation, scoring and certificate limitations.
+The calculation uses the standard results panel, session history, Repeat,
+cancellation and time limits. See [the certificate construction and 31-point
+example](../docs/rank31-verification.md).
 
 ### Import a curve from LMFDB
 
