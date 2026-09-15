@@ -266,7 +266,7 @@
         </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style TargetType="TextBox">
-        <Setter Property="ToolTip" Value="{Binding Text}" />
+        <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
         <Setter Property="ContextMenu"><Setter.Value>
             <ContextMenu Style="{StaticResource TextEditContextMenu}">
                 <MenuItem Header="Cu_t" Command="{x:Static ApplicationCommands.Cut}" InputGestureText="Ctrl+X" />

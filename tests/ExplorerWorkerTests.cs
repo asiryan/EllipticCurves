@@ -18,6 +18,20 @@ public sealed class ExplorerWorkerTests
     }
     private static CalculationRequest Request(string id = "Q.TorsionStructure") => new(id, "y^2 = x^3 - x", new());
 
+    [Theory]
+    [InlineData(86399, "23:59:59")]
+    [InlineData(86400, "24:00:00")]
+    [InlineData(90061, "25:01:01")]
+    [InlineData(259200, "72:00:00")]
+    [InlineData(360000, "100:00:00")]
+    public void CalculationTimingUsesTotalHours(int seconds, string expected)
+    {
+        var job = new CalculationJobViewModel(Request() with { TimeoutSeconds = 0 }, "Torsion")
+        { Elapsed = TimeSpan.FromSeconds(seconds) };
+        Assert.Equal(expected + " · no time limit", job.Timing);
+        Assert.Contains("Elapsed: " + job.Timing, job.Report);
+    }
+
     [Fact]
     public async Task WorkerProtocolReturnsProgressAndFinalResult()
     {
