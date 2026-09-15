@@ -23,7 +23,10 @@ namespace EllipticCurves
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("A singular curve has no elliptic minimal model.");
             var (c4, c6, delta) = InternalMath.IntegralInvariants(this);
-            foreach (var p in Factor(delta, cancellationToken).Keys.OrderBy(p => p))
+            // A scaling at p requires p^4 | c4 and p^6 | c6, so only common
+            // prime divisors can change the model. Avoid factoring the often
+            // much larger discriminant just to discover irrelevant primes.
+            foreach (var p in Factor(BigInteger.GreatestCommonDivisor(c4, c6), cancellationToken).Keys.OrderBy(p => p))
             {
                 var p4 = BigInteger.Pow(p, 4);
                 var p6 = BigInteger.Pow(p, 6);

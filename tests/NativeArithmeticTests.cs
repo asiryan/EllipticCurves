@@ -6,6 +6,22 @@ namespace EllipticCurves.Tests;
 
 public class NativeArithmeticTests
 {
+    [Fact]
+    public void LargeDiscriminantDoesNotPreventMinimalModelReduction()
+    {
+        var minimal = new EllipticCurveQ(0, 1, 0,
+            new BigRational(BigInteger.Parse("-221556180740323405132844117936")),
+            new BigRational(BigInteger.Parse("35386140191724122461245294467670188433973860")));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        Assert.Equal(minimal, minimal.GetGlobalMinimalModel(timeout.Token));
+        // Exercise denominator clearing and scaling at 2, 3, 5 and a larger prime.
+        foreach (var scale in new BigRational[] { 6060, new(1, 6060), -6060 })
+        {
+            var changed = ChangeCoordinates(minimal, scale, 5, -3, 7);
+            Assert.Equal(minimal, changed.GetGlobalMinimalModel(timeout.Token));
+        }
+    }
+
     [Theory]
     [InlineData(0, -17, 0, 72, 0, 48)]
     [InlineData(0, -1, 1, -10, -20, 11)]

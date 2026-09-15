@@ -12,12 +12,19 @@ full local invariants, heights, periods and subgroup saturation are documented i
 
 ## Minimal model and conductor
 
-Clear coefficient denominators using a rational change of variables. For each prime
-dividing the integral discriminant, try dividing the invariants by p^4 and p^6.
+Clear coefficient denominators using a rational change of variables. Factor
+`gcd(c4, c6)` to find candidate scaling primes: a scaling at p requires
+`p^4 | c4` and `p^6 | c6`, so no other prime can change the minimal model.
+For each candidate, check `p^12 | Delta` and try dividing the invariants by p^4 and p^6.
 A candidate is accepted only when an integral Weierstrass equation exists with those
 invariants. This is checked by reconstructing the 12 possible reduced coefficient
 patterns a1,a3 in {0,1}, a2 in {-1,0,1}. Repeat until no further division is possible.
 The result is the reduced global minimal model.
+
+This avoids factoring a large discriminant merely to prepare a minimal model,
+for example before computing periods. A large common invariant factor can still
+be expensive to factor. Conductor computation separately needs the bad primes
+of the minimal discriminant.
 
 On that model, the local conductor exponent is zero at good primes and one at
 multiplicative primes. At additive primes p >= 5 it is two. At 2 and 3 we use Tate's

@@ -7,6 +7,31 @@ namespace EllipticCurves.Tests;
 public sealed class ExplorerTorusTests
 {
     [Fact]
+    public async Task LargeCoefficientCurvePreparesItsPeriodLattice()
+    {
+        var curve = new EllipticCurveQ(0, 1, 0,
+            new BigRational(System.Numerics.BigInteger.Parse("-221556180740323405132844117936")),
+            new BigRational(System.Numerics.BigInteger.Parse("35386140191724122461245294467670188433973860")));
+        var point = new EllipticCurvePoint(
+            new BigRational(System.Numerics.BigInteger.Parse("-523548280341848")),
+            new BigRational(System.Numerics.BigInteger.Parse("-2806322695726774350150")));
+        Assert.True(curve.IsOnCurve(point));
+        using var model = new ComplexTorusViewModel();
+        model.Update(curve, new[] { point, curve.Negate(point) }, true);
+        await model.PendingUpdate.WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.False(model.IsBusy);
+        Assert.True(model.HasLattice, model.Status);
+        Assert.Equal(0, model.Lattice.TauReal);
+        Assert.True(double.IsFinite(model.Lattice.TauImaginary) && model.Lattice.TauImaginary > 0);
+        Assert.Equal(curve, model.Lattice.Periods.MinimalModel);
+        Assert.Equal(3, model.Points.Count);
+        var first = model.Points[1].Coordinates;
+        var opposite = model.Points[2].Coordinates;
+        Assert.True(Math.Abs(first.U + opposite.U - Math.Round(first.U + opposite.U)) < 1e-9);
+        Assert.True(Math.Abs(first.V + opposite.V - Math.Round(first.V + opposite.V)) < 1e-9);
+    }
+
+    [Fact]
     public void LogarithmCoordinatesRespectBothPeriodsOfAShearedLattice()
     {
         // z = .2 omega1 + .7 omega2 with omega1 = 2, omega2 = 1 + 3i.
