@@ -23,7 +23,7 @@
 * numerical elliptic logarithms of rational points on both real components,
 * algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
-* conductor, etc.  
+* conductor and its prime factorization.
 
 # Version
 Build **EllipticCurves** from source or install the NuGet package in your project.
@@ -274,7 +274,7 @@ The LMFDB adapter additionally reads stored Fourier coefficients, CM discriminan
 isogeny degrees/matrices, modular degrees, Manin constants, Faltings heights,
 analytic Sha values, leading L-values and integral-point x-coordinates. These are
 database records; in particular the Sha fields do not assert a native proof.
-See [the new API conventions and examples](docs/basic-extensions.md).
+See [API conventions and examples](docs/basic-extensions.md).
 
 ## Faltings heights and finite extensions
 

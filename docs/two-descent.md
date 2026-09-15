@@ -9,9 +9,6 @@ The mathematical reference for the covering construction and reduction regions i
 [Cremona, Algorithms for Modular Elliptic Curves, III.3.6, pp. 79–97](https://johncremona.github.io/book/fulltext/chapter3.pdf).
 Equivalence uses the corrected criterion in
 [Cremona–Fisher, On the equivalence of binary quartics, Lemma 10 and Theorem 12](https://johncremona.github.io/papers/quartequiv.pdf).
-The implementation is written for this library from the mathematical formulas;
-it does not include or translate eclib/PARI implementation code. PARI is used only
-to produce independent test data.
 
 ## General descent: conditions needed for an upper bound
 
@@ -152,8 +149,8 @@ no partial enumeration is accepted as an upper bound. Set the worker limit to 1
 when sequential ordering is required. 2-isogeny descent remains sequential.
 
 Explorer enables this mode for both rank-bound actions, initially using
-`min(4, max(1, Environment.ProcessorCount - 1))` workers. The field can be changed
-in **Precision and work limits**, including setting it to 1. Explorer permits
+`min(4, max(1, Environment.ProcessorCount - 1))` workers. **Max Degree Of Parallelism**
+is outside **Precision and work limits** in both rank forms. Explorer permits
 one active calculation at a time. This default does not change the library's
 sequential default or increase any mathematical work allowance.
 

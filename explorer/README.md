@@ -34,72 +34,42 @@ and the checks to run before publishing a release.
 
 ## Sessions
 
-**File**, before **Edit** and **Tools** in the title bar, contains **New**,
-**Open**, **Save**, **Save as** and **Exit**. New starts with the classic curve, empty history
-and default visualization and panel settings. Open and Save use `.ec` session files;
-Exit closes Explorer.
-Use **Ctrl+N**, **Ctrl+O**, **Ctrl+S** and **Ctrl+Shift+S** for New, Open, Save and
-Save as; the shortcuts are also displayed beside their menu items. Save and Ctrl+S
-are available only for an existing file with unsaved changes or a failed save to retry.
-They are disabled while the status is **Saved**. Use Save as for the first save of
-a new session. Save writes to the current file without a picker. Save as always
-opens the file picker and makes the chosen file the current session after a successful save.
-For an existing session, the picker opens in its folder with its current file name.
-Selecting an existing file asks for overwrite confirmation. Confirming replaces
-that exact file; cancelling leaves it untouched. Explorer never adds a numeric suffix
-automatically. To keep a separate copy, choose a different name. The title bar and
-subsequent Save commands use the exact path selected in the picker. This also applies
-to the first save and to a renamed session from the unsaved-changes dialog.
-The title bar shows its file name (the full path appears on hover), an asterisk for
-unsaved changes, and **New**, **Unsaved**, **Saving…**, **Saved** or
-**Save failed**. File writing runs in the background; edits made during a save remain
-unsaved. Other session commands are disabled while writing.
-The menu uses the same header and popup styling as Tools, with a single vertical
-list. All four menus close on Escape, another menu, an outside click (including the
-title bar), window movement, resizing or deactivation.
+**File** provides **New**, **Open**, **Save**, **Save as** and **Exit**.
+Use **Ctrl+N**, **Ctrl+O**, **Ctrl+S** and **Ctrl+Shift+S** for the first four.
+Sessions use `.ec` files and preserve the exact equation and up to 50 calculation
+reports with their inputs, limits and timestamps.
 
-A session file preserves the exact equation and up to 50 calculation reports with their original
-inputs, limits and timestamps. Opening a session selects the newest result;
-browsing other results does not trigger an unsaved-changes warning. Adding,
-deleting or changing results still does. Samples and periods are recomputed
-locally as needed. Open calculation parameter windows are not saved and close when
-another session is opened.
-Slider step and positions, the preset name, visualization mode, cameras, grid and sample visibility, and selected torus point
-belong to the current window and its undo history. Panel layout and scroll positions are local to the window
-and are not restored by Undo or Redo. None of these settings are written to the file. Opening a session starts in **Real locus** with default display settings and fits the
-curve to the current plot size. Panning, zooming,
-rotating the torus and resetting the view do not trigger an unsaved-changes warning.
-Saving does not move or reset the graph currently on screen.
-Coefficients and a matching preset are recovered from the equation. The slider step
-starts at **0.01**, with every slider centered at **0** around its coefficient.
+- Use **Save as** for a new session or a separate copy. **Save** writes to the
+  current file and is enabled when there are unsaved changes or a failed save.
+- Save as asks before overwriting an existing file and uses the selected name
+  exactly. The title bar shows that name, save status and an asterisk for unsaved
+  changes; hover over the name for the full path.
+- Saving runs in the background. Edits made during saving remain unsaved. Other
+  session commands are disabled until writing finishes.
+- Before New, Open or closing, unsaved changes prompt **Save**, **Discard** or
+  **Cancel**. The file name is editable; new or renamed sessions open the file
+  picker. Escape, Enter and the dialog close button cancel. A cancelled or failed
+  save, or new edits during saving, also cancel the pending action.
+- New and Open are disabled during calculations. Saving a running calculation
+  records it as **Interrupted** when reopened. **Repeat** reopens its parameters
+  without automatically starting work.
 
-New and Open are disabled during a calculation; stop it first. Save can capture a running
-calculation, which reopens as **Interrupted**, without automatically starting work
-or network requests. Use **Repeat** to reopen its parameters. Finish an incomplete
-equation before saving; a local slider-step error does not block saving curve data.
+Only equation and report changes mark the session unsaved. Selecting a report,
+panning, zooming, rotating, sliders' step settings and panel layout do not.
+Slider positions, presets, graph mode, cameras, grid/sample visibility and selected
+torus point are not saved. Opening starts in **Real locus**, fits the curve and
+resets display settings; the slider step is **0.01**. Samples and periods are
+recomputed locally as needed. Saving leaves the current view unchanged.
 
-Files contain version 1 JSON with only `Format`, `Version`, `Equation` and `History`.
-Data is validated before replacing the workspace; no format migrations are performed.
-An invalid or unsupported file leaves the current session intact. Saving writes
-a temporary file before replacing the destination. Session files are limited to
-256 MB. Before New, Open or closing the application (including the window close
-button and Alt+F4), unsaved changes prompt **Save**, **Discard** or **Cancel** in
-the application's dark dialog. Open shows this confirmation before the file picker.
-The file name in this confirmation is editable. An unchanged name saves directly to
-the current file. New or renamed sessions open the file picker with `.ec` added when
-needed and the current session's folder preserved. Cancelling does not change the
-session's name or location. If new edits arrive during saving, the pending New,
-Open or Close is cancelled so those edits remain available.
-Enter, Escape and the dialog close button cancel.
-Cancelling the file picker or failing to save also cancels the pending action.
-An untouched session or an unchanged saved/opened session does not prompt.
-Changes to the equation and results are tracked. Changing the slider step or switching
-between 2D and 3D, toggling the grid or samples, selecting a torus point, scrolling
-or rearranging panels does not count as a data edit or enable Save. Save and Save as
-write the document data and leave the current visualization unchanged.
-Background sample generation does not count as an edit. Sessions are saved
-explicitly; there is no automatic saving on exit.
-The Results panel's **Export** exports an individual text report.
+Open selects the newest report, closes calculation parameter windows and starts
+a fresh undo history. New restores the classic curve and empty history. Invalid
+or unsupported files leave the current session intact. An incomplete equation
+must be corrected before saving; a slider-step error does not block saving.
+
+Session files contain version 1 JSON with `Format`, `Version`, `Equation` and
+`History`, with a 256 MB limit. Saving writes a temporary file before replacing
+the destination. There are no format migrations or automatic saves on exit.
+**Export** in Results saves one text report.
 
 ## Help
 
@@ -317,6 +287,32 @@ reduced fractions, or `O` for infinity, regardless of the input notation. Result
 Copy and Export share this format, including reports reopened from a saved session.
 Repeat preserves the original input text for editing.
 
+### Conductor and factorization
+
+Choose **Tools → Ranks and arithmetic → Conductor**. **options · Max Degree Of
+Parallelism** is outside **Precision and work limits**. It defaults to
+`min(4, Environment.ProcessorCount)`; `1` runs sequentially. Larger limits are
+capped by available CPUs, and small inputs may use fewer workers.
+
+The report includes the conductor and its factorization, sorted by prime. For
+`y^2 = x^3 - 17*x^2 + 72*x`:
+
+```text
+Result:
+  Conductor: 48
+  Factorization (prime, exponent):
+    [2, 4]
+    [3, 1]
+```
+
+Each row means `prime^exponent`: here `48 = 2^4 * 3`. Both outputs come from one
+calculation. Copy, Export and saved reports preserve the format. Factor rows
+respect the item limit; truncation is marked and the conductor remains visible.
+Repeat preserves the worker limit; older reports use the default when it is absent.
+Repeat an old scalar-only report to obtain the factorization.
+
+See [timings and benchmark commands](../docs/factorization-performance.md).
+
 ### Import a curve from LMFDB
 
 Choose **Tools → LMFDB · internet → Import curve from LMFDB**. Enter a conductor
@@ -356,7 +352,7 @@ plot panel's own toolbar.
 | --- | --- |
 | Curve and models | Exact coefficients and invariants, real components, CM discriminant, short and global minimal models, twists, construction from j |
 | Rational points and torsion | Membership, addition, subtraction, negation, doubling, scalar multiplication, bounded rational/integral searches, all torsion points, torsion order and group structure |
-| Ranks and arithmetic | Both rank-bound interfaces, analytic rank and certification, conductor, root number, local reduction data, Tamagawa product |
+| Ranks and arithmetic | Both rank-bound interfaces, rank verification from supplied points, analytic rank and certification, conductor and its factorization, root number, local reduction data, Tamagawa product |
 | Heights and periods | Naive, canonical, local and archimedean heights, height pairing and matrix, regulator, Faltings and stable Faltings heights, certified periods and numerical elliptic logarithms |
 | Isomorphisms and isogenies | Isomorphism tests and maps, coordinate changes and inverse maps, minimal-model maps, Vélu and 2-isogenies with duals, point mapping, division and prime-by-prime saturation |
 | Fourier coefficients and reduction | Individual or ranged Fourier coefficients, Frobenius traces, minimal-model point counts, reduction of curves and points |
@@ -373,9 +369,10 @@ polynomials use coefficients in ascending powers of t separated by semicolons:
 coefficients; the separate reduction operations use a **global minimal model**.
 
 Both rank-bound actions enable parallel general descent by default, using up to
-four workers (fewer when fewer processors are available). In **Precision and work
-limits**, set **Max Degree Of Parallelism** to `1` for sequential execution or to
-another positive worker limit. All workers share the same work allowances;
+four workers (`min(4, max(1, Environment.ProcessorCount - 1))`). The
+**Max Degree Of Parallelism** field is outside **Precision and work limits**
+in both forms. Set it to `1` for sequential execution or to another positive
+worker limit. All workers share the same work allowances;
 increasing the worker count does not increase **Max Descent Work**. The 2-isogeny
 method remains sequential, and incomplete descent still returns an unknown upper
 bound. The library itself defaults to sequential execution.

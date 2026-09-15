@@ -1,6 +1,6 @@
 # Native arithmetic over Q
 
-The initial public entry points are `EllipticCurveQ.GlobalMinimalModel`, `Conductor`,
+Core APIs are `EllipticCurveQ.GlobalMinimalModel`, `Conductor`,
 `GetGlobalMinimalModel(CancellationToken)`, `GetConductor(CancellationToken)` and
 `GetRankBounds(int searchBound, int maxSquareClasses, CancellationToken)`.
 They perform no HTTP requests, start no processes and use no elliptic-curve database.
@@ -30,6 +30,12 @@ On that model, the local conductor exponent is zero at good primes and one at
 multiplicative primes. At additive primes p >= 5 it is two. At 2 and 3 we use Tate's
 successive coordinate transformations, including the I_n* refinement loop and
 the II*, III*, IV* branches. The conductor is the product of p raised to these exponents.
+
+`GetConductor(FactorizationOptions, out factorization, cancellationToken)` also
+returns an `IReadOnlyDictionary<BigInteger, int>` of primes and conductor exponents,
+sorted by prime, without a second factorization. The token is optional; scalar
+overloads and `Conductor` still return only the integer.
+For `y^2 = x^3 - x`, the conductor is `2^5`, while the discriminant is `2^6`.
 
 The mathematical reference is [Cremona, Algorithms for Modular Elliptic Curves,
 Chapter III, sections 3.1–3.2](https://johncremona.github.io/book/fulltext/chapter3.pdf).
@@ -122,20 +128,16 @@ decimal digits, up to four for 45–69 digits, and all available logical CPUs fo
 70 or more digits. An explicit positive limit can exceed four, but never the
 available processor count; small jobs may still use fewer workers.
 
-Explorer's existing **Conductor** action exposes **options · Max Degree Of
-Parallelism**, like rank computation. Its default is up to 4 available logical
-CPUs, a conservative starting point rather than a ceiling; enter any positive
-worker limit, including one for sequential execution. More workers can increase
-memory traffic and need not make a calculation faster.
-The setting is included in calculation history and preserved by Repeat. Existing
-history entries without the field use the default; their operation ID is unchanged.
+Explorer defaults to `min(4, Environment.ProcessorCount)` workers. Its
+[Conductor form](../explorer/README.md#conductor-and-factorization) accepts a
+positive limit. More workers need not make a calculation faster.
 
 ### Integer factorization
 
 ECM uses Suyama's parametrization of Montgomery curves and projective x/z
 arithmetic. Stage one multiplies by the largest prime powers below B1. Stage two
 uses baby steps and giant steps with a 210-wheel: for a prime `p = 210*m +/- r`,
-projective equality of the x-coordinates of `[210*m]Q` and `[r]Q supplies a gcd
+projective equality of the x-coordinates of `[210*m]Q` and `[r]Q` supplies a gcd
 candidate. Batched gcds are replayed individually when a batch contains multiple
 factors. Singular or unproductive curves are discarded; a failed bounded search
 does not assert primality.
@@ -163,9 +165,8 @@ polynomial, relation and elimination loops check cancellation. SIQS distributes
 independent polynomial families across the selected CPU workers. Workers
 share relation collection and elimination. All workers stop and are joined before
 success, cancellation or a worker failure returns. Preliminary Pollard–Brent and
-ECM searches remain sequential. This is an independent C# implementation of
-published algorithms; it adds no native-process dependency. The primality
-certification still uses the full n-1 criterion described above.
+ECM searches remain sequential. Primality certification uses the full n-1
+criterion described above.
 
 References: [Brent, An Improved Monte Carlo Factorization Algorithm](https://maths-people.anu.edu.au/~brent/pub/pub051.html),
 [Silverman, The Multiple Polynomial Quadratic Sieve](https://doi.org/10.1090/S0025-5718-1987-0866119-8),

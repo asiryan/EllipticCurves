@@ -1,19 +1,13 @@
 # Certified factorization performance
 
-Measured on 2026-09-16 on Windows x64, .NET 8.0.31, with 24 logical processors
-available. The original measurements below use up to **four workers**; the CPU
-scaling section measures larger limits. GP explicitly uses **one thread**. These are wall-clock
-measurements, not equal-CPU-work comparisons or guarantees for other inputs.
+Environment: 2026-09-16, Windows x64, .NET 8.0.31, 24 logical CPUs.
+PARI/GP 2.19.0 development 31236-59c418aa0c uses one thread,
+`factor_proven=1` and a 512 MB stack growth limit. Both implementations prove
+primality; neither receives known factors. GP uses a fresh `ellinit` per run.
 
-Both implementations prove primality of every returned factor. GP is PARI/GP
-2.19.0 development 31236-59c418aa0c, with `factor_proven=1` and a stack growth
-limit of 512 MB. Each measurement recomputes the result. GP conductor runs use
-fresh `ellinit` objects to avoid the cached result of `ellglobalred`.
-
-The reported median uses three runs after a first measured run. There is no
-factorization cache, factor hint, database lookup or precomputed answer in the
-native computation. Expected factors are used only to check the benchmark output.
-Other benchmark/test processes were stopped during measurement.
+Times are wall-clock measurements. The first two tables use up to four native
+workers and medians of three runs after the first run. Other tables contain
+individual samples. Benchmarks ran without concurrent benchmark/test processes.
 
 ## Reported curve
 
@@ -27,10 +21,7 @@ y^2 = x^3 + x^2 - 221556180740323405132844117936*x
 | Native ECM + SIQS | 731.5 ms | 572.2 ms |
 | PARI/GP, proven factors | 828 ms | 827 ms |
 
-The earlier Pollard–Brent + basic MPQS implementation took approximately 5.3 s
-on this curve. These figures exclude Explorer worker startup and UI updates.
-The Explorer integration test also runs the same calculation in an actual worker
-process and checks the complete conductor.
+These times exclude Explorer worker startup and UI updates.
 
 ## Independent inputs
 
@@ -49,9 +40,7 @@ Cases include balanced semiprimes distinct from the reported curve's factors.
 | 7 | 62 | 1890.9 ms | 3276 ms |
 | 8 | 66 | 5889.4 ms | 8586 ms |
 
-GP is faster on the smallest cases here. Parallel sieving gives the native
-implementation lower wall-clock times on the larger cases. Factorization remains
-input dependent; the same decimal size can have very different difficulty.
+Factorization cost depends on the input, not just its decimal size.
 
 ## CPU scaling on the larger curve
 
@@ -61,9 +50,8 @@ y^2 + x*y = x^3 - 20820207864197471248300179976626*x
 ```
 
 After removing small prime powers, the discriminant has a 75-digit composite
-cofactor. The earlier implementation had a hard limit of four sieve workers.
-An explicit worker limit now reaches all recursive factorization and primality
-proof calls, without creating nested worker groups.
+cofactor. The worker limit applies to recursive factorization and primality
+proofs without nested worker groups.
 
 Single-run measurements of the **complete conductor calculation**, in Release,
 on the same machine with 24 logical CPUs:
@@ -80,12 +68,8 @@ recursive subproblems, took 68.06 s in a separate run. The direct GP calculation
 with one thread and `factor_proven=1` took 80.66 s. Every result was checked against
 the same exact conductor; no known factors were provided to either factorizer.
 
-More workers are not always faster: the complete 24-worker calculation was slower
-than the 12-worker one. Explorer defaults to four workers, bounded by the available
-CPU count; the field allows a larger limit to be selected manually. Timings
-are individual samples, not medians or a claim that 12 is optimal on every CPU.
-The user's 106-second Explorer observation also includes application overhead
-and can depend on build configuration; it is not used as the benchmark baseline.
+Explorer defaults to four workers, bounded by available CPUs. More workers need
+not be faster; 37.05 s is a single measurement, not an expected completion time.
 
 To compare complete calculations at explicit worker limits:
 
@@ -93,8 +77,36 @@ To compare complete calculations at explicit worker limits:
 dotnet run --project tests/FactorizationBenchmark/FactorizationBenchmark.csproj -c Release -- --conductor-cpu 4 8 12 24
 ```
 
-This mode prints one CSV row per fresh calculation and has a five-minute timeout
-per run. To include the library's automatic policy, add `0` to the worker list.
+This prints wall time and total process CPU time, with a five-minute limit per
+calculation. Add `0` for automatic worker selection; repeat a number for repeated
+runs in the same process, for example `--conductor-cpu 12 12 12`.
+
+## Explorer worker measurements
+
+Follow-up runs on the larger curve, all with a limit of 12 workers:
+
+| Execution | Elapsed |
+| --- | ---: |
+| Direct library, Release, two successive calls | 32.54 s; 53.76 s |
+| Explorer worker, Debug, fresh process | 78.74 s |
+| Explorer worker, Release, fresh process | 83.62 s |
+
+The 12-worker setting reaches the factorizer correctly. Worker startup took
+about 0.10 s and formatting/exit about 0.007 s. These overheads do not explain
+the difference; its cause remains unresolved. Debug configuration alone does
+not explain the observations either.
+
+To measure the actual Explorer worker on Windows:
+
+```powershell
+dotnet build explorer/EllipticCurves.Explorer.csproj -c Release
+dotnet run --project tests/FactorizationBenchmark/FactorizationBenchmark.csproj -c Release -- --conductor-worker explorer/bin/Release/net8.0-windows/EllipticCurves.Explorer.exe 12 3
+```
+
+The last arguments select workers and samples (defaults: 12 and 1). Each sample
+uses a fresh process, checks the conductor and reports startup, calculation,
+formatting/exit, total wall time and process CPU time in milliseconds. CPU time
+sums work across threads; it is not elapsed time. Each sample has a five-minute limit.
 
 ## Reproduce the original comparison
 
@@ -111,8 +123,5 @@ Run the GP benchmark separately, without simultaneous CPU-heavy work:
 ```
 
 Both print CSV with the first run and median. Each C# run has a two-minute
-cancellation limit. The timing is informational; unit tests check mathematical
-results and use generous timeouts rather than asserting subsecond performance.
-The factorization tests also exercise sequential SIQS, parallel SIQS, both ECM
-stages, large perfect powers, repeated factors, pseudoprime rejection and
-cancellation. See [algorithm details and references](native-arithmetic.md#integer-factorization).
+cancellation limit. Tests check exact results and cancellation, not benchmark
+times. See [algorithm details](native-arithmetic.md#integer-factorization).

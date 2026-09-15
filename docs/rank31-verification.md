@@ -1,6 +1,6 @@
 # Verifying 31 independent points on the record curve
 
-The library's existing `RationalPointRank` computation proves an unconditional
+The library's `RationalPointRank` computation proves an unconditional
 lower bound of 31 for [ICARM curve #302](https://elliptic-rank.icarm.cloud/curve/302).
 The experiment uses the published equation and rational points, credited to
 Claude, Levent Alpöge and Ava Howell on 2026-08-23. It does not search for those
@@ -14,11 +14,12 @@ From the repository root, with the .NET SDK and the project's restored packages:
 dotnet test tests/EllipticCurves.Tests.csproj -c Release --filter FullyQualifiedName~RecordRankTests --logger "console;verbosity=detailed"
 ```
 
-The [saved JSON](../tests/Fixtures/icarm-302.json) makes the verification offline;
-no Sage, PARI, external arithmetic service or new library API is required. The
-[test implementation](../tests/RecordRankTests.cs) uses the library's internal
-certificate engine through the test assembly's existing access. No production
-code changes were needed.
+The [test](../tests/RecordRankTests.cs) reads the
+[saved JSON](../tests/Fixtures/icarm-302.json) offline and calls the internal
+certificate engine. Applications use the public
+[`GetRankLowerBound`](../README.md#rank-lower-bounds-from-supplied-points) API;
+Explorer exposes it as
+[Verify rank from supplied points](../explorer/README.md#verify-rank-from-supplied-points).
 
 ## What is proved
 
@@ -60,7 +61,7 @@ One run took approximately 19 ms for reading the data and all four verification
 passes, excluding test discovery and .NET startup. Each test has a 30-second
 cancellation limit. This is a recorded run, not a performance guarantee.
 
-All four test cases passed. Replacing the last point with either a duplicate or
+Replacing the last point with either a duplicate or
 the sum of the first two points yields a bound of 30. Incrementing a supplied
 y-coordinate by one is rejected because the point is no longer on the curve.
 
