@@ -106,8 +106,8 @@ public sealed class CalculationJobViewModel(CalculationRequest request, string t
                 .AppendLine(operation.Description)
                 .AppendLine();
             foreach (var parameter in operation.Parameters)
-                text.Append(parameter.Label).Append(": ")
-                    .AppendLine(Request.Arguments.GetValueOrDefault(parameter.Key, parameter.Default));
+                text.Append(CalculationFormatter.FormatInput(parameter,
+                    Request.Arguments.GetValueOrDefault(parameter.Key, parameter.Default)));
             return text.AppendLine().AppendLine(Result).ToString();
         }
     }

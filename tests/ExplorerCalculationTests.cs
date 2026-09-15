@@ -71,15 +71,20 @@ public sealed class ExplorerCalculationTests
         Assert.Contains("Reason:", bounds);
     }
 
-    [Fact]
-    public async Task SuppliedPointsProduceAnIndependenceCertificate()
+    [Theory]
+    [InlineData("0; 2\n1; 0\n2; 0")]
+    [InlineData("0, 2\n1, 0\n2, 0")]
+    [InlineData("(0, 2)\n(1, 0)\n(2, 0)")]
+    public async Task SuppliedPointsProduceAnIndependenceCertificate(string points)
     {
         var operation = Operation(nameof(EllipticCurveQ.GetRankLowerBound));
-        var request = Request(operation, ("points", "0; 2\n1; 0\n2; 0")) with
-        {
-            Equation = "y^2 + y = x^3 - 7*x + 6"
-        };
-        var output = await CalculationEngine.ExecuteAsync(request);
+        using var workbench = new WorkbenchViewModel();
+        using var form = new CalculationFormViewModel(operation, "y^2 + y = x^3 - 7*x + 6", workbench);
+        var field = form.Fields.Single(f => f.Parameter.Key == "points");
+        field.Text = points;
+        Assert.Equal("", field.Error);
+        Assert.True(form.CanRun);
+        var output = await CalculationEngine.ExecuteAsync(form.CreateRequest());
         Assert.Equal("Verify rank from supplied points", operation.Title);
         Assert.Contains("Lower Bound: 3", output);
         Assert.Contains("Point Count: 3", output);

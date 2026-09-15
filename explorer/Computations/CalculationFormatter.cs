@@ -17,6 +17,26 @@ public static class CalculationFormatter
         return writer.Finish();
     }
 
+    public static string FormatInput(CalculationParameter parameter, string text)
+    {
+        if (CalculationInput.IsPoints(parameter.ValueType))
+        {
+            try
+            {
+                var points = CalculationInput.ParseScalar(parameter.ValueType, text);
+                // Result item limits do not hide supplied inputs. The text limit still applies.
+                var writer = new ResultWriter(int.MaxValue, null, default);
+                writer.Write(parameter.Label, points, 0);
+                return writer.Finish();
+            }
+            catch (Exception error) when (error is FormatException or OverflowException or ArgumentException)
+            {
+                // Failed or restored jobs must remain readable even if an input cannot be parsed.
+            }
+        }
+        return parameter.Label + ": " + text + Environment.NewLine;
+    }
+
     private sealed class ResultWriter(int maxItems, Action<CalculationUpdate>? report, CancellationToken token)
     {
         private const int MaxCharacters = 2_000_000;

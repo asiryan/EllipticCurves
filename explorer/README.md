@@ -295,8 +295,10 @@ torsion enumeration and heights require an explicit calculation from Tools.
 ### Verify rank from supplied points
 
 Choose **Tools → Ranks and arithmetic → Verify rank from supplied points**.
-Enter one `x; y` pair per line in the current equation's coordinates. Fractions
-are accepted; `O` denotes the point at infinity. Set **reduction Prime Bound**
+Enter one `x, y` or `(x, y)` pair per line in the current equation's coordinates,
+including points copied from ICARM. Exact fractions are accepted in either format.
+The `x; y` format is also supported; use it for decimal commas, for example
+`1,5; 2,5`. Blank lines are ignored; `O` denotes the point at infinity. Set **reduction Prime Bound**
 to control the tested primes, then run the calculation.
 
 The report contains a proved lower bound, the number of supplied points,
@@ -309,6 +311,11 @@ searches for points nor computes an upper bound or saturation.
 The calculation uses the standard results panel, session history, Repeat,
 cancellation and time limits. See [the certificate construction and 31-point
 example](../docs/rank31-verification.md).
+
+Reports format point lists consistently as numbered `(x, y)` entries with exact
+reduced fractions, or `O` for infinity, regardless of the input notation. Results,
+Copy and Export share this format, including reports reopened from a saved session.
+Repeat preserves the original input text for editing.
 
 ### Import a curve from LMFDB
 
@@ -358,8 +365,9 @@ plot panel's own toolbar.
 | Rational arithmetic | Exact rational representation, arithmetic, comparison, powers, square testing and exact square roots |
 | LMFDB | Fetch all supported database metadata, map database generators onto the captured model, import stored JSON without internet |
 
-Point inputs have separate x/y fields and an infinity checkbox. Point lists use
-one `x; y` pair per line (`O` for infinity). Field elements and defining
+Point inputs have separate x/y fields and an infinity checkbox. Point lists accept
+one `x, y`, `(x, y)`, or `x; y` pair per line (`O` for infinity). Use semicolons
+between coordinates with decimal commas. Field elements and defining
 polynomials use coefficients in ascending powers of t separated by semicolons:
 `0; 1` is t and `2; 0; 1` is t^2 + 2. Over Fp, curve tools reduce the **entered**
 coefficients; the separate reduction operations use a **global minimal model**.
