@@ -151,5 +151,67 @@ class UnifiedFeedbackTests(unittest.TestCase):
         self.assertTrue({m['key'] for m in before['models']}<={m['key'] for m in after['models']})
         self.assertEqual(after['status'],'frontier_exhausted')
 
+    def test_fresh_charts_do_not_starve_larger_search_boxes(self):
+        data={'ainvs':['0','0','0','-25','4'],'points':[['0','2']]};calls=[];expansions=[]
+        def expand(models,*args,**kwargs):
+            expansions.append(len(expansions))
+            return [dict(models[0],key='fresh-'+str(len(expansions)),neighbour_origin=True)]
+        def search(data,models,n,d,timeout,coverage=None):
+            calls.append(n)
+            observations=[{'point':['5','2'],'method':'pointed'}] if n>=2**32 else []
+            return {'complete':[f'{m["key"]}:{n}:{d}' for m in models],
+                    'observations':observations,'slices':[(m['key'],n,1,d) for m in models],
+                    'timed_out':False,'seconds':0}
+        with tempfile.TemporaryDirectory(prefix='unified-frontier-',dir=ROOT/'artifacts/equation-search') as raw:
+            root=Path(raw);save(root/'input.json',data)
+            with self.fixture([],[]),patch('seeded.batch_search',search),\
+                 patch('seeded.boxes',lambda:iter([(2**20,1),(2**28,1),(2**32,1)])),\
+                 patch('unified.expand_models',expand):
+                result=unified.search(root/'input.json',root/'search',seconds=1,workers=1,anchors=2,target=2,batch_size=1)
+            state=json.loads((root/'search'/'checkpoint.json').read_text())
+        self.assertEqual(result['rank_lower_bound'],2)
+        self.assertIn(2**32,calls)
+        self.assertEqual(len(expansions),1)
+        self.assertGreaterEqual(len(state['models']),2)
+        self.assertTrue(any(n==2**28 for rows in state['coverage'].values() for n,lo,hi in rows))
+
+    def test_partial_minimization_does_not_block_remaining_anchors(self):
+        data={'ainvs':['0','0','0','-25','4'],'points':[['0','2'],['5','2']]};calls=[]
+        def prepare(pool,timeout,cache,minimal=True):
+            models=fixture_models(pool,timeout,cache)
+            return models[:1] if minimal else models
+        with tempfile.TemporaryDirectory(prefix='unified-preparation-',dir=ROOT/'artifacts/equation-search') as raw:
+            root=Path(raw);save(root/'input.json',data)
+            with self.fixture([],calls),patch('unified.prepare_models',prepare):
+                unified.search(root/'input.json',root/'search',seconds=1,workers=1,anchors=2,target=3,batch_size=1)
+            state=json.loads((root/'search'/'checkpoint.json').read_text())
+        self.assertIsNotNone(state['basis_prepared'])
+        self.assertEqual(len(state['models']),2)
+        self.assertEqual(sum(p['kind']=='basis' for p in state['preparations']),1)
+
+    def test_timed_out_chart_does_not_block_other_charts(self):
+        data={'ainvs':['0','0','0','-25','4'],'points':[['0','2']]};calls=[]
+        def prepare(pool,*args,**kwargs):
+            base=fixture_models(pool,*args,**kwargs)[0]
+            return [dict(base,key=key) for key in ('slow','later')]
+        def search(data,models,n,d,timeout,coverage=None):
+            keys=[m['key'] for m in models];calls.append(keys)
+            blocked='slow' in keys
+            return {'complete':[] if blocked else [f'{m["key"]}:{n}:{d}' for m in models],
+                    'observations':[] if blocked else [{'point':['5','2'],'method':'pointed'}],
+                    'slices':[] if blocked else [(m['key'],n,1,d) for m in models],
+                    'timed_out':blocked,'seconds':0}
+        with tempfile.TemporaryDirectory(prefix='unified-isolation-',dir=ROOT/'artifacts/equation-search') as raw:
+            root=Path(raw);save(root/'input.json',data)
+            with self.fixture([],[]),patch('unified.prepare_models',prepare),\
+                 patch('seeded.order_models',lambda models:models),\
+                 patch('seeded.batch_search',search):
+                result=unified.search(root/'input.json',root/'search',seconds=1,workers=1,anchors=2,target=2,batch_size=4)
+            state=json.loads((root/'search'/'checkpoint.json').read_text())
+        self.assertEqual(result['rank_lower_bound'],2)
+        self.assertEqual(calls[0],['slow','later'])
+        self.assertIn(['later'],calls)
+        self.assertEqual(state['isolated_charts'],['slow'])
+
 
 if __name__=='__main__':unittest.main()

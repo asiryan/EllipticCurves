@@ -38,6 +38,20 @@ def reservoir(points, basis, count=32, offset=0):
     return short+other[:count-len(short)]
 
 
+def search_chunks(models, batch_size, isolated):
+    """A chart that timed out cannot hide subsequent charts in its GP process."""
+    chunks=[];pending=[]
+    for model in models:
+        if model['key'] in isolated:
+            if pending:chunks.append(pending);pending=[]
+            chunks.append([model])
+        else:
+            pending.append(model)
+            if len(pending)==batch_size:chunks.append(pending);pending=[]
+    if pending:chunks.append(pending)
+    return chunks
+
+
 def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
            batch_size=8, job_seconds=2, import_run=None):
     # The archived implementations remain available for explicit comparisons.
@@ -55,7 +69,9 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
         'policy':POLICY,'anchors':anchors,'target':target,'workers':workers,
         'batch_size':batch_size,'job_seconds':job_seconds,'anchor_mode':'unified',
         'search_policy':{'shared_exact_observations':True,'relation_division':2,
-            'retained_charts':True,'pending_reservoir':32,'adaptive_timeout':True}}
+            'retained_charts':True,'pending_reservoir':32,'adaptive_timeout':True,
+            'advancing_enrichment_frontier':True,'isolate_timed_out_charts':True,
+            'reduce_unfinished_anchors':True}}
     config['code_sha256'].update({n:hashlib.sha256((ROOT/'tools/RankHunt'/n).read_bytes()).hexdigest()
         for n in ['blind_search.py','point_search.py','bounded_anchor_pool.py',
                   'anchor_diversity.py','point_arithmetic.py']})
@@ -164,7 +180,9 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                 state['pool_timeouts']=state.get('pool_timeouts',0)+1
             pool=translate_pool(pool,2*count)
             models=prepare_models(pool,min(.8,max(.03,left()*.18)),cache)
-            if not models and left()>.08:
+            if len(models)<len(pool['points']) and left()>.08:
+                # Keep completed minimal models. A difficult factorization on
+                # a later anchor must not hide the other anchors indefinitely.
                 models=prepare_models(pool,min(.3,left()*.2),cache,minimal=False)
             register(order_models(models),'pointed',refresh=state.get('pool_basis')!=sig)
             if 'seed_covers' not in state and left()>.1:
@@ -249,7 +267,8 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                     for offset in range(0,len(pending),32):
                         if left()<=.05:break
                         group=pending[offset:offset+32]
-                        chunks=[group[i:i+batch_size] for i in range(0,len(group),batch_size)]
+                        isolated=state.setdefault('isolated_charts',[])
+                        chunks=search_chunks(group,batch_size,set(isolated))
                         futures=[]
                         for chunk in chunks:
                             retry=max(state['attempts'].get(job_key(m,n,d),0) for m in chunk)
@@ -261,6 +280,9 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                             result=future.result();observed+=result['observations']
                             state['attempted_models']+=len(chunk);state['finished_models']+=len(result['complete'])
                             state['timed_out_batches']+=int(result['timed_out']);state['finished_slices']+=len(result['slices'])
+                            if result['timed_out']:
+                                blocked=next((m['key'] for m in chunk if job_key(m,n,d) not in result['complete']),None)
+                                if blocked is not None and blocked not in isolated:isolated.append(blocked)
                             for m in chunk:
                                 key=job_key(m,n,d)
                                 if key not in result['complete']:state['attempts'][key]=state['attempts'].get(key,0)+1
@@ -279,7 +301,12 @@ def search(source, output, seconds=300, workers=4, anchors=2048, target=32,
                     # Try alternative exact charts before entering vastly larger boxes.
                     if n*d>=2**28 and (bi+1==len(search_boxes) or search_boxes[bi+1][0]*search_boxes[bi+1][1]>n*d):
                         if refine():grew=True;break
-                        if enrich():enriched=True;break
+                        # A stream of fresh charts must not keep restarting at
+                        # the same small box. Each enrichment earns its next
+                        # turn only after this basis reaches a larger area.
+                        frontier=state.setdefault('enrichment_frontiers',{})
+                        if n*d>frontier.get(signature(),0) and enrich():
+                            frontier[signature()]=n*d;enriched=True;break
                 if not worked and not grew and not enriched:
                     if left()<=.05:break
                     if state['basis_prepared'] is None:continue

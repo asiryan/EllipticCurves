@@ -1,5 +1,15 @@
 <p align="center"><img width="25%" src="docs/png/ec_logo_v3b.png" /></p>
 
+## Standalone Python / PARI rank search
+
+The extracted algorithm is in [elliptic-rank-search](elliptic-rank-search/README.md),
+a self-contained directory ready to become a separate repository. It includes
+the mathematical description, run and test instructions, and exact certificates
+for improved lower bounds on ICARM curves #199, #206, and #212.
+
+Historical search tools, results, and research reports are preserved in
+[obsolete](obsolete/README.md).
+
 # About
 **EllipticCurves** is a C# library for studying elliptic curves over the rationals and finite fields. It provides functionality to compute and explore:
 * coefficients and group structure,  
@@ -334,12 +344,12 @@ Parameter windows feed a results panel with session history, progress, cancellat
 and time limits. Native computations run locally; only the explicit LMFDB search and fetch
 commands require internet access.
 
-The [September 2026 rank-search package audit](docs/rank-package-audit-20260914.md)
+The archived [September 2026 rank-search package audit](obsolete/docs/rank-package-audit-20260914.md)
 reproduces the supplied ICARM #302 family, exact point certificates, parameter
-sieve and CRT candidates using a [local audit harness](tools/RankPackageAudit).
+sieve and CRT candidates using a [local audit harness](obsolete/tools/RankPackageAudit).
 Its candidate scores are heuristics; only checked point certificates give rank bounds.
 
-The [RankHunt command-line experiments](docs/rank-hunt-20260914.md) extend this
+The archived [RankHunt command-line experiments](obsolete/docs/rank-hunt-20260914.md) extend this
 to checkpointed searches, independent validation primes, bounded PARI point
 searches and exact point certificates. The first campaign checked 121,589,943
 parameters and independently certified a specialization of rank at least 15.
