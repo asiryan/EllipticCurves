@@ -33,10 +33,10 @@ public class PointInputTests
     [Theory]
     [InlineData("1.5,-2.5")]
     [InlineData("( 1.5, -2.5 )")]
-    [InlineData("1,5; -2,5")]
-    [InlineData("(1,5; -2,5)")]
+    [InlineData("1.5; -2.5")]
+    [InlineData("(1.5; -2.5)")]
     [InlineData("1.5e0, -25e-1")]
-    public void DecimalSeparatorsAreUnambiguous(string text)
+    public void DecimalCoordinatesAcceptBothPointSeparators(string text)
     {
         var point = Assert.Single(Parse(text));
         Assert.Equal(new BigRational(3, 2), point.X);
@@ -56,6 +56,8 @@ public class PointInputTests
     [Theory]
     [InlineData("1,2,3")]
     [InlineData("(1,5,2,5)")]
+    [InlineData("1,5; -2,5")]
+    [InlineData("(1,5; -2,5)")]
     [InlineData("(1, 2")]
     [InlineData("1, 2)")]
     [InlineData("((1, 2))")]

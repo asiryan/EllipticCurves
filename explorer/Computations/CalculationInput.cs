@@ -46,13 +46,13 @@ public static class CalculationInput
         }
         var initial = value != null ? Convert.ToString(value, Invariant)! : Default(type, key);
         var help = key.EndsWith("." + nameof(RankComputationOptions.MaxDegreeOfParallelism), StringComparison.Ordinal) ? RankWorkersHelp
-            : type == typeof(BigRational) ? "Exact decimal, fraction or scientific notation. Decimal commas are accepted."
+            : type == typeof(BigRational) ? "Exact decimal, fraction or scientific notation. Use a dot as the decimal separator."
             : type == typeof(EllipticCurveQ) ? "Full Weierstrass equation. Use ^ for powers."
             : type == typeof(FiniteFieldElement) ? ElementHelp
-            : IsPoints(type) ? "One point per line: x, y or (x, y). Fractions are accepted. Use x; y for decimal commas (1,5; 2,5). Use O for infinity. An empty list is allowed."
+            : IsPoints(type) ? "One point per line: x, y, (x, y), or x; y. Decimals with a dot and fractions are accepted. Use O for infinity. An empty list is allowed."
             : IsIntegers(type) ? "Integers separated by ; or spaces."
             : type == typeof(bool) ? "Enable this option."
-            : type == typeof(double) ? "Finite decimal or scientific notation."
+            : type == typeof(double) ? "Finite decimal or scientific notation. Use a dot as the decimal separator."
             : "Integer value. Work and precision limits are enforced by the library.";
         yield return new(key, label, initial, help, type, advanced,
             type == typeof(bool) ? ParameterKind.Boolean : IsPoints(type) ? ParameterKind.Multiline : ParameterKind.Text);
@@ -89,7 +89,7 @@ public static class CalculationInput
         if (type == typeof(BigInteger)) return BigInteger.Parse(text, NumberStyles.Integer, Invariant);
         if (type == typeof(double))
         {
-            var number = double.Parse(text.Replace(',', '.'), NumberStyles.Float, Invariant);
+            var number = double.Parse(text, NumberStyles.Float, Invariant);
             return double.IsFinite(number) ? number : throw new FormatException("Enter a finite number.");
         }
         if (type == typeof(BigRational))
@@ -114,10 +114,9 @@ public static class CalculationInput
     {
         if (text.Equals("O", StringComparison.OrdinalIgnoreCase)) return EllipticCurvePoint.Infinity;
         if (text.StartsWith('(') && text.EndsWith(')')) text = text[1..^1].Trim();
-        // A semicolon keeps decimal commas inside each coordinate unambiguous.
         var coordinates = text.Split(text.Contains(';') ? ';' : ',');
         if (coordinates.Length != 2)
-            throw new FormatException("Use x, y, (x, y), or x; y on each line, or O. Use ; between coordinates with decimal commas.");
+            throw new FormatException("Use x, y, (x, y), or x; y on each line, or O.");
         return new EllipticCurvePoint((BigRational)ParseScalar(typeof(BigRational), coordinates[0]),
             (BigRational)ParseScalar(typeof(BigRational), coordinates[1]));
     }

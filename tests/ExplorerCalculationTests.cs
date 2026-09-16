@@ -57,11 +57,27 @@ public sealed class ExplorerCalculationTests
 
     [Theory]
     [InlineData("8.325", "333/40")]
-    [InlineData("8,325", "333/40")]
     [InlineData("-2/7", "-2/7")]
     [InlineData("1e-5", "1/100000")]
     public void InputsRetainExactRationals(string text, string exact)
         => Assert.Equal(exact, CalculationInput.ParseScalar(typeof(BigRational), text).ToString());
+
+    [Theory]
+    [InlineData(typeof(BigRational), "8,325")]
+    [InlineData(typeof(BigRational), "1,25e2")]
+    [InlineData(typeof(BigRational), "1/2,5")]
+    [InlineData(typeof(double), "8,325")]
+    [InlineData(typeof(double), "1,25e2")]
+    [InlineData(typeof(FiniteFieldElement), "1,5; 2")]
+    public void NumericInputsRejectDecimalCommas(Type type, string text)
+        => Assert.Throws<FormatException>(() => CalculationInput.ParseScalar(type, text));
+
+    [Theory]
+    [InlineData("8.125", 8.125)]
+    [InlineData("1e100", 1e100)]
+    [InlineData("1e-5", 1e-5)]
+    public void FloatingPointInputsAcceptDotsAndScientificNotation(string text, double expected)
+        => Assert.Equal(expected, (double)CalculationInput.ParseScalar(typeof(double), text));
 
     [Fact]
     public async Task TorsionAndRankIncludeGroupAndProofInformation()

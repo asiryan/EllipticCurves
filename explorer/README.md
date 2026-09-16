@@ -122,7 +122,7 @@ Undo history is kept only for the current run and is not written to `.ec` files.
   and rearranged polynomial equations are supported. The result must reduce to
   `y^2 + a1*xy + a3*y = x^3 + a2*x^2 + a4*x + a6`; variables in denominators,
   other curve families, and named functions are rejected with an explanation.
-- Enter exact decimals (`8.325` or `8,325`), fractions (`-2/7`) or scientific
+- Enter exact decimals with a dot (`8.325`), fractions (`-2/7`) or scientific
   notation (`1e-5`). There is no ±100 coefficient limit or one-decimal-place
   restriction. Input is parsed directly into rational numbers, without rounding.
   **EQUATION OVER ℚ** shows the applied equation with exact rational coefficients,
@@ -267,8 +267,8 @@ torsion enumeration and heights require an explicit calculation from Tools.
 Choose **Tools → Ranks and arithmetic → Verify rank from supplied points**.
 Enter one `x, y` or `(x, y)` pair per line in the current equation's coordinates,
 including points copied from ICARM. Exact fractions are accepted in either format.
-The `x; y` format is also supported; use it for decimal commas, for example
-`1,5; 2,5`. Blank lines are ignored; `O` denotes the point at infinity. Set **reduction Prime Bound**
+The `x; y` format is also supported. Use a dot for decimals, for example
+`1.5; 2.5`. Blank lines are ignored; `O` denotes the point at infinity. Set **reduction Prime Bound**
 to control the tested primes, then run the calculation.
 
 The report contains a proved lower bound, the number of supplied points,
@@ -362,8 +362,8 @@ plot panel's own toolbar.
 | LMFDB | Fetch all supported database metadata, map database generators onto the captured model, import stored JSON without internet |
 
 Point inputs have separate x/y fields and an infinity checkbox. Point lists accept
-one `x, y`, `(x, y)`, or `x; y` pair per line (`O` for infinity). Use semicolons
-between coordinates with decimal commas. Field elements and defining
+one `x, y`, `(x, y)`, or `x; y` pair per line (`O` for infinity). Use a dot as the
+decimal separator. Field elements and defining
 polynomials use coefficients in ascending powers of t separated by semicolons:
 `0; 1` is t and `2; 0; 1` is t^2 + 2. Over Fp, curve tools reduce the **entered**
 coefficients; the separate reduction operations use a **global minimal model**.

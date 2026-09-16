@@ -18,7 +18,7 @@ public static class RationalText
     {
         value = BigRational.Zero;
         if (string.IsNullOrWhiteSpace(text) || text.Length > MaxTextLength) return false;
-        var parts = text.Trim().Replace('−', '-').Replace(',', '.').Split('/');
+        var parts = text.Trim().Replace('−', '-').Split('/');
         if (parts.Length > 2 || !TryNumber(parts[0].Trim(), out var numerator)) return false;
         if (parts.Length == 1) { value = numerator; return IsWithinLimit(value); }
         if (!TryNumber(parts[1].Trim(), out var denominator) || denominator.IsZero) return false;

@@ -199,7 +199,7 @@ public static class CurveEquationText
                 return new() { [next == 'x' ? (1, 0) : (0, 1)] = BigRational.One };
             }
             var start = position;
-            while (position < input.Length && (char.IsAsciiDigit(input[position]) || input[position] is '.' or ',')) position++;
+            while (position < input.Length && (char.IsAsciiDigit(input[position]) || input[position] == '.')) position++;
             if (position > start && position < input.Length && input[position] == 'e')
             {
                 position++;

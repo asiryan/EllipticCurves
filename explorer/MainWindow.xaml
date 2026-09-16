@@ -154,7 +154,7 @@
                         <StackPanel Margin="0,12,0,0">
                             <TextBlock Text="Powers: ^" Style="{StaticResource Muted}" LineHeight="18" />
                             <TextBlock Text="Multiply: * or omit" Style="{StaticResource Muted}" LineHeight="18" />
-                            <TextBlock Text="Numbers: 8.325 · 8,325 · 2/7" Style="{StaticResource Muted}" LineHeight="18" ToolTip="Decimals, decimal commas, fractions and scientific notation are accepted." />
+                            <TextBlock Text="Numbers: 8.325 · 2/7 · 1e-5" Style="{StaticResource Muted}" LineHeight="18" ToolTip="Decimals with a dot, fractions and scientific notation are accepted." />
                         </StackPanel>
                         <Expander x:Name="CoefficientsExpander" Header="Coefficients" Foreground="{StaticResource TextBrush}" Margin="0,22,0,0" HorizontalContentAlignment="Stretch" Cursor="Hand">
                             <StackPanel Margin="0,12,0,0" Cursor="Arrow">

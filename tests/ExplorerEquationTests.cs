@@ -10,7 +10,7 @@ public sealed class ExplorerEquationTests
 {
     [Theory]
     [InlineData("y^2 = x^3 - 106.16*x - 0.32", "0", "0", "0", "-2654/25", "-8/25")]
-    [InlineData("y^2 = x^3 − 106,16x − 0,32", "0", "0", "0", "-2654/25", "-8/25")]
+    [InlineData("y^2 = x^3 − 106.16x − 0.32", "0", "0", "0", "-2654/25", "-8/25")]
     [InlineData("y^2 + xy + y = x^3 - x", "1", "0", "1", "-1", "0")]
     [InlineData("y^2+8.325*x*y-2/7*y=x^3+3/5*x^2-1e-5*x+1000", "333/40", "3/5", "-2/7", "-1/100000", "1000")]
     [InlineData("x^3 - x = y^2 + xy + y", "1", "0", "1", "-1", "0")]
@@ -39,6 +39,8 @@ public sealed class ExplorerEquationTests
     [InlineData("y^2 = x^3 -")]
     [InlineData("y^2 = x^3 + 1/")]
     [InlineData("y^2 = x^3 + 1e-")]
+    [InlineData("y^2 = x^3 − 106,16x − 0,32")]
+    [InlineData("y^2 = x^3 + 1,25e2*x")]
     [InlineData("y^2 = x^3 + 1/0")]
     [InlineData("y^2 = x^3 + 1/(1-1)")]
     [InlineData("y^2 = x^3 + 1/x")]

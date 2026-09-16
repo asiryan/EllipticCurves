@@ -31,11 +31,10 @@ public sealed class ExplorerModelTests
     [Theory]
     [InlineData("1.2", 6, 5)]
     [InlineData("-0.1", -1, 10)]
-    [InlineData("3,5", 7, 2)]
+    [InlineData("3.5", 7, 2)]
     [InlineData("100", 100, 1)]
     [InlineData("-100", -100, 1)]
     [InlineData("8.325", 333, 40)]
-    [InlineData("8,325", 333, 40)]
     [InlineData("333/40", 333, 40)]
     [InlineData(" -2 / 7 ", -2, 7)]
     [InlineData("1e-5", 1, 100000)]
@@ -43,7 +42,7 @@ public sealed class ExplorerModelTests
     [InlineData("100.1", 1001, 10)]
     [InlineData("-1000000", -1000000, 1)]
     [InlineData(".00025", 1, 4000)]
-    [InlineData("−2,5", -5, 2)]
+    [InlineData("−2.5", -5, 2)]
     public void DecimalInputRemainsExact(string input, int numerator, int denominator)
     {
         var coefficient = new CoefficientViewModel("a₄", "x", () => { }) { Text = input };
@@ -60,6 +59,9 @@ public sealed class ExplorerModelTests
     [InlineData("1/2/3")]
     [InlineData("1e-")]
     [InlineData("1.2.3")]
+    [InlineData("3,5")]
+    [InlineData("8,325")]
+    [InlineData("−2,5")]
     [InlineData("Infinity")]
     [InlineData("1e999999999")]
     public void InvalidInputPreservesLastCurveAndCanBeCorrected(string input)
