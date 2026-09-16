@@ -16,8 +16,9 @@ public class CalculationReportTests
         var operation = CalculationCatalog.All.First(o => o.Member?.Name == method);
         var parameter = operation.Parameters.Single(p => CalculationInput.IsPoints(p.ValueType));
         string expected = null;
-        foreach (var input in new[] { "0.50, -2.500\nO", " (2/4, -10/4) \r\n o ", "0,5; -2,5\nO" })
+        foreach (var input in new[] { "0.50, -2.500\nO", " (2/4, -10/4) \r\n o ", "0.5; -2.5\nO" })
         {
+            Assert.Equal("", CalculationInput.Validate(parameter, input));
             var request = new CalculationRequest(operation.Id, "y^2 = x^3 - x",
                 new() { [parameter.Key] = input }, MaxItems: 1);
             var job = new CalculationJobViewModel(request, operation.Title, new DateTime(2026, 9, 16));
