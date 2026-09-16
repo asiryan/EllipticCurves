@@ -33,7 +33,7 @@ var finite = e.ReduceModuloPrime(5);
 - Conductors with prime/exponent factorizations from the same calculation,
   configurable parallel factorization, root numbers, local reduction data and Tamagawa numbers.
 - General 2-descent and descent by 2-isogeny, with proved algebraic rank bounds.
-- `GetRankLowerBound` certificates from supplied rational points, without full descent.
+- Certified rank lower bounds from supplied rational points, without full descent.
 - Numerical central L-function derivatives and analytic rank estimates, with
   separate rigorous certificates for analytic ranks 0 and 1.
 - Certified canonical/local heights, subgroup regulators, periods, and Faltings heights.
