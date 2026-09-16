@@ -20,9 +20,9 @@ var conductor = e.Conductor;                 // 37
 var bounds = e.GetRankBounds();
 var rank = bounds.ExactRank;                 // null unless proved
 var local = e.GetLocalData(37);
-var height = e.CanonicalHeight(p);            // certified rational enclosure
+var height = e.CanonicalHeight(p);           // certified rational enclosure
 var periods = e.GetPeriods();                // on the global minimal model
-var count = e.CountPoints(5);                 // 8, including infinity
+var count = e.CountPoints(5);                // 8, including infinity
 var finite = e.ReduceModuloPrime(5);
 ```
 
