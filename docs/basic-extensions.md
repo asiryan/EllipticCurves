@@ -8,9 +8,15 @@ The elliptic logarithm is explicitly a numerical result.
 
 `GetFourierCoefficients(count, maxPointCountingWork, token)` returns a read-only
 list indexed by n: the sentinel at index zero is 0, followed by a_1=1 through
-a_count. Count zero is valid. `GetFourierCoefficient(n, ...)` requires n>=1 and
-computes the list through n. All coefficients are exact signed 64-bit integers;
-the implementation uses checked arithmetic.
+a_count. Count zero is valid. `GetFourierCoefficient(n, ...)` requires n>=1,
+factors n, and computes only the prime coefficients needed for that index.
+Prime powers use the good/bad reduction recurrences, and coprime factors use
+multiplicativity. No list through n is allocated. All coefficients are exact
+signed 64-bit integers; the implementation uses checked arithmetic.
+
+For example, on `new EllipticCurveQ(0, 0, 1, -1, 0)`,
+`GetFourierCoefficient(1 << 20, maxPointCountingWork: 2)` returns -1024:
+only a_2 needs point counting, followed by the prime-power recurrence.
 
 `GetFrobeniusTrace(p, ...)` returns a_p. At a good prime,
 `CountPoints(p, ...) = p+1-a_p`, including the point at infinity. At bad primes,
@@ -21,10 +27,13 @@ These operations use the global minimal model, so rational changes of the input
 equation preserve the output. Prime arguments are validated. Counting is direct,
 with a quadratic-residue sieve for odd primes and a separate characteristic-two
 case. Coefficients at composite indices use multiplicativity and the good/bad
-prime recurrences. The default work limit is 20000000. Exceeding it throws rather
-than returning a truncated list. Storage grows with the requested coefficient
-count and the largest counted prime; raising work limits also permits larger
-allocations. Limits do not bound minimalization or factorization time.
+prime recurrences. The default work limit is 20000000. For a single coefficient,
+it bounds the sum of the distinct prime divisors of n; for a list, it bounds the
+sum of all primes through count and the coefficient-array size. Exceeding it
+throws rather than returning a partial result. List storage grows with count;
+both methods also allocate a quadratic-residue table for each counted prime,
+so raising work limits permits larger allocations. Limits do not bound
+minimalization or factorization time.
 
 ## Complex multiplication over Q
 

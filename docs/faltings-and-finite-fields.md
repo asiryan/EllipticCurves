@@ -110,21 +110,34 @@ creation, negation, addition, subtraction, doubling and signed scalar multiplica
 Both coordinates of affine points must belong to the curve's field presentation.
 Group operations reject points outside the curve.
 
-`Points(maxWork, token)` visits every affine pair (x,y), with infinity yielded
-first. `CountPoints(maxWork, token)` counts this complete enumeration. Both check
-q^2<=maxWork before starting, using BigInteger to avoid overflow; the default is
-1000000 coordinate-pair checks. Thus the default supports q<=1000. A work-limit
-exception does not report a partial count. Stopping lazy enumeration early does
-not establish completeness.
+`CountPoints(maxWork, token)` includes infinity and visits each x once, counting
+the solutions of y^2+b*y=rhs without constructing or enumerating them. In odd
+characteristic, the discriminant b^2+4*rhs gives one solution when zero, two when
+a nonzero square, and none otherwise. A power test determines whether it is a
+square. In characteristic two, b=0 gives one solution; otherwise there are two
+solutions precisely when the absolute trace of rhs/b^2 to F_2 is zero. The trace
+is computed by successive squaring; this works for both even and odd degrees.
+See the discussion of trace and quadratic equations in
+[Fong et al., Field inversion and point halving revisited, section 4.2](https://cacr.uwaterloo.ca/techreports/2003/corr2003-18.pdf).
 
-This intentionally simple O(q^2) search counts pairs, not field operations or
-seconds. One field operation can itself be expensive for large degree or
-characteristic. Construction and basic arithmetic have no work counter. Cancellation
-is checked in polynomial power/reduction loops, between point group operations,
-and at every enumerated pair; the operators and a single BigInteger operation
-are not internally interruptible. Large fields remain usable for arithmetic even
-when enumeration is disallowed. The existing `EllipticCurveFp` API retains its
-more efficient direct counting for prime fields.
+Counting checks q<=maxWork before starting. The default limit is 1000000
+x-coordinates. This takes O(q log q) field operations with the current power and
+trace routines, without a table of all field elements or points.
+
+`Points(maxWork, token)` still visits every affine pair (x,y), with infinity
+yielded first. Its limit counts q^2 coordinate pairs, so the default 1000000
+supports q<=1000. Both limits are checked using BigInteger to avoid overflow.
+A work-limit exception does not report a partial count. Stopping lazy point
+enumeration early does not establish completeness.
+
+Work limits count x-coordinates or pairs, not field operations or seconds.
+One field operation can itself be expensive for large degree or characteristic.
+Construction and basic arithmetic have no work counter. Cancellation is checked
+in polynomial power/reduction loops, trace squarings, between point group
+operations, and at every enumerated x or pair; the operators and a single
+BigInteger operation are not internally interruptible. Large fields remain usable
+for arithmetic even when counting or enumeration is disallowed. The existing
+`EllipticCurveFp` API retains its specialized direct counting for prime fields.
 
 This addition does not implement SEA, discrete logarithms, field embeddings,
 extension-field isogenies, or curves over number fields.

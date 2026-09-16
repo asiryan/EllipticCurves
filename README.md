@@ -305,8 +305,10 @@ var points = e.Points();
 ```
 
 `EllipticCurveFq` supports general equations, including characteristics 2 and 3.
-Counting and enumeration check all q^2 affine coordinate pairs; the default limit
-is 1000000 pairs. Field presentations must agree before their elements can be mixed.
+`CountPoints` visits each of the q x-coordinates and counts the corresponding y
+solutions. `Points` enumerates all q^2 affine coordinate pairs. Each method has a
+default work limit of 1000000, measured in x-coordinates or pairs respectively.
+Field presentations must agree before their elements can be mixed.
 See [Faltings-height conventions and finite-extension limits](docs/faltings-and-finite-fields.md).
 
 ## Tests

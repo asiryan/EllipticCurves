@@ -43,7 +43,7 @@ var finite = e.ReduceModuloPrime(5);
 - Prime-field curves, arithmetic, direct point counting and enumeration,
   including characteristics 2 and 3.
 - Exact finite extensions F_(p^k) with proved irreducible defining polynomials,
-  curve arithmetic and bounded direct enumeration of coordinate pairs.
+  curve arithmetic, counting by x-coordinate and bounded enumeration of points.
 - Numerical elliptic logarithms of rational points on both real components.
 - Optional cached LMFDB data, including generators, heights, periods and
   isogeny-class metadata, with offline snapshot parsing.
@@ -54,8 +54,9 @@ Point searches are bounded. Saturation certifies only the requested primes and
 does not establish a full Mordell-Weil basis. Work limits can leave rank bounds
 incomplete. Numerical estimates and stored LMFDB values are distinguished from
 proofs; the library does not compute the Tate-Shafarevich group order.
-Finite-field counting uses direct search, not SEA. The extension-field API checks
-q^2 coordinate pairs, with a default limit of 1000000. General isogeny-class discovery,
+Finite-field counting uses direct search, not SEA. Extension-field `CountPoints`
+visits q x-coordinates, with a default limit of 1000000. Its `Points` enumeration
+still checks q^2 coordinate pairs with the same default limit. General isogeny-class discovery,
 higher descents and curves over general number fields are outside this release.
 
 See the [repository README](https://github.com/asiryan/EllipticCurves/blob/main/README.md)

@@ -93,6 +93,7 @@ public class AnalyticRankTests
         {
             var a = row.Split(',').Select(int.Parse).ToArray();
             Assert.Equal(a[2], coefficients[a[0] - 1][a[1]]);
+            Assert.Equal(a[2], curves[a[0] - 1].GetFourierCoefficient(a[1]));
         }
     }
 

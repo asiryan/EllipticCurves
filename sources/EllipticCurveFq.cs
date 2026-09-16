@@ -6,7 +6,7 @@ using System.Threading;
 namespace EllipticCurves
 {
     /// <summary>A nonsingular general Weierstrass curve over a specified finite field F_(p^k).
-    /// Supports characteristics two and three. Counting enumerates all q^2 affine coordinate pairs.</summary>
+    /// Supports characteristics two and three. Counting visits q x-coordinates; point enumeration visits q^2 pairs.</summary>
     public sealed class EllipticCurveFq : IEquatable<EllipticCurveFq>
     {
         /// <summary>Base field, including its defining polynomial.</summary>
@@ -105,12 +105,46 @@ namespace EllipticCurves
             if (Field.Order * Field.Order > maxWork)
                 throw new ArithmeticException("Direct point enumeration requires q^2 coordinate-pair checks; the work limit is too small.");
         }
-        /// <summary>Count every point including infinity by direct search. maxWork bounds q^2 coordinate pairs,
+        /// <summary>Count every point including infinity by counting the solutions in y for each x. maxWork bounds q x-coordinates,
         /// not field operations or elapsed time. A limit throws instead of returning a partial count.</summary>
         public BigInteger CountPoints(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
-            BigInteger count = 0;
-            foreach (var point in Points(maxWork, cancellationToken)) count++;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (maxWork < 0) throw new ArgumentOutOfRangeException(nameof(maxWork));
+            if (Field.Order > maxWork)
+                throw new ArithmeticException("Direct point counting requires q x-coordinates; the work limit is too small.");
+            bool characteristicTwo = Field.Characteristic == 2;
+            var four = Field.CreateElement(4);
+            var squareExponent = (Field.Order - 1) / 2;
+            BigInteger count = 1; // Infinity.
+            foreach (var x in Field.Elements(maxWork, cancellationToken))
+            {
+                var rhs = Rhs(x); var b = A1 * x + A3;
+                if (!characteristicTwo)
+                {
+                    var discriminant = b * b + four * rhs;
+                    if (discriminant.IsZero) count++;
+                    else if (discriminant.Pow(squareExponent, cancellationToken).IsOne) count += 2;
+                }
+                else if (b.IsZero)
+                {
+                    // Squaring is a bijection of F_(2^k): y^2=rhs has one solution.
+                    count++;
+                }
+                else
+                {
+                    // With z=y/b, z^2+z=rhs/b^2 has two solutions iff its
+                    // absolute trace to F_2 is zero, and no solutions otherwise.
+                    var value = Field.Divide(rhs, Field.Multiply(b, b, cancellationToken), cancellationToken);
+                    var trace = value;
+                    for (int i = 1; i < Field.Degree; i++)
+                    {
+                        value = Field.Multiply(value, value, cancellationToken);
+                        trace += value;
+                    }
+                    if (trace.IsZero) count += 2;
+                }
+            }
             return count;
         }
         /// <summary>Enumerate all points, infinity first, with a prechecked q^2 coordinate-pair limit.

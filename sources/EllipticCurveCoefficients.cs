@@ -32,11 +32,38 @@ namespace EllipticCurves
             return Array.AsReadOnly(result);
         }
 
-        /// <summary>Return a_n for n >= 1. Computes the coefficient list through n.</summary>
+        /// <summary>Return a_n for n >= 1 using the prime factorization of n, prime-power recurrences and multiplicativity.
+        /// The work limit bounds the sum of distinct prime divisors of n; no coefficient list is allocated.</summary>
         public long GetFourierCoefficient(int index, long maxPointCountingWork = 20000000, CancellationToken cancellationToken = default)
         {
             if (index < 1) throw new ArgumentOutOfRangeException(nameof(index));
-            return GetFourierCoefficients(index, maxPointCountingWork, cancellationToken)[index];
+            cancellationToken.ThrowIfCancellationRequested();
+            if (maxPointCountingWork < 0) throw new ArgumentOutOfRangeException(nameof(maxPointCountingWork));
+            if (IsSingular) throw new InvalidOperationException("L-series coefficients require a nonsingular curve.");
+            if (index == 1) return 1;
+
+            var factors = NativeNumberTheory.Factor(index, cancellationToken);
+            long work = 0;
+            foreach (var prime in factors.Keys) work += (int)prime;
+            if (work > maxPointCountingWork) throw new ArithmeticException("Point-counting work limit reached.");
+
+            var model = GetGlobalMinimalModel(cancellationToken);
+            long result = 1;
+            foreach (var factor in factors)
+            {
+                int prime = (int)factor.Key;
+                long trace = AnalyticCoefficients.Trace(model, prime, cancellationToken);
+                long previous = 1, current = trace;
+                long correction = model.Discriminant.Num % prime == 0 ? 0 : prime;
+                for (int power = 2; power <= factor.Value; power++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    long next = checked(trace * current - correction * previous);
+                    previous = current; current = next;
+                }
+                result = checked(result * current);
+            }
+            return result;
         }
 
         /// <summary>Count E(F_p), including infinity, on a global minimal model. Rejects bad reduction.</summary>

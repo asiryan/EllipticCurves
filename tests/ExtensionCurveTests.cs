@@ -21,7 +21,7 @@ public class ExtensionCurveTests
         Assert.Equal(Point(16), e.Add(p, q)); Assert.Equal(Point(19), e.Multiply(p, int.Parse(v[18])));
         var points = e.Points().ToArray();
         Assert.Equal(int.Parse(v[7]), points.Length); Assert.Equal(points.Length, points.Distinct().Count());
-        Assert.Equal(new BigInteger(points.Length), e.CountPoints());
+        Assert.Equal(new BigInteger(points.Length), e.CountPoints((long)field.Order));
         Assert.Contains(p, points); Assert.Contains(q, points);
         foreach (var point in points.Take(15))
         {
@@ -44,6 +44,47 @@ public class ExtensionCurveTests
         for (int i = 2; i <= field.Degree; i++) { var next = ap * trace - prime * previous; previous = trace; trace = next; }
         Assert.Equal(field.Order + 1 - trace, extended.CountPoints());
         Assert.Equal(field.CreateElement(baseCurve.JInvariant), extended.JInvariant);
+    }
+
+    [Theory]
+    [InlineData(2, new int[] { 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1 })]
+    [InlineData(47, new int[] { 1, 0, 1 })]
+    public void CountingSupportsFieldsBeyondTheDefaultEnumerationLimit(int prime, int[] polynomial)
+    {
+        var field = FiniteFieldTests.Field(prime, polynomial);
+        var e = new EllipticCurveFq(field, 0, 0, 1, -1, 0);
+        var baseCurve = new EllipticCurveFp(prime, 0, 0, 1, -1, 0);
+        var ap = prime + 1 - baseCurve.CountPoints();
+        BigInteger previous = 2, trace = ap;
+        for (int i = 2; i <= field.Degree; i++)
+        {
+            var next = ap * trace - prime * previous;
+            previous = trace; trace = next;
+        }
+        Assert.True(field.Order > 1000);
+        Assert.Throws<ArithmeticException>(() => e.Points().First());
+        Assert.Equal(field.Order + 1 - trace, e.CountPoints());
+    }
+
+    [Theory]
+    [InlineData(2, new int[] { 1, 1, 1 })]
+    [InlineData(2, new int[] { 1, 1, 0, 1 })]
+    [InlineData(3, new int[] { 1, 0, 1 })]
+    public void GeneralQuadraticsIncludingRepeatedRootsMatchExhaustiveCounting(int prime, int[] polynomial)
+    {
+        var field = FiniteFieldTests.Field(prime, polynomial);
+        var elements = field.Elements().ToArray();
+        // Vary b(x)=a1*x+a3 through zero and nonzero values. In characteristic
+        // two this also covers ordinary and supersingular curves in even/odd degrees.
+        foreach (var a1 in new[] { field.Zero, field.One, field.Generator })
+        foreach (var a3 in new[] { field.Zero, field.One, field.Generator })
+        foreach (var a6 in elements)
+        {
+            EllipticCurveFq e;
+            try { e = new EllipticCurveFq(field, a1, field.Generator, a3, field.One, a6); }
+            catch (ArgumentException) { continue; } // Singular equations are outside the API.
+            Assert.Equal(new BigInteger(e.Points().Count()), e.CountPoints((long)field.Order));
+        }
     }
 
     [Theory]
@@ -70,9 +111,9 @@ public class ExtensionCurveTests
         Assert.Throws<ArgumentException>(() => e.CreatePoint(0, 1)); Assert.False(e.IsOnCurve(default));
         Assert.Throws<ArgumentException>(() => e.Add(e.CreatePoint(0, 0), f.CreatePoint(0, 0)));
         Assert.Throws<ArgumentException>(() => e.CreatePoint(field.Zero, other.Zero));
-        Assert.Throws<ArithmeticException>(() => e.CountPoints(80));
+        Assert.Throws<ArithmeticException>(() => e.CountPoints(8));
         Assert.Throws<ArithmeticException>(() => e.Points(80).First());
-        Assert.True(e.CountPoints(81) > 0);
+        Assert.Equal(new BigInteger(e.Points(81).Count()), e.CountPoints(9));
         Assert.Throws<ArgumentOutOfRangeException>(() => e.CountPoints(-1));
         var cancelled = new CancellationToken(true);
         Assert.Throws<OperationCanceledException>(() => e.CountPoints(cancellationToken: cancelled));
@@ -80,7 +121,9 @@ public class ExtensionCurveTests
         Assert.Equal(e, new EllipticCurveFq(field, 3, 0, 4, 2, 0));
         Assert.Equal(e.GetHashCode(), new EllipticCurveFq(field, 3, 0, 4, 2, 0).GetHashCode());
         Assert.NotEqual(e, f);
-        var large = new EllipticCurveFq(new FiniteField(65537, new BigInteger[] { 0, 1 }), 0, 0, 1, -1, 0);
+        var large = new EllipticCurveFq(new FiniteField((BigInteger.One << 61) - 1, new BigInteger[] { 1, 0, 1 }), 0, 0, 1, -1, 0);
         Assert.Throws<ArithmeticException>(() => large.CountPoints());
+        Assert.Throws<ArithmeticException>(() => large.CountPoints(long.MaxValue));
+        Assert.Throws<ArithmeticException>(() => large.Points(long.MaxValue).First());
     }
 }
