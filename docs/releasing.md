@@ -21,10 +21,10 @@ check, pack the library, and publish Explorer and the console application:
 
 The default target for both applications is `win-x64`. Each invocation creates a fresh
 `artifacts/release/TIMESTAMP-RUNTIME` directory containing `nuget/`,
-`explorer-RUNTIME/`, `console-RUNTIME/`, `EllipticCurves.Explorer-RUNTIME.zip` and
-`EllipticCurves.Console-RUNTIME.zip`. Both application archives include the license
+`explorer-RUNTIME/`, `console-RUNTIME/`, `EllipticCurves.Explorer.VERSION-RUNTIME.zip` and
+`EllipticCurves.Console.VERSION-RUNTIME.zip`. Both application archives include the license
 and their .NET runtimes; neither requires a separate .NET installation to run.
-Versions come from the project files described below.
+`VERSION` comes from the library's evaluated `PackageVersion` and matches the NuGet package.
 
 The script works from any current directory, stops on the first failed command
 and returns a nonzero exit code. A failed run can leave partial output in its
@@ -45,8 +45,7 @@ The library sets `Version`, `AssemblyVersion` and `FileVersion` in its project
 file. Use that file as the source of truth for the NuGet version.
 Only the library has explicit version settings. Console and Explorer use the
 SDK's default application assembly versions; their project references do not
-inherit the library's version. Identify their release archives by the library
-release they accompany.
+inherit the library's version. Their ZIP filenames include the library package version.
 
 The NuGet README is [docs/nuget-readme.md](nuget-readme.md), not the root README.
 The library project packs it as `README.md`, together with `LICENSE.md`,
@@ -99,7 +98,8 @@ from an older publish are not included in the archive.
 ```powershell
 dotnet publish explorer/EllipticCurves.Explorer.csproj -c Release -r win-x64 --self-contained true -o artifacts/explorer-win-x64
 Copy-Item -LiteralPath LICENSE -Destination artifacts/explorer-win-x64/EllipticCurves.LICENSE.txt
-Compress-Archive -Path artifacts/explorer-win-x64/* -DestinationPath artifacts/EllipticCurves.Explorer-win-x64.zip
+$archiveVersion = dotnet msbuild sources/EllipticCurves.csproj -nologo -p:Configuration=Release -getProperty:PackageVersion
+Compress-Archive -Path artifacts/explorer-win-x64/* -DestinationPath "artifacts/EllipticCurves.Explorer.${archiveVersion}-win-x64.zip"
 ```
 
 The ZIP must contain the entire publish folder, including runtime files and
@@ -127,7 +127,8 @@ published dependencies as well as the UI.
 ```powershell
 dotnet publish console/EllipticCurves.Console.csproj -c Release -r win-x64 --self-contained true -o artifacts/console-win-x64
 Copy-Item -LiteralPath LICENSE -Destination artifacts/console-win-x64/EllipticCurves.LICENSE.txt
-Compress-Archive -Path artifacts/console-win-x64/* -DestinationPath artifacts/EllipticCurves.Console-win-x64.zip
+$archiveVersion = dotnet msbuild sources/EllipticCurves.csproj -nologo -p:Configuration=Release -getProperty:PackageVersion
+Compress-Archive -Path artifacts/console-win-x64/* -DestinationPath "artifacts/EllipticCurves.Console.${archiveVersion}-win-x64.zip"
 ```
 
 Use a fresh output directory and keep the entire publish folder, including the

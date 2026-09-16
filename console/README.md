@@ -11,8 +11,9 @@ The default curve is **y² = x³ − 17x² + 72x**, studied in
 
 ## Run
 
-Unpack the complete `EllipticCurves.Console-win-x64.zip` release archive
-(`win-arm64` for Windows ARM64). No separate .NET installation is needed.
+Unpack the complete `EllipticCurves.Console.VERSION-win-x64.zip` release archive,
+where `VERSION` is the library package version. Choose `win-arm64` for Windows ARM64.
+No separate .NET installation is needed.
 Open a terminal in the extracted folder and run:
 
 ```powershell
