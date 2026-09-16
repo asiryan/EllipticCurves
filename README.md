@@ -248,9 +248,9 @@ var e = new EllipticCurveQ(0, 0, 1, -1, 0);  // 37.a1
 var p = new EllipticCurvePoint(0, 0);
 var ap = e.GetFrobeniusTrace(5);             // -2
 var coefficients = e.GetFourierCoefficients(100); // a[n], with a[0]=0
-var count = e.CountPoints(5);               // 8, including infinity
+var count = e.CountPoints(5);                // 8, including infinity
 var divided = e.GetDivisionPoints(e.Multiply(p, 6), 2); // exactly {3P}
-var logarithm = e.RealEllipticLogarithm(p); // numerical, on the minimal model
+var logarithm = e.RealEllipticLogarithm(p);  // numerical, on the minimal model
 
 var cm = new EllipticCurveQ(0, 0, 0, 0, 1);
 Console.WriteLine(cm.CmDiscriminant);        // -3; zero denotes non-CM
@@ -294,7 +294,7 @@ using System.Numerics;
 
 var field = new FiniteField(3, new BigInteger[] { 1, 0, 1 }); // F_9, t^2+1
 var alpha = field.Generator;
-Console.WriteLine((alpha * alpha + 1).IsZero); // True
+Console.WriteLine((alpha * alpha + 1).IsZero);                // True
 
 var e = new EllipticCurveFq(field,
     field.Zero, field.Zero, field.Zero, alpha, field.One);
