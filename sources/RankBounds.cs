@@ -30,7 +30,7 @@ namespace EllipticCurves
         /// <summary>The exact algebraic rank when proved, otherwise null.</summary>
         public int? ExactRank => IsExact ? LowerBound : (int?)null;
 
-        /// <summary>Whether rational 2-torsion allowed descent on a pair of 2-isogenous curves.</summary>
+        /// <summary>Whether descent by 2-isogeny was attempted.</summary>
         public bool UsedTwoIsogenyDescent { get; }
 
         /// <summary>Whether general binary-quartic 2-descent was attempted.</summary>

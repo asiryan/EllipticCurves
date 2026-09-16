@@ -9,6 +9,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Interop;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using EllipticCurves;
 using EllipticCurves.Explorer.Models;
@@ -98,9 +99,12 @@ internal static partial class Program
             CheckExportBounds();
             CheckPlotRendering();
             CheckExtremePlotViews();
+            CheckLargeCurvePlotScales();
             CheckViewSwitching();
             CheckTorusCycleColors();
             CheckComplexTorusView();
+            CheckCalculationForms();
+            CheckLiveCalculationReport();
             Console.WriteLine("PASS: compiled XAML loads; Help actions, bundled license and layouts, LMFDB formula import, Edit Undo/Redo, graph and result mementos, File save/load and shared title-bar menus, Tools click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
@@ -109,6 +113,83 @@ internal static partial class Program
     }
 
     private static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
+
+    private static void CheckCalculationForms()
+    {
+        using var bindingErrors = new System.IO.StringWriter();
+        using var bindingListener = new TextWriterTraceListener(bindingErrors);
+        PresentationTraceSources.Refresh();
+        var source = PresentationTraceSources.DataBindingSource;
+        source.Switch.Level = SourceLevels.Error;
+        source.Listeners.Add(bindingListener);
+        using var workbench = new WorkbenchViewModel();
+        try
+        {
+            foreach (var operation in CalculationCatalog.All.Where(operation => operation.Member?.Name is
+                nameof(EllipticCurveQ.GetConductor) or nameof(EllipticCurveQ.GetRankBounds)
+                or nameof(EllipticCurveQ.GetRankLowerBound) or nameof(EllipticCurveQ.Add)))
+            {
+                var window = new CalculationWindow(operation, "y^2 = x^3 - x", workbench);
+                try
+                {
+                    var root = (FrameworkElement)window.Content;
+                    root.Measure(new Size(628, 728));
+                    root.Arrange(new Rect(0, 0, 628, 728));
+                    foreach (var expander in Descendants(root).OfType<Expander>()) expander.IsExpanded = true;
+                    root.UpdateLayout();
+                    Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(root.UpdateLayout));
+                }
+                finally { window.Close(); }
+            }
+            bindingListener.Flush();
+            Require(bindingErrors.ToString().Length == 0, "Calculation form binding errors: " + bindingErrors);
+        }
+        finally { source.Listeners.Remove(bindingListener); }
+    }
+
+    private static void CheckLiveCalculationReport()
+    {
+        using var workbench = new WorkbenchViewModel();
+        var job = new CalculationJobViewModel(new("Q.TorsionStructure", "y^2 = x^3 - x", new()), "Torsion");
+        workbench.Jobs.Add(job);
+        workbench.Selected = job;
+        var panel = new ResultsPanel { DataContext = workbench };
+        panel.Measure(new Size(300, 800));
+        panel.Arrange(new Rect(0, 0, 300, 800));
+        panel.UpdateLayout();
+        var report = Descendants(panel).OfType<TextBox>().Single();
+        report.Select(report.Text.IndexOf("y^2 =", StringComparison.Ordinal), "y^2 = x^3 - x".Length);
+        job.Elapsed = TimeSpan.FromSeconds(7);
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+        Require(report.Text.Contains("Elapsed: 00:00:07"), "The displayed report kept the initial elapsed time.");
+        Require(report.SelectedText == "y^2 = x^3 - x", "Updating elapsed time cleared the report selection.");
+        job.Status = CalculationStatus.Completed;
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+        Require(report.Text.Contains("Status: Completed"), "The displayed report kept the old calculation status.");
+        Require(report.SelectedText == "y^2 = x^3 - x", "Updating status moved the report selection.");
+        job.Elapsed = TimeSpan.FromHours(100);
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+        Require(report.Text.Contains("Elapsed: 100:00:00") && report.SelectedText == "y^2 = x^3 - x",
+            "Expanding the hours field did not preserve the selected input.");
+        job.Result = "Result: 4";
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
+        Require(report.Text == job.Report, "The displayed report differs from the copied/exported report.");
+        job.Result = string.Join(Environment.NewLine, Enumerable.Range(0, 200).Select(i => $"Result row {i}"));
+        panel.UpdateLayout();
+        report.ScrollToVerticalOffset(100);
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(panel.UpdateLayout));
+        var offset = report.VerticalOffset;
+        Require(offset > 0, "The report scrolling check needs overflowing content.");
+        job.Elapsed += TimeSpan.FromSeconds(1);
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(panel.UpdateLayout));
+        Require(report.VerticalOffset == offset, "Updating elapsed time reset the report scroll position.");
+        var other = new CalculationJobViewModel(job.Request, "Another calculation");
+        workbench.Jobs.Add(other);
+        workbench.Selected = other;
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(panel.UpdateLayout));
+        Require(report.Text == other.Report && report.SelectionLength == 0,
+            "Switching history entries kept the previous report or its selection.");
+    }
 
     private static MainWindow CreateMainWindow(Func<bool>? confirmation = null) => new(confirmation,
         new SessionDialogs(_ => new(SaveChangesChoice.Discard), _ => throw new Exception("Unexpected save dialog."),

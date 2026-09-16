@@ -18,6 +18,20 @@ public sealed class ExplorerWorkerTests
     }
     private static CalculationRequest Request(string id = "Q.TorsionStructure") => new(id, "y^2 = x^3 - x", new());
 
+    [Theory]
+    [InlineData(86399, "23:59:59")]
+    [InlineData(86400, "24:00:00")]
+    [InlineData(90061, "25:01:01")]
+    [InlineData(259200, "72:00:00")]
+    [InlineData(360000, "100:00:00")]
+    public void CalculationTimingUsesTotalHours(int seconds, string expected)
+    {
+        var job = new CalculationJobViewModel(Request() with { TimeoutSeconds = 0 }, "Torsion")
+        { Elapsed = TimeSpan.FromSeconds(seconds) };
+        Assert.Equal(expected + " · no time limit", job.Timing);
+        Assert.Contains("Elapsed: " + job.Timing, job.Report);
+    }
+
     [Fact]
     public async Task WorkerProtocolReturnsProgressAndFinalResult()
     {
@@ -51,6 +65,23 @@ public sealed class ExplorerWorkerTests
         var result = await new CalculationRunner(() => StartInfo()).RunAsync(request, _ => { });
         Assert.Equal("Failed", result.Status);
         Assert.Contains("singular", result.Message.ToLowerInvariant());
+    }
+
+    [Fact]
+    public async Task LargeConductorCompletesThroughTheRealWorkerProtocol()
+    {
+        var operation = CalculationCatalog.All.Single(o => o.Member?.Name == "GetConductor");
+        var request = new CalculationRequest(operation.Id,
+            "y^2 = x^3 + x^2 - 221556180740323405132844117936*x + 35386140191724122461245294467670188433973860",
+            new() { [CalculationInput.FactorizationWorkersKey] = "8" }, TimeoutSeconds: 15);
+        var result = await new CalculationRunner(() => StartInfo()).RunAsync(request, _ => { })
+            .WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal("Completed", result.Status);
+        Assert.Contains("1103561624055499058867562340698878392772504928025988266715523317532246643920", result.Text);
+        Assert.Contains("Factorization (prime, exponent):", result.Text);
+        Assert.Contains("[2, 4]", result.Text);
+        Assert.Contains("[3, 1]", result.Text);
+        Assert.Contains("[81274068710384465721193186106423, 1]", result.Text);
     }
 
     [Theory]

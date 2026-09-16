@@ -23,7 +23,7 @@
 * numerical elliptic logarithms of rational points on both real components,
 * algebraic/analytic ranks from optional LMFDB metadata,
 * LMFDB label/url,  
-* conductor, etc.  
+* conductor and its prime factorization.
 
 # Version
 Build **EllipticCurves** from source or install the NuGet package in your project.
@@ -86,9 +86,9 @@ These computations do not assume BSD, GRH, parity, or finiteness of Sha.
 ```csharp
 var e = new EllipticCurveQ(0, 0, 1, -7, 6);
 var rank = e.GetRankBounds();
-Console.WriteLine(rank.ExactRank);           // 3
+Console.WriteLine(rank.ExactRank);             // 3
 Console.WriteLine(rank.UsedGeneralTwoDescent); // True
-Console.WriteLine(rank.TwoSelmerDimension);  // 3
+Console.WriteLine(rank.TwoSelmerDimension);    // 3
 ```
 
 A complete descent gives a proved upper bound, which can exceed the rank because
@@ -124,12 +124,39 @@ General descent enumerates a complete reduction region; its cost can grow rapidl
 with the curve invariants. The work limits bound counted steps, not elapsed time or
 integer factorization. Point-search exhaustion preserves a completed upper bound.
 `PreferGeneralTwoDescent` also enables the general method for curves with 2-torsion.
-`MaxDegreeOfParallelism` parallelizes general binary-quartic enumeration only;
-the 2-isogeny method and other rank stages remain sequential. All workers share
+`MaxDegreeOfParallelism` controls general binary-quartic enumeration only; integer
+factorization selects workers separately. The 2-isogeny descent is sequential. All workers share
 the same work limits. Cancellation and work exhaustion stop and join the workers
 before returning. Parallel scheduling may change covering representatives, work
 counts and partial lower bounds; an upper bound still requires complete descent.
 See [the descent construction and proof conditions](docs/two-descent.md).
+
+## Rank lower bounds from supplied points
+
+`GetRankLowerBound` verifies supplied rational points and proves a lower bound
+using exact good-reduction characters, without factorization, minimalization
+or full descent:
+
+```csharp
+var e = new EllipticCurveQ(0, 0, 1, -7, 6);
+var certificate = e.GetRankLowerBound(new[]
+{
+    new EllipticCurvePoint(0, 2),
+    new EllipticCurvePoint(1, 0),
+    new EllipticCurvePoint(2, 0)
+});
+Console.WriteLine(certificate.LowerBound);              // 3
+Console.WriteLine(certificate.IndependenceCertified);   // True
+Console.WriteLine(certificate.Reason);
+```
+
+Points must use the input model's coordinates. `reductionPrimeBound` controls
+the tested primes (default 1009); cancellation is supported. The returned
+`PointRankCertificate` reports the proved bound, point count, independence status,
+character image dimension and reduction-prime diagnostics. A smaller bound does
+not prove dependence, and zero does not prove rank zero. Neither an upper bound
+nor saturation is asserted. See [the 31-point verification](docs/rank31-verification.md)
+for the certificate construction and a larger example.
 
 ## Analytic rank and BSD
 
@@ -217,7 +244,7 @@ and [rank algorithm notes](docs/native-arithmetic.md) for conventions and limits
 ## Coefficients, CM, division points and isogenies
 
 ```csharp
-var e = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);  // 37.a1
 var p = new EllipticCurvePoint(0, 0);
 var ap = e.GetFrobeniusTrace(5);             // -2
 var coefficients = e.GetFourierCoefficients(100); // a[n], with a[0]=0
@@ -247,7 +274,7 @@ The LMFDB adapter additionally reads stored Fourier coefficients, CM discriminan
 isogeny degrees/matrices, modular degrees, Manin constants, Faltings heights,
 analytic Sha values, leading L-values and integral-point x-coordinates. These are
 database records; in particular the Sha fields do not assert a native proof.
-See [the new API conventions and examples](docs/basic-extensions.md).
+See [API conventions and examples](docs/basic-extensions.md).
 
 ## Faltings heights and finite extensions
 
@@ -303,9 +330,12 @@ exploration sliders, an interactive real-locus plot, a linked period-lattice and
 3D complex-torus view, exact invariants and bounded rational-point samples.
 The Tools menu exposes the library's computations,
 including torsion, ranks, Faltings heights, periods, isogenies and finite fields.
+Verify rank from supplied points accepts exact coordinates and reports
+a proved rank lower bound with its independence certificate.
 Parameter windows feed a results panel with session history, progress, cancellation
 and time limits. Native computations run locally; only the explicit LMFDB search and fetch
 commands require internet access.
 
 # License
+
 **MIT**  

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -19,11 +21,17 @@ namespace EllipticCurves
         /// integral reconstruction. Integer factorization can be expensive; cancellation is supported.
         /// </summary>
         public EllipticCurveQ GetGlobalMinimalModel(CancellationToken cancellationToken = default)
+            => GetGlobalMinimalModelCore(cancellationToken, 0);
+
+        private EllipticCurveQ GetGlobalMinimalModelCore(CancellationToken cancellationToken, int maxWorkers)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("A singular curve has no elliptic minimal model.");
             var (c4, c6, delta) = InternalMath.IntegralInvariants(this);
-            foreach (var p in Factor(delta, cancellationToken).Keys.OrderBy(p => p))
+            // A scaling at p requires p^4 | c4 and p^6 | c6, so only common
+            // prime divisors can change the model. Avoid factoring the often
+            // much larger discriminant just to discover irrelevant primes.
+            foreach (var p in Factor(BigInteger.GreatestCommonDivisor(c4, c6), cancellationToken, maxWorkers).Keys.OrderBy(p => p))
             {
                 var p4 = BigInteger.Pow(p, 4);
                 var p6 = BigInteger.Pow(p, 6);
@@ -47,16 +55,41 @@ namespace EllipticCurves
         /// This method performs no network access and does not require external mathematical software.
         /// </summary>
         public BigInteger GetConductor(CancellationToken cancellationToken = default)
+            => GetConductorCore(cancellationToken, 0);
+
+        /// <summary>Compute the exact conductor with a per-call limit on parallel sieve workers.
+        /// The limit also applies to factorization during minimization and recursive primality proofs.</summary>
+        public BigInteger GetConductor(FactorizationOptions options, CancellationToken cancellationToken)
         {
-            var model = GetGlobalMinimalModel(cancellationToken);
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            return GetConductorCore(cancellationToken, options.WorkerLimit());
+        }
+
+        /// <summary>Compute the exact conductor and its prime factorization in one calculation.
+        /// The returned read-only dictionary maps each prime to its conductor exponent, in increasing prime order.</summary>
+        public BigInteger GetConductor(FactorizationOptions options,
+            out IReadOnlyDictionary<BigInteger, int> factorization, CancellationToken cancellationToken = default)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            var factors = new SortedDictionary<BigInteger, int>();
+            var conductor = GetConductorCore(cancellationToken, options.WorkerLimit(), factors);
+            factorization = new ReadOnlyDictionary<BigInteger, int>(factors);
+            return conductor;
+        }
+
+        private BigInteger GetConductorCore(CancellationToken cancellationToken, int maxWorkers,
+            IDictionary<BigInteger, int> conductorFactors = null)
+        {
+            var model = GetGlobalMinimalModelCore(cancellationToken, maxWorkers);
             BigInteger conductor = 1;
-            foreach (var pair in Factor(model.Discriminant.Num, cancellationToken))
+            foreach (var pair in Factor(model.Discriminant.Num, cancellationToken, maxWorkers))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var p = pair.Key;
                 int exponent = model.C4.Num % p != 0 ? 1
                     : p > 3 ? 2 : WildConductorExponent(model, (int)p, pair.Value, cancellationToken);
                 if (exponent < 1) throw new InvalidOperationException("Invalid conductor exponent on a minimal model.");
+                conductorFactors?.Add(p, exponent);
                 conductor *= BigInteger.Pow(p, exponent);
             }
             return conductor;

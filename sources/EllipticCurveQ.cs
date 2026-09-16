@@ -111,7 +111,7 @@ namespace EllipticCurves
             }
         }
 
-        /// <summary>Exact membership test for a point in affine coordinates.</summary>
+        /// <summary>Exact membership test, accepting the point at infinity.</summary>
         public bool IsOnCurve(EllipticCurvePoint P)
         {
             if (P.IsInfinity) return true;
@@ -130,6 +130,7 @@ namespace EllipticCurves
 
         /// <summary>
         /// Group law (general Weierstrass). Handles P, Q, doubling, and the vertical-tangent case.
+        /// Assumes a nonsingular curve and points on this curve; these preconditions are not checked.
         /// Slope:
         ///  • If x1 ≠ x2: λ = (y2 − y1)/(x2 − x1).
         ///  • If P = Q:   λ = (3x1^2 + 2a2 x1 + a4 − a1 y1) / (2y1 + a1 x1 + a3).
@@ -327,7 +328,7 @@ namespace EllipticCurves
         /// Pipeline (no LMFDB):
         ///  0) Convert to short integral model Y^2 = X^3 + A'X + B'.
         ///  1) Use reductions at several good primes to restrict possible orders (Mazur admissible).
-        ///  2) Apply Lutz–Nagell: Y^2 | |Δ'|; find integral X by exact cubic bisection.
+        ///  2) Apply Lutz–Nagell: Y = 0 or Y^2 divides |Δ'|; find integral X by exact cubic bisection.
         ///  3) Map the points back to the ORIGINAL model (inverse of the short/scale transform).
         /// Set contains Infinity and all affine torsion points; subsequent calls reuse the cache.
         /// </summary>
@@ -365,7 +366,6 @@ namespace EllipticCurves
                     if (Delta.IsZero) throw new InvalidOperationException("Singular curve.");
 
                     // ---- 1) Candidate orders via gcd of #E(F_p) for several good primes ----
-                    // NOTE: if your C# doesn't support collection expressions, replace with new int[] { ... }.
                     int[] primes = [5, 7, 11, 13, 17, 19, 23, 29];
                     BigInteger gcdOrders = BigInteger.Zero;
                     for (int i = 0; i < primes.Length; i++)
@@ -524,7 +524,7 @@ namespace EllipticCurves
 
         /// <summary>
         /// Return true iff this curve is Q–isomorphic to <paramref name="other"/>.
-        /// Uses invariant scaling test (c4,c6,Δ) and outputs the scaling factor u (if requested).
+        /// Uses the invariant scaling test on c4, c6 and Δ.
         /// </summary>
         public bool IsIsomorphic(EllipticCurveQ other) => IsIsomorphic(other, out _);
 
@@ -565,7 +565,6 @@ namespace EllipticCurves
             // Case 2: CM curve with j = 1728 (automorphism group order 4).
             // Standard minimal model: y^2 = x^3 - x (a4=-1, others 0).
             // Discriminant = 64.
-            // Note: Assuming BigRational has implicit conversion or comparison with int.
             if (j == 1728)
                 return new EllipticCurveQ(0, 0, 0, -1, 0);
 

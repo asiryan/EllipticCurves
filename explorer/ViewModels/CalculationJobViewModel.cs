@@ -15,15 +15,18 @@ public sealed class CalculationJobViewModel(CalculationRequest request, string t
     private string status = CalculationStatus.Running, stage = "Starting calculation", result = "Waiting for the calculation to finish…";
     private TimeSpan elapsed;
     private double? percent;
+    private string? formattedInputs;
 
     public string Status
     {
         get => status;
         internal set
         {
+            if (status == value) return;
             status = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HistoryLabel));
+            OnPropertyChanged(nameof(Report));
         }
     }
 
@@ -70,12 +73,15 @@ public sealed class CalculationJobViewModel(CalculationRequest request, string t
         get => elapsed;
         internal set
         {
+            var previousSecond = elapsed.Ticks / TimeSpan.TicksPerSecond;
             elapsed = value;
+            if (previousSecond == elapsed.Ticks / TimeSpan.TicksPerSecond) return;
             OnPropertyChanged(nameof(Timing));
+            OnPropertyChanged(nameof(Report));
         }
     }
 
-    public string Timing => elapsed.ToString(@"hh\:mm\:ss")
+    public string Timing => FormattableString.Invariant($"{elapsed.Ticks / TimeSpan.TicksPerHour:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}")
         + (Request.TimeoutSeconds > 0 ? " · limit " + Request.TimeoutSeconds + " s" : " · no time limit");
 
     public double? Percent
@@ -105,10 +111,10 @@ public sealed class CalculationJobViewModel(CalculationRequest request, string t
                 .AppendLine(operation.UsesPlot ? "Captured plot: " + Equation : "Independent of the plotted curve.")
                 .AppendLine(operation.Description)
                 .AppendLine();
-            foreach (var parameter in operation.Parameters)
-                text.Append(parameter.Label).Append(": ")
-                    .AppendLine(Request.Arguments.GetValueOrDefault(parameter.Key, parameter.Default));
-            return text.AppendLine().AppendLine(Result).ToString();
+            // Captured inputs are fixed; do not reparse point lists on each timer tick.
+            formattedInputs ??= string.Concat(operation.Parameters.Select(parameter => CalculationFormatter.FormatInput(parameter,
+                Request.Arguments.GetValueOrDefault(parameter.Key, parameter.Default))));
+            return text.Append(formattedInputs).AppendLine().AppendLine(Result).ToString();
         }
     }
 }

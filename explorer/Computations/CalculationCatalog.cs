@@ -63,6 +63,10 @@ public static class CalculationCatalog
             .Where(IsMathematicalMethod).ToArray();
         foreach (var method in methods)
         {
+            // One Conductor action keeps its saved operation ID and exposes the
+        // worker setting and factorization output through CalculationEngine.
+            if (method.DeclaringType == typeof(EllipticCurveQ) && method.Name == nameof(EllipticCurveQ.GetConductor)
+                && method.GetParameters()[0].ParameterType == typeof(FactorizationOptions)) continue;
             var signature = string.Join(",", method.GetParameters().Select(p => p.ParameterType.Name));
             var title = Title(method.Name);
             if (methods.Count(other => other.Name == method.Name) > 1)
@@ -105,6 +109,7 @@ public static class CalculationCatalog
     private static string Title(string name) => name switch
     {
         "EstimateAnalyticRank" => "Analytic rank and certification", "GetRankBounds" => "Proved rank bounds",
+        "GetRankLowerBound" => "Verify rank from supplied points",
         "FaltingsHeight" => "Faltings height", "StableFaltingsHeight" => "Stable Faltings height",
         "TorsionStructure" => "Torsion group", "TorsionPoints" => "All rational torsion points",
         "RationalPoints" => "Search rational points", "IntegralPoints" => "Search integral points",
@@ -121,6 +126,7 @@ public static class CalculationCatalog
         "IntegralPoints" => "Search integral points with |x| within the chosen bound. This does not prove that no larger integral points exist.",
         "EstimateAnalyticRank" => "Return the estimate, error diagnostics, certification status and reason. A numerical estimate is not a proof; low ranks may be certified.",
         "GetRankBounds" => "Unconditional lower and upper bounds. Matching bounds prove the rank; an unfinished descent may leave the upper bound unknown.",
+        "GetRankLowerBound" => "Prove a rank lower bound from supplied rational points. Checks independence with exact arithmetic and no full descent. An inconclusive result does not prove dependence.",
         "Saturate" => "Certify saturation at the supplied primes only. The result records unresolved primes, work limits and independence certification.",
         "RealEllipticLogarithm" => "Numerical elliptic logarithm in minimal-model coordinates. This double-valued result is not a certified enclosure.",
         "Regulator" => "Certified regulator of the supplied points; this is not a claim that they form a full Mordell-Weil basis.",

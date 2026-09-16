@@ -12,7 +12,7 @@ namespace EllipticCurves
 {
     /// <summary>
     /// Cached LMFDB data for a curve over Q. Candidate lookup verifies exact Q-isomorphism;
-    /// a second request loads the curve's table snapshot. Properties never make network calls.
+    /// after the paginated lookup, a separate request loads the table snapshot. Properties never make network calls.
     /// Missing optional database fields remain null, and stored real values are approximations.
     /// </summary>
     public sealed partial class LmfdbEllipticCurve

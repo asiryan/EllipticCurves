@@ -12,10 +12,14 @@ public static class CalculationInput
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
     public static int DefaultRankWorkers => Math.Min(4, Math.Max(1, Environment.ProcessorCount - 1));
     public const string RankWorkersHelp = "Maximum parallel workers for general rank descent. 1 runs sequentially. All workers share the work limits; the 2-isogeny method stays sequential.";
+    public const string FactorizationWorkersKey = "options.MaxDegreeOfParallelism";
+    // A default, not a ceiling: more workers can lose time to memory traffic.
+    public static int DefaultFactorizationWorkers => Math.Min(4, Environment.ProcessorCount);
+    public static string FactorizationWorkersHelp => $"Maximum parallel workers for integer factorization. 1 runs sequentially. Up to {Environment.ProcessorCount} CPU workers are available; smaller inputs may use fewer workers.";
     public static bool IsOptions(Type type) => type == typeof(RankComputationOptions) || type == typeof(AnalyticRankOptions)
         || type == typeof(RealComputationOptions) || type == typeof(PointDivisionOptions) || type == typeof(SaturationOptions);
     public static bool IsPoint(Type type) => type == typeof(EllipticCurvePoint) || type == typeof(EllipticCurvePointFp) || type == typeof(EllipticCurvePointFq);
-    private static bool IsPoints(Type type) => type == typeof(IReadOnlyList<EllipticCurvePoint>) || type == typeof(IEnumerable<EllipticCurvePoint>);
+    internal static bool IsPoints(Type type) => type == typeof(IReadOnlyList<EllipticCurvePoint>) || type == typeof(IEnumerable<EllipticCurvePoint>);
     private static bool IsIntegers(Type type) => type == typeof(IReadOnlyList<int>) || type == typeof(IReadOnlyList<BigInteger>) || type == typeof(BigInteger[]);
 
     public static IEnumerable<CalculationParameter> Describe(Type type, string key, object? value = null, bool advanced = false)
@@ -29,6 +33,8 @@ public static class CalculationInput
                     yield return field;
             yield break;
         }
+        if (key.EndsWith("." + nameof(RankComputationOptions.MaxDegreeOfParallelism), StringComparison.Ordinal))
+            advanced = false;
         var label = CalculationOperation.Humanize(key.Replace(".", " · "));
         if (IsPoint(type))
         {
@@ -43,7 +49,7 @@ public static class CalculationInput
             : type == typeof(BigRational) ? "Exact decimal, fraction or scientific notation. Decimal commas are accepted."
             : type == typeof(EllipticCurveQ) ? "Full Weierstrass equation. Use ^ for powers."
             : type == typeof(FiniteFieldElement) ? ElementHelp
-            : IsPoints(type) ? "One point per line: x; y. Use O for infinity. Decimal commas and fractions are accepted. An empty list is allowed."
+            : IsPoints(type) ? "One point per line: x, y or (x, y). Fractions are accepted. Use x; y for decimal commas (1,5; 2,5). Use O for infinity. An empty list is allowed."
             : IsIntegers(type) ? "Integers separated by ; or spaces."
             : type == typeof(bool) ? "Enable this option."
             : type == typeof(double) ? "Finite decimal or scientific notation."
@@ -93,13 +99,8 @@ public static class CalculationInput
         if (type == typeof(FiniteFieldElement))
             return text.Split(';').Select(part => (BigRational)ParseScalar(typeof(BigRational), part)).ToArray();
         if (IsPoints(type))
-            return text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line =>
-            {
-                if (line.Trim().Equals("O", StringComparison.OrdinalIgnoreCase)) return EllipticCurvePoint.Infinity;
-                var coordinates = line.Trim().Trim('(', ')').Split(';');
-                if (coordinates.Length != 2) throw new FormatException("Use x; y on each line, or O.");
-                return new EllipticCurvePoint((BigRational)ParseScalar(typeof(BigRational), coordinates[0]), (BigRational)ParseScalar(typeof(BigRational), coordinates[1]));
-            }).ToArray();
+            return text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(ParseRationalPoint).ToArray();
         if (IsIntegers(type))
         {
             var values = text.Split(new[] { ';', ' ', ',', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
@@ -107,6 +108,18 @@ public static class CalculationInput
             return values.Select(v => (BigInteger)ParseScalar(typeof(BigInteger), v)).ToArray();
         }
         throw new NotSupportedException("Unsupported parameter type: " + type.Name);
+    }
+
+    private static EllipticCurvePoint ParseRationalPoint(string text)
+    {
+        if (text.Equals("O", StringComparison.OrdinalIgnoreCase)) return EllipticCurvePoint.Infinity;
+        if (text.StartsWith('(') && text.EndsWith(')')) text = text[1..^1].Trim();
+        // A semicolon keeps decimal commas inside each coordinate unambiguous.
+        var coordinates = text.Split(text.Contains(';') ? ';' : ',');
+        if (coordinates.Length != 2)
+            throw new FormatException("Use x, y, (x, y), or x; y on each line, or O. Use ; between coordinates with decimal commas.");
+        return new EllipticCurvePoint((BigRational)ParseScalar(typeof(BigRational), coordinates[0]),
+            (BigRational)ParseScalar(typeof(BigRational), coordinates[1]));
     }
 
     public static FiniteFieldElement Element(FiniteField field, string text)

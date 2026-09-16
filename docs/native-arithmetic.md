@@ -1,6 +1,6 @@
 # Native arithmetic over Q
 
-The initial public entry points are `EllipticCurveQ.GlobalMinimalModel`, `Conductor`,
+Core APIs are `EllipticCurveQ.GlobalMinimalModel`, `Conductor`,
 `GetGlobalMinimalModel(CancellationToken)`, `GetConductor(CancellationToken)` and
 `GetRankBounds(int searchBound, int maxSquareClasses, CancellationToken)`.
 They perform no HTTP requests, start no processes and use no elliptic-curve database.
@@ -12,17 +12,30 @@ full local invariants, heights, periods and subgroup saturation are documented i
 
 ## Minimal model and conductor
 
-Clear coefficient denominators using a rational change of variables. For each prime
-dividing the integral discriminant, try dividing the invariants by p^4 and p^6.
+Clear coefficient denominators using a rational change of variables. Factor
+`gcd(c4, c6)` to find candidate scaling primes: a scaling at p requires
+`p^4 | c4` and `p^6 | c6`, so no other prime can change the minimal model.
+For each candidate, check `p^12 | Delta` and try dividing the invariants by p^4 and p^6.
 A candidate is accepted only when an integral Weierstrass equation exists with those
 invariants. This is checked by reconstructing the 12 possible reduced coefficient
 patterns a1,a3 in {0,1}, a2 in {-1,0,1}. Repeat until no further division is possible.
 The result is the reduced global minimal model.
 
+This avoids factoring a large discriminant merely to prepare a minimal model,
+for example before computing periods. A large common invariant factor can still
+be expensive to factor. Conductor computation separately needs the bad primes
+of the minimal discriminant.
+
 On that model, the local conductor exponent is zero at good primes and one at
 multiplicative primes. At additive primes p >= 5 it is two. At 2 and 3 we use Tate's
 successive coordinate transformations, including the I_n* refinement loop and
 the II*, III*, IV* branches. The conductor is the product of p raised to these exponents.
+
+`GetConductor(FactorizationOptions, out factorization, cancellationToken)` also
+returns an `IReadOnlyDictionary<BigInteger, int>` of primes and conductor exponents,
+sorted by prime, without a second factorization. The token is optional; scalar
+overloads and `Conductor` still return only the integer.
+For `y^2 = x^3 - x`, the conductor is `2^5`, while the discriminant is `2^6`.
 
 The mathematical reference is [Cremona, Algorithms for Modular Elliptic Curves,
 Chapter III, sections 3.1–3.2](https://johncremona.github.io/book/fulltext/chapter3.pdf).
@@ -89,7 +102,10 @@ by these work counters. Higher descents and Cassels-Tate pairings are not implem
 Native computations, including the torsion divisor helpers, certify their prime
 factors: deterministic Miller–Rabin
 below 2^64, and recursive full n-1 primality proofs above it, with an exact trial
-division fallback. Pollard rho supplies candidate factors; no probable-prime
+division fallback. The factorizer extracts perfect powers, then uses bounded
+Pollard–Brent rho attempts with batched gcds, two-stage elliptic-curve factorization
+(ECM), and a self-initializing quadratic sieve (SIQS). Preliminary work is scaled
+with the input size: a small composite can be cheaper to sieve directly. No probable-prime
 result is accepted as a proof. Large integers can still be prohibitively expensive
 to factor or prove prime. APIs accepting a cancellation token check it in the
 factorization and search loops; a single BigInteger operation cannot be interrupted
@@ -102,6 +118,70 @@ The torsion API does not currently accept a cancellation token.
 
 The convenience properties recompute their results; callers doing repeated work
 can retain the returned minimal model, conductor and rank bounds.
+
+`GetConductor(FactorizationOptions, CancellationToken)` accepts a per-call
+`MaxDegreeOfParallelism` limit. The limit follows every factorization needed for
+minimization, the discriminant and recursive primality proofs; recursive calls
+do not start nested worker groups. One requests sequential execution. Zero (the
+library default) selects automatically by residual size: one worker below 45
+decimal digits, up to four for 45–69 digits, and all available logical CPUs for
+70 or more digits. An explicit positive limit can exceed four, but never the
+available processor count; small jobs may still use fewer workers.
+
+Explorer defaults to `min(4, Environment.ProcessorCount)` workers. Its
+[Conductor form](../explorer/README.md#conductor-and-factorization) accepts a
+positive limit. More workers need not make a calculation faster.
+
+### Integer factorization
+
+ECM uses Suyama's parametrization of Montgomery curves and projective x/z
+arithmetic. Stage one multiplies by the largest prime powers below B1. Stage two
+uses baby steps and giant steps with a 210-wheel: for a prime `p = 210*m +/- r`,
+projective equality of the x-coordinates of `[210*m]Q` and `[r]Q` supplies a gcd
+candidate. Batched gcds are replayed individually when a batch contains multiple
+factors. Singular or unproductive curves are discarded; a failed bounded search
+does not assert primality.
+
+SIQS uses polynomials `Q(x) = A*x^2 + 2*B*x + C` with
+`B^2 - A*C = k*n`, where `k` is a small multiplier. The leading coefficient A
+is a product of distinct factor-base primes. Chinese remaindering supplies a
+family of square roots B modulo A; Gray-code sign changes move between them.
+The sieve roots change by precomputed offsets, avoiding fresh modular inversions
+for every polynomial. Contributions of small prime powers are pre-sieved over
+a 10080-period wheel and copied in blocks after a cyclic shift.
+
+The identity `(A*x+B)^2 = A*Q(x) (mod n)` gives an exact relation. A logarithmic
+sieve over small primes and their powers selects candidates, which are then
+divided exactly, including the factors of A in the exponent vector. Two partial
+relations with the same remaining cofactor can be combined: that cofactor occurs
+squared, so its primality need not be assumed. Binary Gaussian elimination finds
+even exponent sums and produces a congruence of squares. Gcds of the sum and
+difference give candidate divisors, which are checked by exact division before
+recursive factorization and primality certification.
+
+Logarithmic scores, multiplier selection and sieve sizes are performance heuristics;
+they never certify primality or a factorization. Sieve memory is bounded, and the
+polynomial, relation and elimination loops check cancellation. SIQS distributes
+independent polynomial families across the selected CPU workers. Workers
+share relation collection and elimination. All workers stop and are joined before
+success, cancellation or a worker failure returns. Preliminary Pollard–Brent and
+ECM searches remain sequential. Primality certification uses the full n-1
+criterion described above.
+
+References: [Brent, An Improved Monte Carlo Factorization Algorithm](https://maths-people.anu.edu.au/~brent/pub/pub051.html),
+[Silverman, The Multiple Polynomial Quadratic Sieve](https://doi.org/10.1090/S0025-5718-1987-0866119-8),
+[Montgomery x/z formulas](https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html),
+and [Belabas, Advanced Computational Number Theory, §§4.2–4.3](https://www.math.u-bordeaux.fr/~kbelabas/teach/N1MA9W11/book.pdf).
+
+The large-discriminant regression curve has coefficients
+`[0,1,0,-221556180740323405132844117936,35386140191724122461245294467670188433973860]`.
+Its conductor and all nine bad-prime valuations are checked against PARI/GP
+`ellglobalred`, with `default(factor_proven,1)`. Its 57-digit residual composite is
+also tested directly, alongside unrelated semiprimes, repeated factors, perfect
+powers, pseudoprime rejection and cancellation.
+The independent 38–66 digit semiprime fixtures, sequential/parallel sieve tests,
+both ECM stages and an actual Explorer worker calculation cover the extended
+factorizer. See [performance measurements and reproduction commands](factorization-performance.md).
 
 ## Native analytic rank
 

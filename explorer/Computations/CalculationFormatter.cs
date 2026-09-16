@@ -17,6 +17,26 @@ public static class CalculationFormatter
         return writer.Finish();
     }
 
+    public static string FormatInput(CalculationParameter parameter, string text)
+    {
+        if (CalculationInput.IsPoints(parameter.ValueType))
+        {
+            try
+            {
+                var points = CalculationInput.ParseScalar(parameter.ValueType, text);
+                // Result item limits do not hide supplied inputs. The text limit still applies.
+                var writer = new ResultWriter(int.MaxValue, null, default);
+                writer.Write(parameter.Label, points, 0);
+                return writer.Finish();
+            }
+            catch (Exception error) when (error is FormatException or OverflowException or ArgumentException)
+            {
+                // Failed or restored jobs must remain readable even if an input cannot be parsed.
+            }
+        }
+        return parameter.Label + ": " + text + Environment.NewLine;
+    }
+
     private sealed class ResultWriter(int maxItems, Action<CalculationUpdate>? report, CancellationToken token)
     {
         private const int MaxCharacters = 2_000_000;
@@ -34,6 +54,22 @@ public static class CalculationFormatter
             token.ThrowIfCancellationRequested();
             if (text.Length >= MaxCharacters || depth > 14) { shortened = true; return; }
             if (value == null) { Line(depth, label + ": unavailable / not applicable"); return; }
+            if (value is ConductorCalculationResult conductor)
+            {
+                Line(depth, label + ":");
+                Write("Conductor", conductor.Conductor, depth + 1);
+                Line(depth + 1, "Factorization (prime, exponent):");
+                int count = 0;
+                foreach (var factor in conductor.Factorization)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (count >= maxItems || text.Length >= MaxCharacters) { shortened = true; break; }
+                    Line(depth + 2, "[" + factor.Key.ToString(CultureInfo.InvariantCulture)
+                        + ", " + factor.Value.ToString(CultureInfo.InvariantCulture) + "]");
+                    count++;
+                }
+                return;
+            }
             if (value is EllipticCurveQ curve) { Line(depth, label + ": " + CurveEquationText.Format(curve)); return; }
             if (value is EllipticCurvePoint or EllipticCurvePointFp or EllipticCurvePointFq or FiniteFieldElement)
             { Line(depth, label + ": " + value); return; }

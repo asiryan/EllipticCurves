@@ -104,7 +104,7 @@ public sealed class WorkbenchViewModel(CalculationRunner? runner = null) : Obser
         {
             running = cancellation;
             Jobs.Insert(0, job);
-            // Keep the current session bounded; each result can contain up to 2 MB of text.
+            // Limit history growth; reports can contain long inputs and formatted results.
             if (Jobs.Count > ExplorerSession.HistoryLimit) Jobs.RemoveAt(Jobs.Count - 1);
             Selected = Active = job;
             NotifyState();

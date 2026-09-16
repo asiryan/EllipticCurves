@@ -6,6 +6,94 @@ namespace EllipticCurves.Tests;
 
 public class NativeArithmeticTests
 {
+    [Fact]
+    public void ConductorFactorizationReturnsConductorExponentsAndCannotBeModified()
+    {
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        var conductor = curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = 1 }, out var factors);
+        Assert.Equal(new BigInteger(32), conductor);
+        var factor = Assert.Single(factors);
+        Assert.Equal(new BigInteger(2), factor.Key);
+        Assert.Equal(5, factor.Value); // The discriminant is 64 = 2^6, not the conductor.
+        Assert.Throws<NotSupportedException>(() => { ((IDictionary<BigInteger, int>)factors)[2] = 99; });
+        Assert.Throws<ArgumentNullException>(() => curve.GetConductor(null, out _));
+        Assert.Throws<ArgumentOutOfRangeException>(() => curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = -1 }, out _));
+        Assert.Throws<OperationCanceledException>(() => curve.GetConductor(new FactorizationOptions(), out _, new CancellationToken(true)));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(12)]
+    public void ConductorFactorizationPreservesPowersUnderCoordinateChanges(int workers)
+    {
+        var curve = ChangeCoordinates(new EllipticCurveQ(0, -17, 0, 72, 0), new BigRational(2, 3), 5, -3, 7);
+        var conductor = curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = workers }, out var factors);
+        Assert.Equal(new BigInteger(48), conductor);
+        Assert.Equal(new BigInteger[] { 2, 3 }, factors.Keys);
+        Assert.Equal(new[] { 4, 1 }, factors.Values);
+        Assert.Equal(conductor, factors.Aggregate(BigInteger.One, (n, factor) => n * BigInteger.Pow(factor.Key, factor.Value)));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(8)]
+    public void ConductorWorkerOptionsPreserveExactResultsAcrossModels(int workers)
+    {
+        var options = new FactorizationOptions { MaxDegreeOfParallelism = workers };
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        Assert.Equal(new BigInteger(32), curve.GetConductor(options, default));
+        var changed = ChangeCoordinates(curve, new BigRational(2, 3), 5, -3, 7);
+        Assert.Equal(new BigInteger(32), changed.GetConductor(options, default));
+        Assert.Equal(new BigInteger(32), curve.GetConductor(default));
+        Assert.Equal(workers, options.MaxDegreeOfParallelism);
+        Assert.Throws<OperationCanceledException>(() => curve.GetConductor(options, new CancellationToken(true)));
+    }
+
+    [Fact]
+    public void ConductorRejectsInvalidWorkerOptions()
+    {
+        var curve = new EllipticCurveQ(0, 0, 0, -1, 0);
+        Assert.Throws<ArgumentNullException>(() => curve.GetConductor((FactorizationOptions)null, default));
+        Assert.Throws<ArgumentOutOfRangeException>(() => curve.GetConductor(new FactorizationOptions { MaxDegreeOfParallelism = -1 }, default));
+    }
+
+    [Fact]
+    public void LargeDiscriminantConductorMatchesPari()
+    {
+        var curve = new EllipticCurveQ(0, 1, 0,
+            new BigRational(BigInteger.Parse("-221556180740323405132844117936")),
+            new BigRational(BigInteger.Parse("35386140191724122461245294467670188433973860")));
+        // PARI/GP ellglobalred with default(factor_proven, 1).
+        var expected = BigInteger.Parse("1103561624055499058867562340698878392772504928025988266715523317532246643920");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        Assert.Equal(expected, curve.GetConductor(timeout.Token));
+        var local = curve.GetLocalData(timeout.Token);
+        Assert.Equal(new[] { "2", "3", "5", "11", "31", "157", "670606297099",
+            "1575838430456954508271967", "81274068710384465721193186106423" },
+            local.Select(data => data.Prime.ToString()).ToArray());
+        Assert.Equal(new[] { 10, 8, 2, 4, 3, 2, 1, 1, 1 }, local.Select(data => data.DiscriminantValuation).ToArray());
+        Assert.Equal(new[] { 4, 1, 1, 1, 1, 1, 1, 1, 1 }, local.Select(data => data.ConductorValuation).ToArray());
+        Assert.Equal(expected, local.Aggregate(BigInteger.One,
+            (product, data) => product * BigInteger.Pow(data.Prime, data.ConductorValuation)));
+    }
+
+    [Fact]
+    public void LargeDiscriminantDoesNotPreventMinimalModelReduction()
+    {
+        var minimal = new EllipticCurveQ(0, 1, 0,
+            new BigRational(BigInteger.Parse("-221556180740323405132844117936")),
+            new BigRational(BigInteger.Parse("35386140191724122461245294467670188433973860")));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        Assert.Equal(minimal, minimal.GetGlobalMinimalModel(timeout.Token));
+        // Exercise denominator clearing and scaling at 2, 3, 5 and a larger prime.
+        foreach (var scale in new BigRational[] { 6060, new(1, 6060), -6060 })
+        {
+            var changed = ChangeCoordinates(minimal, scale, 5, -3, 7);
+            Assert.Equal(minimal, changed.GetGlobalMinimalModel(timeout.Token));
+        }
+    }
+
     [Theory]
     [InlineData(0, -17, 0, 72, 0, 48)]
     [InlineData(0, -1, 1, -10, -20, 11)]

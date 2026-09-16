@@ -1,6 +1,7 @@
 <UserControl x:Class="EllipticCurves.Explorer.Controls.ResultsPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EllipticCurves.Explorer.Controls">
     <UserControl.Resources>
         <Style x:Key="HistoryContextMenu" TargetType="ContextMenu">
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
@@ -74,7 +75,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <TextBlock Text="{Binding Selected.Status}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="1" Text="{Binding Selected.Timing}" Style="{StaticResource Muted}" FontSize="11" Margin="0,5,0,10" />
-                    <TextBox Grid.Row="2" Text="{Binding Selected.Report, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" Style="{StaticResource ReportText}"
+                    <controls:ReportTextBox Grid.Row="2" DataContext="{Binding Selected}" Text="{Binding Report, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" Style="{StaticResource ReportText}"
                              TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas" FontSize="12" Foreground="{StaticResource TextBrush}" VerticalContentAlignment="Top"
                              AutomationProperties.Name="Calculation result and input parameters" ToolTip="{x:Null}" />
                 </Grid>

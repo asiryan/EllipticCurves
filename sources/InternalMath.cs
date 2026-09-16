@@ -5,25 +5,8 @@ using System.Numerics;
 namespace EllipticCurves
 {
     /// <summary>
-    /// Internal numeric helpers used across the library.
-    /// 
-    /// Scope:
-    /// • Invariant computations for integral Weierstrass models (c4, c6, Δ).
-    /// • Q–isomorphism checks via scaling of invariants (u^4, u^6, u^12).
-    /// • Exact k-th roots over ℚ and ℤ (Newton / integer root tests).
-    /// • Fast torsion tests (order divisibility and small Mazur fallback).
-    /// • Small finite-field helpers: Legendre symbol, modular exponentiation,
-    ///   and counting points on short Weierstrass curves over 𝔽_p.
-    /// • Basic integer factorization (Pollard–Rho + Miller–Rabin) to build
-    ///   square divisors of |Δ| and enumerations of divisors.
-    /// 
-    /// Notes:
-    /// • All methods are deterministic and allocation-light.
-    /// • Big-integer operations can be expensive for huge inputs—these are
-    ///   intended for typical arithmetic of elliptic curves over ℚ.
-    /// • If you target an older C# language version, replace collection
-    ///   expressions like `int[] small = [2,3,...]` with classic initializers
-    ///   `new int[] { 2, 3, ... }`.
+    /// Internal helpers for invariants, isomorphisms, roots, torsion and integer divisors.
+    /// FactorAbs uses certified native factorization; the legacy probable-prime helpers are separate.
     /// </summary>
     internal static partial class InternalMath
     {
@@ -357,8 +340,6 @@ namespace EllipticCurves
         {
             if (n < 2) return false;
 
-            // NOTE: if your target C# version doesn’t support collection expressions,
-            // replace with: new int[] { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37 }
             int[] small = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
             for (int i = 0; i < small.Length; i++)
             {
@@ -397,8 +378,8 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Pollard–Rho with a simple f(x)=x^2+c map and Brent-like cycle detection.
-        /// Returns a nontrivial divisor of odd composite n (heuristic, but very effective in practice).
+        /// Pollard–Rho with f(x)=x^2+c and Floyd's one-step/two-step cycle detection.
+        /// Returns a nontrivial divisor of composite n; runtime is not bounded.
         /// </summary>
         public static BigInteger PollardRho(BigInteger n)
         {

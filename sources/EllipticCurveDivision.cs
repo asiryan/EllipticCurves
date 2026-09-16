@@ -7,7 +7,7 @@ namespace EllipticCurves
 {
     public sealed partial class EllipticCurveQ
     {
-        /// <summary>All rational Q satisfying [n]Q = point, on the input model. Requires n != 0.
+        /// <summary>All rational Q satisfying [n]Q = point, on the input model. Rejects n = 0 and int.MinValue.
         /// An empty list proves nondivisibility; a work or degree limit throws instead.</summary>
         public IReadOnlyList<EllipticCurvePoint> GetDivisionPoints(EllipticCurvePoint point, int n,
             PointDivisionOptions options = null, CancellationToken cancellationToken = default)

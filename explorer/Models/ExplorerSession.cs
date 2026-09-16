@@ -4,7 +4,7 @@ using EllipticCurves.Explorer.Computations;
 
 namespace EllipticCurves.Explorer.Models;
 
-public sealed record PlotViewState(double CenterX, double CenterY, double VerticalSpan)
+public sealed record PlotViewState(double CenterX, double CenterY, double VerticalSpan, double HorizontalScaleRatio = 1)
 {
     public static PlotViewState Default { get; } = new(0.3, 0, 3.4);
 }

@@ -12,11 +12,11 @@ are separate applications in the repository.
 ```csharp
 using EllipticCurves;
 
-var e = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);  // 37.a1
 var p = new EllipticCurvePoint(0, 0);
 
 var twice = e.Double(p);
-var conductor = e.Conductor;                // 37
+var conductor = e.Conductor;                 // 37
 var bounds = e.GetRankBounds();
 var rank = bounds.ExactRank;                 // null unless proved
 var local = e.GetLocalData(37);
@@ -30,8 +30,10 @@ var finite = e.ReduceModuloPrime(5);
 
 - Exact rational arithmetic, invariants, point arithmetic, rational torsion,
   minimal models, isomorphisms and quadratic twists.
-- Conductors, root numbers, local reduction data and Tamagawa numbers.
+- Conductors with prime/exponent factorizations from the same calculation,
+  configurable parallel factorization, root numbers, local reduction data and Tamagawa numbers.
 - General 2-descent and descent by 2-isogeny, with proved algebraic rank bounds.
+- `GetRankLowerBound` certificates from supplied rational points, without full descent.
 - Numerical central L-function derivatives and analytic rank estimates, with
   separate rigorous certificates for analytic ranks 0 and 1.
 - Certified canonical/local heights, subgroup regulators, periods, and Faltings heights.
