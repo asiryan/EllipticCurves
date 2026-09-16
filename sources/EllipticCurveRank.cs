@@ -33,8 +33,10 @@ namespace EllipticCurves
 
         /// <summary>
         /// Compute unconditional lower and upper rank bounds with explicit work limits.
-        /// An incomplete descent returns a null upper bound; point-search exhaustion
-        /// never invalidates already proved bounds. No BSD, GRH or parity assumption is used.
+        /// Reaching MaxDescentWork returns a null upper bound; point-search exhaustion
+        /// never invalidates already proved bounds. Exceeding MaxSquareClasses throws
+        /// NotSupportedException in 2-isogeny descent and returns a null upper bound
+        /// in general descent. No BSD, GRH or parity assumption is used.
         /// </summary>
         public RankBounds GetRankBounds(RankComputationOptions options, CancellationToken cancellationToken = default)
         {

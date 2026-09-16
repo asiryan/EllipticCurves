@@ -104,6 +104,11 @@ MaxPointSearchWork=1000000, ReductionPrimeBound=101 and MaxDegreeOfParallelism=1
 the numerator/denominator box for x on the minimal curve and primitive quartic
 coordinates. Zero disables all point searches.
 
+`MaxSquareClasses` bounds signed square classes per isogeny in 2-isogeny descent;
+exceeding it throws `NotSupportedException`. In general descent it bounds covering
+classes, including the identity; exhaustion returns no upper bound and preserves
+the proved lower bound, with an explanation in `Reason`.
+
 Descent work counts region enumeration, root-isolation/equivalence work and local
 lifting steps. Point work is shared by the original curve and covering searches.
 Neither counter measures wall time or bounds a single arbitrary-precision operation.

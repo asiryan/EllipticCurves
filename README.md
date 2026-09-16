@@ -16,7 +16,7 @@
 * exact subgroup saturation at explicitly requested primes,
 * public Frobenius traces, Fourier coefficients and good-reduction point counts,
 * exact CM recognition over the rationals,
-* exact rational division points and Velu isogenies with rational kernels,
+* exact rational division points and Velu isogenies with pointwise rational kernels,
 * explicit 2-isogenies and their dual maps,
 * curves and point arithmetic over prime fields, including characteristics 2 and 3,
 * finite extensions F_(p^k), with exact irreducibility checks and curve arithmetic,
@@ -92,12 +92,15 @@ Console.WriteLine(rank.TwoSelmerDimension);    // 3
 ```
 
 A complete descent gives a proved upper bound, which can exceed the rank because
-of Sha. An unsuccessful point search never proves rank zero. A work limit during
-descent gives `UpperBound = null` and an explanation in `Reason`; any proved lower
-bound is retained. `ExactRank` is populated only when both bounds agree.
+of Sha. An unsuccessful point search never proves rank zero. Reaching
+`MaxDescentWork` gives `UpperBound = null` and an explanation in `Reason`; any
+proved lower bound is retained. `ExactRank` is populated only when both bounds agree.
 
 `GetRankBounds(searchBound: 64)` increases the point search. `maxSquareClasses` defaults
-to 65,536 per isogeny; exceeding it throws rather than silently truncating the descent.
+to 65,536. In 2-isogeny descent it bounds signed square classes per isogeny;
+exceeding it throws `NotSupportedException`. In general 2-descent it bounds covering
+classes, including the identity; exceeding it returns `UpperBound = null` with the
+proved lower bound and an explanation in `Reason`.
 Factorization and searches can be expensive. Use the cancellable methods when needed:
 
 ```csharp

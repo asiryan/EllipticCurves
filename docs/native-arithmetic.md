@@ -109,9 +109,10 @@ bound, but cannot guarantee equality of the bounds. `maxSquareClasses` bounds th
 number of candidates per isogeny and throws `NotSupportedException` if exceeded.
 In general descent it bounds the number of covering classes, including the identity.
 `RankComputationOptions` additionally limits counted descent and point-search work.
-An incomplete descent returns no upper bound or Selmer dimension; `Reason` records
-the limit. Exhausting point search preserves already proved bounds. Factorization
-and the initial search for rational 2-torsion remain cancellable but are not capped
+Reaching the general covering-class limit or `MaxDescentWork` returns no upper
+bound or Selmer dimension; `Reason` records the limit. Exhausting point search
+preserves already proved bounds. Factorization and the initial search for rational
+2-torsion remain cancellable but are not capped
 by these work counters. Higher descents and Cassels-Tate pairings are not implemented.
 
 Native computations, including the torsion divisor helpers, certify their prime

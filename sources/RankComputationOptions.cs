@@ -7,7 +7,9 @@ namespace EllipticCurves
     {
         /// <summary>Coordinate bound for rational points and quartic points. Zero disables point searches.</summary>
         public int SearchBound { get; set; } = 32;
-        /// <summary>Maximum square classes per 2-isogeny descent, or covering classes including the identity in general descent.</summary>
+        /// <summary>Maximum square classes per 2-isogeny descent, or covering classes including the identity in general descent.
+        /// Exceeding this limit throws NotSupportedException in 2-isogeny descent;
+        /// general descent returns a null upper bound and retains the proved lower bound.</summary>
         public int MaxSquareClasses { get; set; } = 65536;
         /// <summary>Maximum counted enumeration, polynomial and local-lifting steps. An incomplete descent gives no upper bound.</summary>
         public long MaxDescentWork { get; set; } = 5000000;
