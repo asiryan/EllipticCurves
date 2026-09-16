@@ -39,6 +39,7 @@ Use **Ctrl+N**, **Ctrl+O**, **Ctrl+S** and **Ctrl+Shift+S** for the first four.
 Sessions use `.ec` files and preserve the exact equation and up to 50 calculation
 reports with their inputs, limits and timestamps.
 
+- Drag one `.ec` file into the window to open it, with the same unsaved-changes prompt as **Open**.
 - Use **Save as** for a new session or a separate copy. **Save** writes to the
   current file and is enabled when there are unsaved changes or a failed save.
 - Save as asks before overwriting an existing file and uses the selected name

@@ -7,7 +7,8 @@
         Title="{x:Static local:ExplorerInfo.WindowTitle}" Width="1440" Height="920" MinWidth="1120" MinHeight="760"
         WindowStartupLocation="CenterScreen" Background="{StaticResource BackgroundBrush}"
         Foreground="{StaticResource TextBrush}" FontFamily="Segoe UI" FontSize="13"
-        Icon="ec_logo.png" UseLayoutRounding="True" Loaded="WindowLoaded" Closed="WindowClosed">
+        Icon="ec_logo.png" UseLayoutRounding="True" Loaded="WindowLoaded" Closed="WindowClosed"
+        AllowDrop="True" PreviewDragEnter="SessionDragOver" PreviewDragOver="SessionDragOver" PreviewDrop="SessionDrop">
     <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" /></shell:WindowChrome.WindowChrome>
     <Window.InputBindings>
         <KeyBinding Key="F1" Command="{x:Static ApplicationCommands.Help}" />

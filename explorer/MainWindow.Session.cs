@@ -126,10 +126,41 @@ public partial class MainWindow
         return true;
     });
 
-    internal Task<bool> OpenSessionAsync() => RunSessionOperation(async () =>
+    private string? DroppedSessionPath(DragEventArgs e)
+    {
+        if (sessionActionInProgress || sessionClosed || !Workbench.CanRun
+            || (e.AllowedEffects & DragDropEffects.Copy) == 0) return null;
+        return e.Data.GetData(DataFormats.FileDrop, false) is string[] { Length: 1 } paths
+            && string.Equals(Path.GetExtension(paths[0]), SessionFile.Extension, StringComparison.OrdinalIgnoreCase)
+            && File.Exists(paths[0]) ? paths[0] : null;
+    }
+
+    private void SessionDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop, false)) return;
+        e.Effects = DroppedSessionPath(e) == null ? DragDropEffects.None : DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    private async void SessionDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop, false)) return;
+        // Handle file drops before a text box can insert the file path as text.
+        e.Handled = true;
+        e.Effects = DragDropEffects.None;
+        var path = DroppedSessionPath(e);
+        if (path == null) return;
+        CloseTitleBarMenus();
+        e.Effects = DragDropEffects.Copy;
+        if (!await OpenSessionAsync(path)) e.Effects = DragDropEffects.None;
+    }
+
+    internal Task<bool> OpenSessionAsync() => OpenSessionAsync(null);
+
+    private Task<bool> OpenSessionAsync(string? path) => RunSessionOperation(async () =>
     {
         if (!Workbench.CanRun || !await ConfirmSessionChangeAsync()) return false;
-        var path = sessionDialogs.ChooseOpenPath();
+        path ??= sessionDialogs.ChooseOpenPath();
         if (path == null) return false;
         try
         {

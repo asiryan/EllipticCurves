@@ -53,7 +53,7 @@ internal static partial class Program
         SessionFile.Save(input, ExplorerSession.New() with { Equation = "y^2 = x^3 + 7", Preset = null });
         try
         {
-            foreach (var action in new[] { "New", "Open", "Close" })
+            foreach (var action in new[] { "New", "Open", "Drop", "Close" })
             foreach (var option in new[] { "Cancel", "Discard", "Save", "Cancel save", "Failed save" })
             {
                 File.Delete(output);
@@ -95,7 +95,9 @@ internal static partial class Program
                     ((CurvePlot)window.FindName("Plot")).Zoom(0.7);
                     Require(window.HasUnsavedChanges, "Editing a session did not require a save warning.");
                     bool CloseWindow() { CompleteSession(() => { window.Close(); return window.PendingSessionOperation; }); return closed; }
-                    var proceeded = action == "New" ? CompleteSession(window.NewSessionAsync) : action == "Open" ? CompleteSession(window.OpenSessionAsync) : CloseWindow();
+                    var proceeded = action == "New" ? CompleteSession(window.NewSessionAsync)
+                        : action == "Open" ? CompleteSession(window.OpenSessionAsync)
+                        : action == "Drop" ? CompleteSession(() => DropSessionFile(window, input)) : CloseWindow();
                     var expected = option is "Discard" or "Save";
                     Require(proceeded == expected && prompts == 1,
                         $"{action} / {option} did not obey the unsaved-changes choice.");

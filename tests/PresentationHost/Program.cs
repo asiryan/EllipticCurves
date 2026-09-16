@@ -45,6 +45,7 @@ internal static partial class Program
             CheckSessionMenu();
             CheckSessionRestore();
             CheckSessionLifecycle();
+            CheckSessionFileDrop();
             CheckSessionNavigation();
             CheckSessionSaveName();
             CheckSessionShortcuts();

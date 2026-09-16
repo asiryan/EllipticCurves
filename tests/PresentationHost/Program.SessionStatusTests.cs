@@ -269,9 +269,10 @@ internal static partial class Program
 
     private static void CheckSessionSavingConcurrency()
     {
-        foreach (var action in new[] { "Save", "New", "Open", "Close" })
+        foreach (var action in new[] { "Save", "New", "Open", "Drop", "Close" })
         {
             var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".ec");
+            SessionFile.Save(path, ExplorerSession.New());
             var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var choice = SaveChangesChoice.Save;
             var writes = 0;
@@ -293,6 +294,7 @@ internal static partial class Program
                 {
                     "New" => window.NewSessionAsync(),
                     "Open" => window.OpenSessionAsync(),
+                    "Drop" => DropSessionFile(window, path),
                     "Close" => CloseWindow(),
                     _ => window.TrySaveSessionAsync(saveAs: true)
                 });
@@ -305,6 +307,12 @@ internal static partial class Program
                     && !ApplicationCommands.New.CanExecute(null, window) && !window.SessionStatus.CanSave,
                     "Session commands must not overlap an active write.");
                 Require(!CompleteSession(() => window.TrySaveSessionAsync(saveAs: true)) && writes == 1, "Repeated Save as started a concurrent write.");
+                var pending = window.PendingSessionOperation;
+                Require(RaiseSessionFileDrag(window, path, DragDrop.PreviewDragOverEvent).Effects == DragDropEffects.None,
+                    "File drops must be disabled while saving.");
+                RaiseSessionFileDrag(window, path, DragDrop.PreviewDropEvent);
+                Require(ReferenceEquals(pending, window.PendingSessionOperation) && writes == 1,
+                    "A file drop overlapped an active session operation.");
                 window.Close();
                 Require(!closed, "The window closed before its save completed.");
                 window.ViewModel.Equation.Text = "y^2 = x^3 - 5*x + 3";
