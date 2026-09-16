@@ -24,7 +24,8 @@ namespace EllipticCurves
         internal GeneralTwoDescent(EllipticCurveQ curve, int torsionDimension, RationalPointRank points, DescentBudget budget)
         {
             this.curve = curve; this.torsionDimension = torsionDimension; this.points = points; this.budget = budget;
-            badPrimes = NativeNumberTheory.Factor(2 * curve.Discriminant.Num, budget.Token).Keys.OrderBy(p => p).ToArray();
+            badPrimes = curve.GetMinimalDiscriminantFactorization(budget.Token).Keys
+                .Concat(new BigInteger[] { 2 }).Distinct().OrderBy(p => p).ToArray();
         }
 
         internal int ComputeSelmerDimension()

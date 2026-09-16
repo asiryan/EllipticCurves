@@ -88,7 +88,7 @@ namespace EllipticCurves
             c.Token.ThrowIfCancellationRequested();
             if (p.IsInfinity) return c.I(0);
             var value = c.Add(RealLocalHeight(e, p.X, c), c.Log(c.I(new BigRational(p.X.Den))));
-            foreach (var prime in NativeNumberTheory.Factor(e.Discriminant.Num, c.Token).Keys)
+            foreach (var prime in e.GetMinimalDiscriminantFactorization(c.Token).Keys)
             {
                 c.Token.ThrowIfCancellationRequested();
                 if (p.X.Den % prime != 0) value = c.Add(value, c.Mul(c.I(LocalHeightCoefficient(e, p, prime)), c.Log(c.I(new BigRational(prime)))));

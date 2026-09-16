@@ -15,7 +15,7 @@ namespace EllipticCurves
         {
             var e = GetGlobalMinimalModel(cancellationToken);
             int sign = -1; // The real place.
-            foreach (var p in Factor(e.Discriminant.Num, cancellationToken).Keys)
+            foreach (var p in e.GetMinimalDiscriminantFactorization(cancellationToken).Keys)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 sign *= LocalRootNumber(e, p);

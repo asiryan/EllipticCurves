@@ -18,7 +18,7 @@ namespace EllipticCurves
         public IReadOnlyList<LocalReductionData> GetLocalData(CancellationToken cancellationToken = default)
         {
             var e = GetGlobalMinimalModel(cancellationToken);
-            return Array.AsReadOnly(Factor(e.Discriminant.Num, cancellationToken).OrderBy(x => x.Key)
+            return Array.AsReadOnly(e.GetMinimalDiscriminantFactorization(cancellationToken)
                 .Select(x => ComputeLocalData(e, x.Key, x.Value, cancellationToken)).ToArray());
         }
 

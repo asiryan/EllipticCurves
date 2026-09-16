@@ -30,6 +30,9 @@ namespace EllipticCurves
         {
             var minimal = GetGlobalMinimalModel(cancellationToken);
             if (!TryGetIsomorphism(minimal, out var map)) throw new InvalidOperationException("Minimal model is not isomorphic to the input.");
+            // The coordinate-change constructor makes a new curve. Its target
+            // was checked equal to minimal, so reuse the same prepared model.
+            map.Target.minimalModelCache.Get(() => minimal, cancellationToken);
             return map;
         }
     }

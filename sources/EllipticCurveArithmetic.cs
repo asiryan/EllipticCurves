@@ -19,11 +19,12 @@ namespace EllipticCurves
         /// <summary>
         /// Compute the reduced global minimal integral model using invariant scaling and
         /// integral reconstruction. Integer factorization can be expensive; cancellation is supported.
+        /// Successful results are cached on this curve instance.
         /// </summary>
         public EllipticCurveQ GetGlobalMinimalModel(CancellationToken cancellationToken = default)
             => GetGlobalMinimalModelCore(cancellationToken, 0);
 
-        private EllipticCurveQ GetGlobalMinimalModelCore(CancellationToken cancellationToken, int maxWorkers)
+        private EllipticCurveQ ComputeGlobalMinimalModel(CancellationToken cancellationToken, int maxWorkers)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("A singular curve has no elliptic minimal model.");
@@ -58,7 +59,8 @@ namespace EllipticCurves
             => GetConductorCore(cancellationToken, 0);
 
         /// <summary>Compute the exact conductor with a per-call limit on parallel sieve workers.
-        /// The limit also applies to factorization during minimization and recursive primality proofs.</summary>
+        /// The limit also applies to factorization during minimization and recursive primality proofs.
+        /// Previously completed minimal-model and discriminant computations are reused.</summary>
         public BigInteger GetConductor(FactorizationOptions options, CancellationToken cancellationToken)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -82,7 +84,7 @@ namespace EllipticCurves
         {
             var model = GetGlobalMinimalModelCore(cancellationToken, maxWorkers);
             BigInteger conductor = 1;
-            foreach (var pair in Factor(model.Discriminant.Num, cancellationToken, maxWorkers))
+            foreach (var pair in model.GetMinimalDiscriminantFactorization(cancellationToken, maxWorkers))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var p = pair.Key;

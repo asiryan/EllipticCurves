@@ -37,6 +37,21 @@ sorted by prime, without a second factorization. The token is optional; scalar
 overloads and `Conductor` still return only the integer.
 For `y^2 = x^3 - x`, the conductor is `2^5`, while the discriminant is `2^6`.
 
+Each curve instance retains its successfully computed minimal model and the
+complete factorization of the absolute minimal discriminant. Conductor, canonical
+heights and height matrices, global root number, all-prime local data and general
+2-descent reuse that factorization. The returned minimal model and targets from
+`GetMinimalModelIsomorphism` share it with the input curve. Preparing just a minimal
+model or periods does not trigger discriminant factorization.
+
+Concurrent calls share completed values and wait for an ongoing preparation with
+their own cancellation tokens. A failed or cancelled preparation is not cached;
+later callers can retry. Cancellation is checked even when the result is cached.
+Factorization worker options apply when new work is needed. The cache belongs to
+the curve objects, is not persisted, and is not shared between independently
+constructed curves. Factorization benchmarks use a fresh curve for each sample
+so they continue to measure the complete computation.
+
 The mathematical reference is [Cremona, Algorithms for Modular Elliptic Curves,
 Chapter III, sections 3.1–3.2](https://johncremona.github.io/book/fulltext/chapter3.pdf).
 The implementation uses integral reconstruction for minimization. `GetLocalData`
@@ -116,8 +131,9 @@ search stops once its good-reduction upper bound is attained. Factoring the
 model's discriminant may still be expensive when that bound is not attained.
 The torsion API does not currently accept a cancellation token.
 
-The convenience properties recompute their results; callers doing repeated work
-can retain the returned minimal model, conductor and rank bounds.
+The minimal model and its discriminant factorization are reused across calls.
+Other results, including rank bounds and real enclosures, are recomputed with the
+requested search limits and precision.
 
 `GetConductor(FactorizationOptions, CancellationToken)` accepts a per-call
 `MaxDegreeOfParallelism` limit. The limit follows every factorization needed for
