@@ -75,7 +75,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <TextBlock Text="{Binding Selected.Status}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="1" Text="{Binding Selected.Timing}" Style="{StaticResource Muted}" FontSize="11" Margin="0,5,0,10" />
-                    <controls:ReportTextBox Grid.Row="2" DataContext="{Binding Selected}" Text="{Binding Report, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" Style="{StaticResource ReportText}"
+                    <controls:ReportTextBox Grid.Row="2" DataContext="{Binding Selected}" SourceText="{Binding Report, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" Style="{StaticResource ReportText}"
                              TextWrapping="Wrap" FontFamily="Cascadia Mono, Consolas" FontSize="12" Foreground="{StaticResource TextBrush}" VerticalContentAlignment="Top"
                              AutomationProperties.Name="Calculation result and input parameters" ToolTip="{x:Null}" />
                 </Grid>

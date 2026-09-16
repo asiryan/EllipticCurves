@@ -106,6 +106,7 @@ internal static partial class Program
             CheckComplexTorusView();
             CheckCalculationForms();
             CheckLiveCalculationReport();
+            CheckReportWrapping();
             Console.WriteLine("PASS: compiled XAML loads; Help actions, bundled license and layouts, LMFDB formula import, Edit Undo/Redo, graph and result mementos, File save/load and shared title-bar menus, Tools click/focus scrolling, history deletion, themed Clear/Reset dialogs and confirmation paths, Repeat, PNG rendering, navigation placement and both full-height sidebars checked. No windows shown.");
             app.Shutdown();
             return 0;
@@ -158,7 +159,7 @@ internal static partial class Program
         panel.Measure(new Size(300, 800));
         panel.Arrange(new Rect(0, 0, 300, 800));
         panel.UpdateLayout();
-        var report = Descendants(panel).OfType<TextBox>().Single();
+        var report = Descendants(panel).OfType<ReportTextBox>().Single();
         report.Select(report.Text.IndexOf("y^2 =", StringComparison.Ordinal), "y^2 = x^3 - x".Length);
         job.Elapsed = TimeSpan.FromSeconds(7);
         Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
@@ -175,6 +176,15 @@ internal static partial class Program
         job.Result = "Result: 4";
         Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(() => { }));
         Require(report.Text == job.Report, "The displayed report differs from the copied/exported report.");
+        job.Result = "Result:\r\n    [229195053659697773915482188781052624679234107, 1]";
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(panel.UpdateLayout));
+        Require(report.SourceText == job.Report, "The report binding changed the original indented result.");
+        var factorStart = job.Report.IndexOf("    [", StringComparison.Ordinal);
+        var factorSelection = job.Report.Substring(factorStart, 35);
+        report.Select(factorStart, factorSelection.Length);
+        job.Elapsed = TimeSpan.FromHours(1000);
+        Dispatcher.CurrentDispatcher.Invoke(DispatcherPriority.ContextIdle, new Action(panel.UpdateLayout));
+        RequireReportCopy(report, factorSelection);
         job.Result = string.Join(Environment.NewLine, Enumerable.Range(0, 200).Select(i => $"Result row {i}"));
         panel.UpdateLayout();
         report.ScrollToVerticalOffset(100);
