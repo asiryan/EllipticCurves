@@ -112,8 +112,8 @@ In general descent it bounds the number of covering classes, including the ident
 Reaching the general covering-class limit or `MaxDescentWork` returns no upper
 bound or Selmer dimension; `Reason` records the limit. Exhausting point search
 preserves already proved bounds. Factorization and the initial search for rational
-2-torsion remain cancellable but are not capped
-by these work counters. Higher descents and Cassels-Tate pairings are not implemented.
+2-torsion remain cancellable but are not capped by these work counters.
+Higher descents and Cassels-Tate pairings are not implemented.
 
 Native computations, including the torsion divisor helpers, certify their prime
 factors: deterministic Miller–Rabin

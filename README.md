@@ -1,7 +1,9 @@
 <p align="center"><img width="25%" src="docs/png/ec_logo_v3b.png" /></p>
 
 # About
+
 **EllipticCurves** is a C# library for studying elliptic curves over the rationals and finite fields. It provides functionality to compute and explore:
+
 * coefficients and group structure,  
 * discriminant and j-invariant,  
 * torsion/rational/integral points,  
@@ -26,7 +28,9 @@
 * conductor and its prime factorization.
 
 # Version
+
 Build **EllipticCurves** from source or install the NuGet package in your project.
+
 | Assembly | Specification | OS | Download | Package |
 |-------------|:-------------:|:-------------:|:--------------:|:--------------:|
 | [EllipticCurves](sources) | .NET Standard 2.0 | Cross-platform | [Release](https://github.com/asiryan/EllipticCurves/releases/) | [NuGet](https://www.nuget.org/packages/EllipticCurves/) | 
@@ -38,6 +42,7 @@ See [release preparation](docs/releasing.md) for version
 settings, validation and packaging commands.
 
 # Installation
+
 ```shell
 dotnet add package EllipticCurves
 ```
@@ -48,6 +53,7 @@ to NuGet, reference the library project or build a local package using
 [the packaging instructions](docs/releasing.md#nuget-package).
 
 Import the namespace in your C# code:
+
 ```csharp
 using EllipticCurves;
 ```

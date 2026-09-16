@@ -54,10 +54,11 @@ Point searches are bounded. Saturation certifies only the requested primes and
 does not establish a full Mordell-Weil basis. Work limits can leave rank bounds
 incomplete. Numerical estimates and stored LMFDB values are distinguished from
 proofs; the library does not compute the Tate-Shafarevich group order.
+
 Finite-field counting uses direct search, not SEA. Extension-field point counting
 visits q x-coordinates, with a default limit of 1000000. Point enumeration
-still checks q^2 coordinate pairs with the same default limit. General isogeny-class discovery,
-higher descents and curves over general number fields are outside this release.
+still checks q^2 coordinate pairs with the same default limit. General isogeny-class
+discovery, higher descents and curves over general number fields are outside this release.
 
 See the [repository README](https://github.com/asiryan/EllipticCurves/blob/main/README.md)
 for examples and the algorithm notes for
