@@ -67,4 +67,6 @@ for examples and the algorithm notes for
 [coefficients, division, isogenies and prime fields](https://github.com/asiryan/EllipticCurves/blob/main/docs/basic-extensions.md),
 and [Faltings heights and finite extensions](https://github.com/asiryan/EllipticCurves/blob/main/docs/faltings-and-finite-fields.md).
 
+## License
+
 Licensed under MIT.
