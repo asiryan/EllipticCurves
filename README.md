@@ -70,7 +70,7 @@ with a dot and scientific notation, independently of the current culture:
 var x = BigRational.Parse("1/4");
 var y = BigRational.Parse("-0.625");                    // exactly -5/8
 var e = new EllipticCurveQ(0, 0, 1, -1, 0);
-var p = e.CreatePoint(x, y);                            // verifies the equation and nonsingularity
+var p = e.CreatePoint(x, y);
 var twice = e.DoubleChecked(p);
 var multiple = e.MultiplyChecked(p, 7);
 bool valid = e.TryCreatePoint(0, 1, out var candidate); // false
