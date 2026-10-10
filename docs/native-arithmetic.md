@@ -106,12 +106,16 @@ local tests, lower bounds and independent reference data.
 
 `searchBound = 0` disables point searches. Increasing it can improve the lower
 bound, but cannot guarantee equality of the bounds. `maxSquareClasses` bounds the
-number of candidates per isogeny and throws `NotSupportedException` if exceeded.
+number of candidates per isogeny; exceeding it returns an unknown upper bound
+and retains all lower-bound proofs, including those from a completed first isogeny
+descent when the second cannot fit the limit.
 In general descent it bounds the number of covering classes, including the identity.
 `RankComputationOptions` additionally limits counted descent and point-search work.
-Reaching the general covering-class limit or `MaxDescentWork` returns no upper
+Exceeding either class limit or reaching `MaxDescentWork` returns no upper
 bound or Selmer dimension; `Reason` records the limit. Exhausting point search
-preserves already proved bounds. Factorization and the initial search for rational
+preserves already proved bounds and allows a completed Selmer upper bound to be
+returned. A zero lower bound is not a proof of rank zero. Invalid arguments and
+cancellation still throw. Factorization and the initial search for rational
 2-torsion remain cancellable but are not capped by these work counters.
 Higher descents and Cassels-Tate pairings are not implemented.
 

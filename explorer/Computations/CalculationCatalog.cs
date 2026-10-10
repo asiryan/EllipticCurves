@@ -55,8 +55,16 @@ public static class CalculationCatalog
     }
 
     public static bool IsMathematicalMethod(MethodInfo method) => method.IsPublic && !method.IsSpecialName
-        && method.DeclaringType != typeof(object) && method.Name is not ("Equals" or "GetHashCode" or "ToString")
-        && !IsCancellationAlias(method);
+        && method.DeclaringType != typeof(object) && method.Name is not ("Equals" or "GetHashCode" or "ToString" or "Parse" or "TryParse")
+        && !IsCancellationAlias(method) && !IsCheckedAlias(method);
+
+    private static bool IsCheckedAlias(MethodInfo method)
+    {
+        const string suffix = "Checked";
+        if (!method.Name.EndsWith(suffix, StringComparison.Ordinal)) return false;
+        var legacyName = method.Name[..^suffix.Length];
+        return method.DeclaringType?.GetMethod(legacyName, method.GetParameters().Select(p => p.ParameterType).ToArray()) != null;
+    }
 
     private static bool IsCancellationAlias(MethodInfo method)
     {

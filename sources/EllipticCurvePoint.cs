@@ -38,6 +38,9 @@ namespace EllipticCurves
 
         /// <summary>
         /// Create a finite point with given affine coordinates <paramref name="x"/>, <paramref name="y"/>.
+        /// This constructor stores coordinates without checking any curve equation.
+        /// Use <see cref="EllipticCurveQ.CreatePoint"/> or <see cref="EllipticCurveQ.TryCreatePoint"/>
+        /// to validate coordinates against a nonsingular rational curve.
         /// </summary>
         public EllipticCurvePoint(BigRational x, BigRational y) { X = x; Y = y; IsInfinity = false; }
 

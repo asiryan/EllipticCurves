@@ -13,9 +13,9 @@ are separate applications in the repository.
 using EllipticCurves;
 
 var e = new EllipticCurveQ(0, 0, 1, -1, 0);  // 37.a1
-var p = new EllipticCurvePoint(0, 0);
+var p = e.CreatePoint(0, 0);                 // validates the input point
 
-var twice = e.Double(p);
+var twice = e.DoubleChecked(p);
 var conductor = e.Conductor;                 // 37
 var bounds = e.GetRankBounds();
 var rank = bounds.ExactRank;                 // null unless proved
@@ -28,7 +28,9 @@ var finite = e.ReduceModuloPrime(5);
 
 ## Capabilities
 
-- Exact rational arithmetic, invariants, point arithmetic, rational torsion,
+- Exact rational arithmetic and culture-independent Parse/TryParse for decimals,
+  fractions and scientific notation, with configurable input limits.
+- Checked rational-point factories and group operations, invariants, rational torsion,
   minimal models, isomorphisms and quadratic twists.
 - Conductors with prime/exponent factorizations from the same calculation,
   configurable parallel factorization, root numbers, local reduction data and Tamagawa numbers.
@@ -52,7 +54,10 @@ var finite = e.ReduceModuloPrime(5);
 
 Point searches are bounded. Saturation certifies only the requested primes and
 does not establish a full Mordell-Weil basis. Work limits can leave rank bounds
-incomplete. Numerical estimates and stored LMFDB values are distinguished from
+incomplete. Both descents retain proved lower bounds and return an unknown upper
+bound when the square-class or descent-work limit stops the proof. The original
+point constructor and group operations assume valid inputs; use CreatePoint and
+the Checked operations to validate them. Numerical estimates and stored LMFDB values are distinguished from
 proofs; the library does not compute the Tate-Shafarevich group order.
 
 Finite-field counting uses direct search, not SEA. Extension-field point counting

@@ -61,6 +61,37 @@ using EllipticCurves;
 See the [Console application](console/README.md) for command-line arguments, run instructions
 and sample output.
 
+## Exact rational input and checked points
+
+`BigRational.Parse` and `TryParse` accept exact integers, fractions, decimals
+with a dot and scientific notation, independently of the current culture:
+
+```csharp
+var x = BigRational.Parse("1/4");
+var y = BigRational.Parse("-0.625"); // exactly -5/8
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);
+var p = e.CreatePoint(x, y);         // verifies the equation and nonsingularity
+var twice = e.DoubleChecked(p);
+var multiple = e.MultiplyChecked(p, 7);
+bool valid = e.TryCreatePoint(0, 1, out var candidate); // false
+```
+
+`CreatePoint` rejects invalid coordinates or a singular model. `TryCreatePoint`
+returns false for either condition, with an unused infinity output. `AddChecked`,
+`DoubleChecked`, `NegateChecked`, `SubtractChecked` and `MultiplyChecked` verify
+their inputs before any identity or zero-scalar shortcuts. The existing point
+constructor and group operations remain available with their original preconditions.
+
+Parsing uses configurable `RationalParsingOptions` to bound input length,
+decimal exponents, intermediate integers and the final normalized value.
+`TryParse` returns false and zero for malformed, excessive or zero-denominator input.
+The Explorer and console use the same exact numeric parser. See
+[the input and point contracts](docs/rational-input-and-points.md).
+
+Rational arithmetic cancels common factors before constructing large products;
+addition and subtraction use the shared denominator factors. Exact results and
+canonical fraction representation are preserved.
+
 ## Rank bounds and conductor
 
 `EllipticCurveQ` computes minimal models, conductors and rank bounds in C# using
@@ -104,9 +135,11 @@ proved lower bound is retained. `ExactRank` is populated only when both bounds a
 
 `GetRankBounds(searchBound: 64)` increases the point search. `maxSquareClasses` defaults
 to 65,536. In 2-isogeny descent it bounds signed square classes per isogeny;
-exceeding it throws `NotSupportedException`. In general 2-descent it bounds covering
-classes, including the identity; exceeding it returns `UpperBound = null` with the
-proved lower bound and an explanation in `Reason`.
+in general 2-descent it bounds covering classes, including the identity.
+Exceeding it returns `UpperBound = null` with the proved lower bound and an
+explanation in `Reason` in both methods. Callers that previously caught
+`NotSupportedException` for the 2-isogeny class limit should inspect the returned
+bounds instead. Point-search exhaustion can still preserve a completed upper bound.
 Factorization and searches can be expensive. Use the cancellable methods when needed:
 
 ```csharp

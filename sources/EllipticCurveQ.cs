@@ -132,6 +132,7 @@ namespace EllipticCurves
         /// <summary>
         /// Group law (general Weierstrass). Handles P, Q, doubling, and the vertical-tangent case.
         /// Assumes a nonsingular curve and points on this curve; these preconditions are not checked.
+        /// Use AddChecked to validate both inputs before applying the group law.
         /// Slope:
         ///  • If x1 ≠ x2: λ = (y2 − y1)/(x2 − x1).
         ///  • If P = Q:   λ = (3x1^2 + 2a2 x1 + a4 − a1 y1) / (2y1 + a1 x1 + a3).
@@ -179,6 +180,7 @@ namespace EllipticCurves
         /// <summary>
         /// Scalar multiplication nP using right-to-left double-and-add.
         /// Supports n &lt; 0 (via negation) and n = 0 (returns O).
+        /// The curve and input point are assumed valid; use MultiplyChecked to verify these preconditions.
         /// </summary>
         public EllipticCurvePoint Multiply(EllipticCurvePoint P, BigInteger n)
             => Multiply(P, n, default);

@@ -174,7 +174,7 @@ public class NativeArithmeticTests
     }
 
     [Fact]
-    public void RejectsSingularCurvesInvalidBoundsAndTruncatedDescent()
+    public void RejectsSingularCurvesAndInvalidBounds()
     {
         var singular = new EllipticCurveQ(0, 0, 0, 0, 0);
         Assert.Throws<InvalidOperationException>(() => singular.GetConductor());
@@ -183,7 +183,6 @@ public class NativeArithmeticTests
         var e = new EllipticCurveQ(0, 0, 0, -25, 0);
         Assert.Throws<ArgumentOutOfRangeException>(() => e.GetRankBounds(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => e.GetRankBounds(maxSquareClasses: 1));
-        Assert.Throws<NotSupportedException>(() => e.GetRankBounds(maxSquareClasses: 2));
     }
 
     [Fact]

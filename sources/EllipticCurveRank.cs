@@ -20,8 +20,8 @@ namespace EllipticCurves
         /// Also bounds both numerator and denominator of the searched x coordinates on the minimal model.
         /// Zero disables point search. Increasing this can improve the lower bound.</param>
         /// <param name="maxSquareClasses">Maximum number of signed square classes per isogeny.
-        /// Exceeding this limit throws NotSupportedException in isogeny descent.
-        /// In general descent this bounds covering classes and exhaustion gives a null upper bound.</param>
+        /// In general descent this bounds covering classes including the identity.
+        /// Exceeding this limit returns a null upper bound and preserves the proved lower bound.</param>
         /// <param name="cancellationToken">Cancels factorization, enumeration and point searches.</param>
         public RankBounds GetRankBounds(int searchBound = 32, int maxSquareClasses = 65536,
             CancellationToken cancellationToken = default)
@@ -34,9 +34,9 @@ namespace EllipticCurves
         /// <summary>
         /// Compute unconditional lower and upper rank bounds with explicit work limits.
         /// Reaching MaxDescentWork returns a null upper bound; point-search exhaustion
-        /// never invalidates already proved bounds. Exceeding MaxSquareClasses throws
-        /// NotSupportedException in 2-isogeny descent and returns a null upper bound
-        /// in general descent. No BSD, GRH or parity assumption is used.
+        /// never invalidates already proved bounds. Exceeding MaxSquareClasses returns
+        /// a null upper bound and preserves the proved lower bound in either descent.
+        /// No BSD, GRH or parity assumption is used.
         /// </summary>
         public RankBounds GetRankBounds(RankComputationOptions options, CancellationToken cancellationToken = default)
         {
@@ -129,7 +129,7 @@ namespace EllipticCurves
             {
                 classCount *= 2;
                 if (classCount > maxClasses)
-                    throw new NotSupportedException("The 2-isogeny descent exceeds maxSquareClasses. Increase the limit or use a smaller model.");
+                    throw new DescentLimitException("MaxSquareClasses was exceeded in 2-isogeny descent; the upper-bound computation is incomplete.");
             }
             int count = (int)classCount;
             var values = new BigInteger[count];
