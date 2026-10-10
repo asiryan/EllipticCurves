@@ -32,7 +32,7 @@ public static class CalculationEngine
             var database = operation.Id == "database.import" ? LmfdbEllipticCurve.FromStoredDataJson(arguments["json"])
                 : await LmfdbEllipticCurve.FetchAsync(curve!, cancellationToken: token).ConfigureAwait(false);
             result = operation.Id == "database.generators"
-                ? new Dictionary<string, object?> { ["LMFDB label"] = database.Label, ["Model"] = curve, ["Generators"] = database.GetGeneratorsOnModel(curve!) }
+                ? new Dictionary<string, object?> { ["LMFDB label"] = database.Label, ["Model"] = curve, ["Generators"] = database.GetGeneratorsOnModel(curve!, token) }
                 : database;
         }
         else if (operation.Member is MethodInfo method)
@@ -73,7 +73,7 @@ public static class CalculationEngine
                         SearchBound = (int)inputs[0]!, MaxSquareClasses = (int)inputs[1]!,
                         MaxDegreeOfParallelism = (int)CalculationInput.ParseScalar(typeof(int), arguments["execution.MaxDegreeOfParallelism"])
                     }, token);
-                else result = method.Invoke(method.IsStatic ? null : target, inputs);
+                else result = InvokeWithCancellation(method, target, inputs, token);
             }
             catch (TargetInvocationException error) when (error.InnerException != null)
             { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
@@ -89,7 +89,15 @@ public static class CalculationEngine
         }
         else if (operation.Member is PropertyInfo property)
         {
-            try { result = property.GetValue(target); }
+            try
+            {
+                result = target is EllipticCurveQ cancellableCurve ? property.Name switch
+                {
+                    nameof(EllipticCurveQ.TorsionPoints) => cancellableCurve.GetTorsionPoints(token),
+                    nameof(EllipticCurveQ.TorsionStructure) => cancellableCurve.GetTorsionStructure(token),
+                    _ => property.GetValue(target)
+                } : property.GetValue(target);
+            }
             catch (TargetInvocationException error) when (error.InnerException != null)
             { ExceptionDispatchInfo.Capture(error.InnerException).Throw(); throw; }
         }
@@ -105,6 +113,23 @@ public static class CalculationEngine
         (key.EndsWith(".x") || key.EndsWith(".y")) && values.TryGetValue(key[..^2] + ".infinity", out var flag)
             && bool.TryParse(flag, out var infinity) && infinity;
 
+    private static object? InvokeWithCancellation(MethodInfo method, object target, object?[] inputs, CancellationToken token)
+    {
+        var parameters = method.GetParameters();
+        if (parameters.Any(p => p.ParameterType == typeof(CancellationToken)))
+            return method.Invoke(method.IsStatic ? null : target, inputs);
+        var cancellable = method.DeclaringType?.GetMethod(method.Name,
+            parameters.Select(p => p.ParameterType).Append(typeof(CancellationToken)).ToArray());
+        if (cancellable == null) return method.Invoke(method.IsStatic ? null : target, inputs);
+
+        // Keep the saved operation's legacy signature, including its out values,
+        // while executing the cancellable overload.
+        var arguments = inputs.Append((object)token).ToArray();
+        var result = cancellable.Invoke(cancellable.IsStatic ? null : target, arguments);
+        Array.Copy(arguments, inputs, inputs.Length);
+        return result;
+    }
+
     private static object CreateTarget(CalculationContext context, EllipticCurveQ curve, IReadOnlyDictionary<string, string> values, CancellationToken token)
     {
         if (context is CalculationContext.RationalCurve or CalculationContext.Database) return curve;
@@ -116,16 +141,16 @@ public static class CalculationEngine
             var scalars = new FiniteField(prime, new BigInteger[] { 0, 1 }, token);
             BigInteger Reduce(BigRational value)
             {
-                var element = scalars.CreateElement(value.Num) / scalars.CreateElement(value.Den);
+                var element = scalars.Divide(scalars.CreateElement(value.Num), scalars.CreateElement(value.Den), token);
                 return element.IsZero ? BigInteger.Zero : element.Coefficients[0];
             }
             return new EllipticCurveFp(prime, Reduce(curve.A1), Reduce(curve.A2), Reduce(curve.A3), Reduce(curve.A4), Reduce(curve.A6), token);
         }
         var field = new FiniteField(prime, (BigInteger[])CalculationInput.ParseScalar(typeof(BigInteger[]), values["field.modulus"]), token);
         return context == CalculationContext.FiniteField ? field : new EllipticCurveFq(field,
-            CalculationInput.Element(field, values["field.a1"]), CalculationInput.Element(field, values["field.a2"]),
-            CalculationInput.Element(field, values["field.a3"]), CalculationInput.Element(field, values["field.a4"]),
-            CalculationInput.Element(field, values["field.a6"]));
+            CalculationInput.Element(field, values["field.a1"], token), CalculationInput.Element(field, values["field.a2"], token),
+            CalculationInput.Element(field, values["field.a3"], token), CalculationInput.Element(field, values["field.a4"], token),
+            CalculationInput.Element(field, values["field.a6"], token));
     }
 
     private static object MapResult(string id, object map, IReadOnlyDictionary<string, string> values, object target, CancellationToken token)

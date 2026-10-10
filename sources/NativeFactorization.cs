@@ -9,6 +9,7 @@ namespace EllipticCurves
     {
         private static BigInteger FindDivisor(BigInteger n, CancellationToken token, int maxWorkers)
         {
+            token.ThrowIfCancellationRequested();
             int bits = RealArithmetic.BitLength(n);
             int rhoWork = n <= ulong.MaxValue || bits > 200 ? 131072 : bits < 160 ? 8192 : 32768;
             // Bound each rho attempt: a large least prime factor must not trap the
@@ -42,6 +43,7 @@ namespace EllipticCurves
         // contains more than one factor is replayed one difference at a time.
         private static BigInteger BrentDivisor(BigInteger n, int attempt, int limit, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             BigInteger y = 2 + attempt, c = attempt, x = 0, saved = 0, divisor = 1;
             int length = 1, steps = 0;
             while (divisor.IsOne && steps < limit)
@@ -76,19 +78,22 @@ namespace EllipticCurves
                     divisor = BigInteger.GreatestCommonDivisor(x - saved, n);
                 } while (divisor.IsOne);
             }
+            token.ThrowIfCancellationRequested();
             return divisor > 1 && divisor < n ? divisor : BigInteger.One;
         }
 
         private static bool TryPerfectPower(BigInteger n, CancellationToken token,
             out BigInteger root, out int exponent)
         {
-            root = InternalMath.IntegerSqrt(n);
+            root = InternalMath.IntegerSqrt(n, token);
             exponent = 2;
-            if (root * root == n) return true;
+            bool square = root * root == n;
+            token.ThrowIfCancellationRequested();
+            if (square) return true;
             int bits = RealArithmetic.BitLength(n);
             // All primes through 37 have already been removed, so a remaining
             // base is at least 41. Composite exponents have a prime divisor.
-            foreach (int power in SievePrimes(bits / 5))
+            foreach (int power in SievePrimes(bits / 5, token))
             {
                 if (power == 2) continue;
                 token.ThrowIfCancellationRequested();
@@ -100,28 +105,37 @@ namespace EllipticCurves
                     if (next >= value) break;
                     value = next;
                 }
-                if (BigInteger.Pow(value, power) == n)
+                bool perfectPower = BigInteger.Pow(value, power) == n;
+                token.ThrowIfCancellationRequested();
+                if (perfectPower)
                 {
                     root = value;
                     exponent = power;
                     return true;
                 }
             }
+            token.ThrowIfCancellationRequested();
             return false;
         }
 
-        internal static int[] SievePrimes(int bound)
+        internal static int[] SievePrimes(int bound, CancellationToken token = default)
         {
+            token.ThrowIfCancellationRequested();
             var composite = new bool[bound + 1];
             var primes = new List<int>();
             for (int p = 2; p <= bound; p++)
             {
+                token.ThrowIfCancellationRequested();
                 if (composite[p]) continue;
                 primes.Add(p);
                 if (p <= bound / p)
                     for (int multiple = p * p; multiple <= bound; multiple += p)
+                    {
+                        if ((multiple & 1023) == 0) token.ThrowIfCancellationRequested();
                         composite[multiple] = true;
+                    }
             }
+            token.ThrowIfCancellationRequested();
             return primes.ToArray();
         }
     }

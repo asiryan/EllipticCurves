@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Threading;
 using static EllipticCurves.NativeNumberTheory;
 
 namespace EllipticCurves
@@ -9,10 +10,10 @@ namespace EllipticCurves
         internal readonly int A, B, D;
         internal readonly BigInteger U4, U6, UD, C4, C6;
         private readonly int p;
-        internal RootNumberInvariants(EllipticCurveQ e, int prime)
+        internal RootNumberInvariants(EllipticCurveQ e, int prime, CancellationToken token = default)
         {
             p = prime;
-            int a = EllipticCurveQ.Valuation(e.C4.Num, p), b = EllipticCurveQ.Valuation(e.C6.Num, p), d = EllipticCurveQ.Valuation(e.Discriminant.Num, p);
+            int a = EllipticCurveQ.Valuation(e.C4.Num, p, token), b = EllipticCurveQ.Valuation(e.C6.Num, p, token), d = EllipticCurveQ.Valuation(e.Discriminant.Num, p, token);
             int m = Math.Min(a / 4, Math.Min(b / 6, d / 12));
             A = a - 4 * m; B = b - 6 * m; D = d - 12 * m;
             C4 = e.C4.Num / BigInteger.Pow(p, 4 * m);

@@ -59,6 +59,7 @@ namespace EllipticCurves
             BigInteger image = 0;
             for (int i = 0; i < characters.Count; i++)
             {
+                budget.Token.ThrowIfCancellationRequested();
                 var ch = characters[i]; int p = ch.prime;
                 if (point.X.Den % p == 0) continue; // good reduction sends P to infinity
                 var x = NativeNumberTheory.Mod(4 * point.X.Num * BigInteger.ModPow(point.X.Den % p, p - 2, p), p);
@@ -68,6 +69,7 @@ namespace EllipticCurves
             }
             for (int i = basis.Count - 1; i >= 0; i--)
             {
+                budget.Token.ThrowIfCancellationRequested();
                 if ((image & (BigInteger.One << i)).IsZero) continue;
                 if (basis[i].IsZero) { basis[i] = image; imageDimension++; break; }
                 image ^= basis[i];
@@ -98,7 +100,7 @@ namespace EllipticCurves
                 var x = new BigRational(numerator, denominatorRoot * denominatorRoot);
                 var linear = curve.A1 * x + curve.A3;
                 var square = x * x * x + curve.A2 * x * x + curve.A4 * x + curve.A6 + linear * linear / 4;
-                if (BigRational.IsSquare(square, out var y)) Add(new EllipticCurvePoint(x, y - linear / 2));
+                if (BigRational.IsSquare(square, out var y, budget.Token)) Add(new EllipticCurvePoint(x, y - linear / 2));
             }
         }
     }

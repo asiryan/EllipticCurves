@@ -21,9 +21,8 @@ namespace EllipticCurves
             if (order == 1) return Array.AsReadOnly(new[] { n > 0 ? point : Negate(point) });
             if (point.IsInfinity)
             {
-                var torsion = TorsionPoints.ToArray();
-                cancellationToken.ThrowIfCancellationRequested();
-                return Array.AsReadOnly(torsion.Where(p => Multiply(p, order).IsInfinity).ToArray());
+                var torsion = GetTorsionPoints(cancellationToken);
+                return Array.AsReadOnly(torsion.Where(p => Multiply(p, order, cancellationToken).IsInfinity).ToArray());
             }
             if ((long)order * order > limits.MaxDivisionDegree) throw new ArithmeticException("Division degree limit reached.");
             var map = GetShortModelIsomorphism(); var e = map.Target;
@@ -38,9 +37,9 @@ namespace EllipticCurves
                 foreach (var x in arithmetic.RationalRoots(equation))
                 {
                     budget.Step();
-                    if (!BigRational.IsSquare(x * x * x + e.A4 * x + e.A6, out var y)) continue;
+                    if (!BigRational.IsSquare(x * x * x + e.A4 * x + e.A6, out var y, cancellationToken)) continue;
                     foreach (var candidate in new[] { new EllipticCurvePoint(x, y), new EllipticCurvePoint(x, -y) })
-                        if (e.Multiply(candidate, order).Equals(target)) result.Add(map.MapBack(candidate));
+                        if (e.Multiply(candidate, order, cancellationToken).Equals(target)) result.Add(map.MapBack(candidate));
                 }
                 return Array.AsReadOnly(result.OrderBy(p => p.X).ThenBy(p => p.Y).ToArray());
             }

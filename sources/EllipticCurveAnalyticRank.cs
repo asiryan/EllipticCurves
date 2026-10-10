@@ -30,7 +30,11 @@ namespace EllipticCurves
             double alpha = 2 * Math.PI / Math.Sqrt((double)conductor);
             if (!(alpha > 0)) return Unknown("The conductor exceeds the numerical range.");
             double cutoff = 40 + 2 * order;
-            while (AnalyticIntegration.TailBound(alpha, cutoff, order) > tolerance * 1e-6) cutoff += 8;
+            while (AnalyticIntegration.TailBound(alpha, cutoff, order) > tolerance * 1e-6)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                cutoff += 8;
+            }
             double needed = Math.Ceiling(cutoff / alpha);
             if (needed > maxTerms) return Unknown("MaxTerms is too small for this conductor and tolerance.");
             int count = Math.Max(1, (int)needed);

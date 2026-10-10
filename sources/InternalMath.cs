@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -61,8 +62,10 @@ namespace EllipticCurves
         /// Outputs the scaling factor u if successful.
         /// </summary>
         public static bool IsQIsomorphic(BigRational c4E, BigRational c6E, BigRational dE, 
-            BigRational rc4C, BigRational rc6C, BigRational rdC, out BigRational u)
+            BigRational rc4C, BigRational rc6C, BigRational rdC, out BigRational u,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             u = default;
 
             bool c4zero = c4E.IsZero || rc4C.IsZero;
@@ -72,21 +75,28 @@ namespace EllipticCurves
             if (!c4zero)
             {
                 var ratio4 = c4E / rc4C;                  // should equal u^4
-                if (!TryRationalKthRoot(ratio4, 4, out var u4)) return false;
+                if (!TryRationalKthRoot(ratio4, 4, out var u4, cancellationToken)) return false;
                 u = u4;
 
-                if (!c6zero && BigRational.Pow(u, 6) != (c6E / rc6C)) return false;
-                if (BigRational.Pow(u, 12) != (dE / rdC)) return false;
-                return true;
+                if (!c6zero)
+                {
+                    bool c6Matches = BigRational.Pow(u, 6) == (c6E / rc6C);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!c6Matches) return false;
+                }
+                bool discriminantMatches = BigRational.Pow(u, 12) == (dE / rdC);
+                cancellationToken.ThrowIfCancellationRequested();
+                return discriminantMatches;
             }
             else if (!c6zero)
             {
                 var ratio6 = c6E / rc6C;                  // should equal u^6
-                if (!TryRationalKthRoot(ratio6, 6, out var u6)) return false;
+                if (!TryRationalKthRoot(ratio6, 6, out var u6, cancellationToken)) return false;
                 u = u6;
 
-                if (BigRational.Pow(u, 12) != (dE / rdC)) return false;
-                return true;
+                bool discriminantMatches = BigRational.Pow(u, 12) == (dE / rdC);
+                cancellationToken.ThrowIfCancellationRequested();
+                return discriminantMatches;
             }
             else
             {
@@ -100,38 +110,44 @@ namespace EllipticCurves
         /// r = root^k for some rational root in canonical form.
         /// Implementation: require both |Num| and Den to be perfect k-th powers in ℤ.
         /// </summary>
-        public static bool TryRationalKthRoot(BigRational r, int k, out BigRational root)
+        public static bool TryRationalKthRoot(BigRational r, int k, out BigRational root, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             root = default;
             if (r.Sign < 0 && (k % 2 == 0)) return false; // even root of a negative number is not rational real
 
             var an = BigInteger.Abs(r.Num);
             var ad = r.Den;
 
-            if (!TryIntegerKthRoot(an, k, out var rn)) return false;
-            if (!TryIntegerKthRoot(ad, k, out var rd)) return false;
+            if (!TryIntegerKthRoot(an, k, out var rn, cancellationToken)) return false;
+            if (!TryIntegerKthRoot(ad, k, out var rd, cancellationToken)) return false;
 
             if (r.Sign < 0) rn = BigInteger.Negate(rn);
             root = new BigRational(rn, rd);
-            return BigRational.Pow(root, k) == r; // exact verification
+            bool exact = BigRational.Pow(root, k) == r; // exact verification
+            cancellationToken.ThrowIfCancellationRequested();
+            return exact;
         }
 
         /// <summary>
         /// Try to compute exact integer k-th root: return true iff n = rt^k for some integer rt (rt ≥ 0).
         /// Otherwise, returns false and rt = floor(n^(1/k)).
         /// </summary>
-        public static bool TryIntegerKthRoot(BigInteger n, int k, out BigInteger rt)
+        public static bool TryIntegerKthRoot(BigInteger n, int k, out BigInteger rt, CancellationToken cancellationToken = default)
         {
-            rt = IntegerKthRoot(n, k);
-            return BigInteger.Pow(rt, k) == n;
+            rt = IntegerKthRoot(n, k, cancellationToken);
+            bool exact = BigInteger.Pow(rt, k) == n;
+            cancellationToken.ThrowIfCancellationRequested();
+            return exact;
         }
 
         /// <summary>
         /// floor(n^(1/k)) for n ≥ 0 using Newton's method generalized to k-th roots.
         /// For small n it exits fast; for large n it converges monotonically.
         /// </summary>
-        public static BigInteger IntegerKthRoot(BigInteger n, int k)
+        public static BigInteger IntegerKthRoot(BigInteger n, int k, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (n.IsZero) return BigInteger.Zero;
             if (n.IsOne) return BigInteger.One;
 
@@ -141,13 +157,16 @@ namespace EllipticCurves
 
             while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // x_{t+1} = ((k-1)*x + n/x^{k-1}) / k
                 var xk_1 = BigInteger.Pow(x, k - 1);
                 if (xk_1.IsZero) break;
                 var next = ((k - 1) * x + n / xk_1) / k;
+                cancellationToken.ThrowIfCancellationRequested();
                 if (next >= x) return x; // converged
                 x = next;
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return x;
         }
 
@@ -156,22 +175,27 @@ namespace EllipticCurves
         /// (coming from gcd of #E(𝔽_p) over a few good primes), and if none matches,
         /// falling back to a bounded exact check up to 12 (Mazur’s bound).
         /// </summary>
-        public static bool IsTorsionWithCandidates(EllipticCurveQ E, EllipticCurvePoint P, List<int> orders)
+        public static bool IsTorsionWithCandidates(EllipticCurveQ E, EllipticCurvePoint P, List<int> orders,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Fast path: only test divisors of the gcd of #E(F_p) for selected primes.
             for (int i = 0; i < orders.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 int n = orders[i];
                 if (n <= 1) continue;
-                if (OrderDivides(E, P, n)) return true;
+                if (OrderDivides(E, P, n, cancellationToken)) return true;
             }
             // Safe fallback: exact check up to Mazur bound (cheap for the few points we test).
             var Q = P;
             for (int k = 1; k <= 12; k++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (Q.IsInfinity) return true; // order(P) | k
                 Q = E.Add(Q, P);
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return false;
         }
 
@@ -179,9 +203,11 @@ namespace EllipticCurves
         /// Return true iff n*P = O (the point at infinity), i.e. the order of P divides n.
         /// Computed with double-and-add (no precomputation).
         /// </summary>
-        public static bool OrderDivides(EllipticCurveQ E, EllipticCurvePoint P, int n)
+        public static bool OrderDivides(EllipticCurveQ E, EllipticCurvePoint P, int n, CancellationToken cancellationToken = default)
         {
-            var Q = E.Multiply(P, new BigInteger(n));
+            cancellationToken.ThrowIfCancellationRequested();
+            var Q = E.Multiply(P, new BigInteger(n), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             return Q.IsInfinity;
         }
 
@@ -207,8 +233,9 @@ namespace EllipticCurves
         }
 
         /// <summary>All integer roots of x^3 + A*x + B, without factoring B.</summary>
-        internal static IEnumerable<BigInteger> IntegralShortCubicRoots(BigInteger A, BigInteger B)
+        internal static IEnumerable<BigInteger> IntegralShortCubicRoots(BigInteger A, BigInteger B, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Cauchy's bound contains every root. Split the integers at the two
             // stationary points, then use exact bisection on each monotone part.
             var bound = BigInteger.One + BigInteger.Max(BigInteger.Abs(A), BigInteger.Abs(B));
@@ -216,12 +243,15 @@ namespace EllipticCurves
             {
                 while (lower <= upper)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var middle = lower + (upper - lower) / 2;
                     var value = EvalCubic(A, B, middle);
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (value.IsZero) { root = middle; return true; }
                     if ((value.Sign < 0) == increasing) lower = middle + 1;
                     else upper = middle - 1;
                 }
+                cancellationToken.ThrowIfCancellationRequested();
                 root = default;
                 return false;
             }
@@ -229,24 +259,32 @@ namespace EllipticCurves
             if (A.Sign >= 0)
             {
                 if (TryRoot(-bound, bound, true, out var root)) yield return root;
+                cancellationToken.ThrowIfCancellationRequested();
                 yield break;
             }
 
-            var turning = IntegerSqrt(-A / 3);
+            var turning = IntegerSqrt(-A / 3, cancellationToken);
             if (TryRoot(-bound, -turning - 1, true, out var left)) yield return left;
             if (TryRoot(-turning, turning, false, out var center)) yield return center;
             if (TryRoot(turning + 1, bound, true, out var right)) yield return right;
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         /// <summary>
         /// floor(sqrt(n)) for n ≥ 0 via a monotone Newton iteration specialized to k=2.
         /// </summary>
-        public static BigInteger IntegerSqrt(BigInteger n)
+        public static BigInteger IntegerSqrt(BigInteger n, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (n <= 1) return n;
             // The first Newton step must decrease for n=2 as well.
             BigInteger x0 = n, x1 = (n + 1) >> 1;
-            while (x1 < x0) { x0 = x1; x1 = (x1 + n / x1) >> 1; }
+            while (x1 < x0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                x0 = x1; x1 = (x1 + n / x1) >> 1;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
             return x0;
         }
 
@@ -254,8 +292,9 @@ namespace EllipticCurves
         /// Count points on a short Weierstrass curve Y^2 = X^3 + A X + B over 𝔽_p (p odd and small).
         /// Uses Legendre symbol to count square/non-square values of RHS for each X.
         /// </summary>
-        public static int CountPointsFpShort(BigInteger A, BigInteger B, int p)
+        public static int CountPointsFpShort(BigInteger A, BigInteger B, int p, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             int cnt = 1; // point at infinity
             BigInteger Amod = A % p;
             if (Amod < 0) Amod += p;
@@ -263,16 +302,18 @@ namespace EllipticCurves
             if (Bmod < 0) Bmod += p;
             for (int x = 0; x < p; x++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 BigInteger xVal = x;
                 BigInteger rhs = xVal * xVal % p;                  // x^2
                 rhs = (rhs * xVal + Amod * xVal) % p;              // x^3 + A x
                 rhs = (rhs + Bmod) % p;                            // + B
                 if (rhs < 0) rhs += p;
 
-                int chi = Legendre((int)rhs, p); // 0, 1, -1
+                int chi = Legendre((int)rhs, p, cancellationToken); // 0, 1, -1
                 if (chi == 0) cnt += 1;          // one solution y=0
                 else if (chi == 1) cnt += 2;     // two square roots mod p
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return cnt;
         }
 
@@ -280,11 +321,12 @@ namespace EllipticCurves
         /// Legendre symbol (a|p) for odd prime p: returns 0 if a ≡ 0 (mod p), 1 if a is a QR, −1 otherwise.
         /// Euler’s criterion: a^((p−1)/2) ≡ (a|p) (mod p).
         /// </summary>
-        public static int Legendre(int a, int p)
+        public static int Legendre(int a, int p, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (a % p == 0) return 0;
             int e = (p - 1) / 2;
-            int r = ModPow(a, e, p);
+            int r = ModPow(a, e, p, cancellationToken);
             if (r == 1) return 1;
             if (r == p - 1) return -1;
             return 0;
@@ -293,15 +335,18 @@ namespace EllipticCurves
         /// <summary>
         /// Fast modular exponentiation (a^e mod m) with 32-bit ints.
         /// </summary>
-        public static int ModPow(int a, int e, int m)
+        public static int ModPow(int a, int e, int m, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             long res = 1, b = ((a % m) + m) % m;
             while (e > 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if ((e & 1) == 1) res = res * b % m;
                 b = b * b % m;
                 e >>= 1;
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return (int)res;
         }
 
@@ -309,9 +354,12 @@ namespace EllipticCurves
         /// Return certified prime factors with exponents for |n|, using the shared native factorizer.
         /// Zero retains the legacy empty-result convention; divisor enumeration handles it separately.
         /// </summary>
-        public static Dictionary<BigInteger, int> FactorAbs(BigInteger n)
+        public static Dictionary<BigInteger, int> FactorAbs(BigInteger n, CancellationToken cancellationToken = default)
         {
-            return n.IsZero ? new Dictionary<BigInteger, int>() : NativeNumberTheory.Factor(n, default);
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = n.IsZero ? new Dictionary<BigInteger, int>() : NativeNumberTheory.Factor(n, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
         }
 
         /// <summary>
@@ -423,67 +471,99 @@ namespace EllipticCurves
         /// Enumerate all square divisors y2 of |Δ| using its prime factorization:
         /// if |Δ|=∏ p_i^{e_i}, then y2 ranges over ∏ p_i^{2f_i} with 0≤f_i≤⌊e_i/2⌋.
         /// </summary>
-        public static IEnumerable<BigInteger> EnumerateSquareDivisors(Dictionary<BigInteger, int> fact)
+        public static IEnumerable<BigInteger> EnumerateSquareDivisors(Dictionary<BigInteger, int> fact,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var primes = new List<BigInteger>(fact.Keys);
             var exps = new List<int>(primes.Count);
-            for (int i = 0; i < primes.Count; i++) exps.Add(fact[primes[i]] / 2);
+            for (int i = 0; i < primes.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                exps.Add(fact[primes[i]] / 2);
+            }
 
             // Build all products Π p_i^{2f_i} iteratively.
             var accs = new List<BigInteger> { BigInteger.One };
             for (int i = 0; i < primes.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var next = new List<BigInteger>();
                 BigInteger p = primes[i];
                 int e = exps[i];
                 for (int j = 0; j < accs.Count; j++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     BigInteger baseVal = accs[j];
                     BigInteger pow = BigInteger.One;
                     for (int t = 0; t <= e; t++)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         next.Add(baseVal * pow);
                         pow *= p * p;
                     }
                 }
                 accs = next;
             }
-            for (int i = 0; i < accs.Count; i++) yield return accs[i];
+            for (int i = 0; i < accs.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return accs[i];
+            }
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         /// <summary>
         /// Enumerate all positive divisors of |n| from its factorization (includes 1 and |n|).
         /// Returns 0 only if input n was 0 (by convention).
         /// </summary>
-        public static IEnumerable<BigInteger> EnumerateDivisorsAbs(BigInteger n)
+        public static IEnumerable<BigInteger> EnumerateDivisorsAbs(BigInteger n, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             n = n >= 0 ? n : -n;
-            if (n.IsZero) { yield return BigInteger.Zero; yield break; }
+            if (n.IsZero)
+            {
+                yield return BigInteger.Zero;
+                cancellationToken.ThrowIfCancellationRequested();
+                yield break;
+            }
 
-            var fact = FactorAbs(n);
+            var fact = FactorAbs(n, cancellationToken);
             var primes = new List<BigInteger>(fact.Keys);
             var exps = new List<int>(primes.Count);
-            for (int i = 0; i < primes.Count; i++) exps.Add(fact[primes[i]]);
+            for (int i = 0; i < primes.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                exps.Add(fact[primes[i]]);
+            }
 
             var accs = new List<BigInteger> { BigInteger.One };
             for (int i = 0; i < primes.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var next = new List<BigInteger>();
                 BigInteger p = primes[i];
                 int e = exps[i];
                 for (int j = 0; j < accs.Count; j++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     BigInteger baseVal = accs[j];
                     BigInteger pow = BigInteger.One;
                     for (int t = 0; t <= e; t++)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         next.Add(baseVal * pow);
                         pow *= p;
                     }
                 }
                 accs = next;
             }
-            for (int i = 0; i < accs.Count; i++) yield return accs[i];
+            for (int i = 0; i < accs.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return accs[i];
+            }
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 }

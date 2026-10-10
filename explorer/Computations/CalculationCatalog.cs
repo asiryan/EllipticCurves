@@ -55,7 +55,19 @@ public static class CalculationCatalog
     }
 
     public static bool IsMathematicalMethod(MethodInfo method) => method.IsPublic && !method.IsSpecialName
-        && method.DeclaringType != typeof(object) && method.Name is not ("Equals" or "GetHashCode" or "ToString");
+        && method.DeclaringType != typeof(object) && method.Name is not ("Equals" or "GetHashCode" or "ToString")
+        && !IsCancellationAlias(method);
+
+    private static bool IsCancellationAlias(MethodInfo method)
+    {
+        // Existing saved actions keep their IDs; CalculationEngine supplies the
+        // token when invoking their newer cancellable equivalents.
+        if (method.DeclaringType == typeof(EllipticCurveQ)
+            && method.Name is nameof(EllipticCurveQ.GetTorsionPoints) or nameof(EllipticCurveQ.GetTorsionStructure)) return true;
+        var parameters = method.GetParameters();
+        return parameters.Length > 0 && parameters[^1].ParameterType == typeof(CancellationToken)
+            && method.DeclaringType?.GetMethod(method.Name, parameters[..^1].Select(p => p.ParameterType).ToArray()) != null;
+    }
 
     private static void AddMethods(List<CalculationOperation> target, Type type, CalculationContext context)
     {

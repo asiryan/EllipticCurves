@@ -31,7 +31,7 @@ namespace EllipticCurves
             if (point.IsInfinity) throw new ArgumentException("Local height is undefined at infinity.", nameof(point));
             if (!NativeNumberTheory.IsPrime(prime, cancellationToken)) throw new ArgumentOutOfRangeException(nameof(prime));
             var c = RealContext(options, cancellationToken); var map = GetMinimalModelIsomorphism(cancellationToken);
-            return c.Finish(c.Mul(c.I(LocalHeightCoefficient(map.Target, map.Map(point), prime)), c.Log(c.I(new BigRational(prime)))));
+            return c.Finish(c.Mul(c.I(LocalHeightCoefficient(map.Target, map.Map(point), prime, cancellationToken)), c.Log(c.I(new BigRational(prime)))));
         }
 
         /// <summary>Archimedean local height on the reduced global minimal model; undefined at infinity.</summary>
@@ -58,7 +58,7 @@ namespace EllipticCurves
             for (int i = 0; i < p.Length; i++) { ValidateHeightPoint(points[i]); p[i] = map.Map(points[i]); matrix[i, i] = CanonicalHeightOnMinimal(e, p[i], c); }
             for (int i = 0; i < p.Length; i++) for (int j = 0; j < i; j++)
                 matrix[j, i] = matrix[i, j] = c.Div(c.Sub(c.Sub(CanonicalHeightOnMinimal(e, e.Add(p[i], p[j]), c), matrix[i, i]), matrix[j, j]), c.I(2));
-            foreach (var entry in matrix) c.Finish(entry);
+            foreach (var entry in matrix) { cancellationToken.ThrowIfCancellationRequested(); c.Finish(entry); }
             return matrix;
         }
 
@@ -70,10 +70,14 @@ namespace EllipticCurves
             var c = RealContext(options, cancellationToken); var matrix = HeightPairingMatrix(points, options, cancellationToken); var determinant = c.I(1);
             for (int k = 0; k < points.Count; k++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (matrix[k, k].LowerBound <= 0) throw new ArithmeticException("Point independence was not certified; points may be dependent or precision insufficient.");
                 determinant = c.Mul(determinant, matrix[k, k]);
                 for (int i = k + 1; i < points.Count; i++) for (int j = i; j < points.Count; j++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
                     matrix[j, i] = matrix[i, j] = c.Sub(matrix[i, j], c.Div(c.Mul(matrix[i, k], matrix[j, k]), matrix[k, k]));
+                }
             }
             return c.Finish(determinant);
         }
@@ -91,7 +95,7 @@ namespace EllipticCurves
             foreach (var prime in e.GetMinimalDiscriminantFactorization(c.Token).Keys)
             {
                 c.Token.ThrowIfCancellationRequested();
-                if (p.X.Den % prime != 0) value = c.Add(value, c.Mul(c.I(LocalHeightCoefficient(e, p, prime)), c.Log(c.I(new BigRational(prime)))));
+                if (p.X.Den % prime != 0) value = c.Add(value, c.Mul(c.I(LocalHeightCoefficient(e, p, prime, c.Token)), c.Log(c.I(new BigRational(prime)))));
             }
             // The global height is nonnegative, even when local terms are negative.
             if (value.UpperBound < 0) throw new ArithmeticException("Computed enclosure contradicts nonnegativity of the canonical height.");
@@ -99,13 +103,13 @@ namespace EllipticCurves
         }
 
         // Silverman's local formulas on a minimal model (Cremona III.4, Prop. 3.4.1).
-        private static BigRational LocalHeightCoefficient(EllipticCurveQ e, EllipticCurvePoint p, BigInteger prime)
+        private static BigRational LocalHeightCoefficient(EllipticCurveQ e, EllipticCurvePoint p, BigInteger prime, CancellationToken token)
         {
-            int V(BigRational a) => a.IsZero ? int.MaxValue / 4 : Valuation(a.Num, prime) - Valuation(a.Den, prime);
+            int V(BigRational a) => a.IsZero ? int.MaxValue / 4 : Valuation(a.Num, prime, token) - Valuation(a.Den, prime, token);
             var x = p.X; var y = p.Y;
             int a = V(3 * x * x + 2 * e.A2 * x + e.A4 - e.A1 * y), b = V(2 * y + e.A1 * x + e.A3);
             if (a <= 0 || b <= 0) return Math.Max(0, -V(x));
-            int n = Valuation(e.Discriminant.Num, prime);
+            int n = Valuation(e.Discriminant.Num, prime, token);
             if (V(e.C4) == 0) { var m = Min(b, new BigRational(n, 2)); return m * (m - n) / n; }
             int d = V(3 * BigRational.Pow(x, 4) + e.B2 * BigRational.Pow(x, 3) + 3 * e.B4 * x * x + 3 * e.B6 * x + e.B8);
             return (long)d >= 3L * b ? new BigRational(-2L * b, 3) : new BigRational(-d, 4);

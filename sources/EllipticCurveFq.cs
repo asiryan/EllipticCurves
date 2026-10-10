@@ -49,9 +49,15 @@ namespace EllipticCurves
             : this(field, (field ?? throw new ArgumentNullException(nameof(field))).CreateElement(a1), field.CreateElement(a2),
                   field.CreateElement(a3), field.CreateElement(a4), field.CreateElement(a6)) { }
 
-        private FiniteFieldElement Rhs(FiniteFieldElement x) => ((x + A2) * x + A4) * x + A6;
-        private void Validate(EllipticCurvePointFq point)
-        { if (!IsOnCurve(point)) throw new ArgumentException("Point is not on this curve over its field presentation.", nameof(point)); }
+        private FiniteFieldElement Rhs(FiniteFieldElement x, CancellationToken token = default)
+        {
+            token.ThrowIfCancellationRequested();
+            var result = Field.Multiply(Field.Multiply(x + A2, x, token) + A4, x, token) + A6;
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        private void Validate(EllipticCurvePointFq point, CancellationToken token = default)
+        { if (!IsOnCurveCore(point, token)) throw new ArgumentException("Point is not on this curve over its field presentation.", nameof(point)); }
 
         /// <summary>Create an affine point, validating both the fields and the equation.</summary>
         public EllipticCurvePointFq CreatePoint(FiniteFieldElement x, FiniteFieldElement y)
@@ -59,42 +65,69 @@ namespace EllipticCurves
         /// <summary>Create a point with integer coordinates in the prime subfield.</summary>
         public EllipticCurvePointFq CreatePoint(BigInteger x, BigInteger y) => CreatePoint(Field.CreateElement(x), Field.CreateElement(y));
         /// <summary>Check the field presentations and curve equation. Default points are invalid.</summary>
-        public bool IsOnCurve(EllipticCurvePointFq point) => point.IsInfinity ||
-            (Field.Equals(point.X.Field) && Field.Equals(point.Y.Field) &&
-             point.Y * point.Y + (A1 * point.X + A3) * point.Y == Rhs(point.X));
-        /// <summary>Negate a point.</summary>
-        public EllipticCurvePointFq Negate(EllipticCurvePointFq point)
-        { Validate(point); return point.IsInfinity ? point : new EllipticCurvePointFq(point.X, -point.Y - A1 * point.X - A3); }
-        /// <summary>Add two points using the general Weierstrass group law, including characteristics two and three.</summary>
-        public EllipticCurvePointFq Add(EllipticCurvePointFq p, EllipticCurvePointFq q)
+        public bool IsOnCurve(EllipticCurvePointFq point) => IsOnCurveCore(point, default);
+        private bool IsOnCurveCore(EllipticCurvePointFq point, CancellationToken token)
         {
-            Validate(p); Validate(q);
+            token.ThrowIfCancellationRequested();
+            bool result = point.IsInfinity || (Field.Equals(point.X.Field) && Field.Equals(point.Y.Field) &&
+                Field.Multiply(point.Y, point.Y, token) +
+                Field.Multiply(Field.Multiply(A1, point.X, token) + A3, point.Y, token) == Rhs(point.X, token));
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        /// <summary>Negate a point.</summary>
+        public EllipticCurvePointFq Negate(EllipticCurvePointFq point) => NegateCore(point, default);
+        private EllipticCurvePointFq NegateCore(EllipticCurvePointFq point, CancellationToken token)
+        {
+            Validate(point, token);
+            var result = point.IsInfinity ? point : new EllipticCurvePointFq(point.X, -point.Y - Field.Multiply(A1, point.X, token) - A3);
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        /// <summary>Add two points using the general Weierstrass group law, including characteristics two and three.</summary>
+        public EllipticCurvePointFq Add(EllipticCurvePointFq p, EllipticCurvePointFq q) => AddCore(p, q, default);
+        private EllipticCurvePointFq AddCore(EllipticCurvePointFq p, EllipticCurvePointFq q, CancellationToken token)
+        {
+            Validate(p, token); Validate(q, token);
             if (p.IsInfinity) return q;
             if (q.IsInfinity) return p;
-            if (p.X == q.X && (p.Y + q.Y + A1 * p.X + A3).IsZero) return EllipticCurvePointFq.Infinity;
-            var slope = p.X != q.X ? (q.Y - p.Y) / (q.X - p.X) :
-                (3 * p.X * p.X + 2 * A2 * p.X + A4 - A1 * p.Y) / (2 * p.Y + A1 * p.X + A3);
-            var x = slope * slope + A1 * slope - A2 - p.X - q.X;
-            var y = -(slope + A1) * x - A3 - p.Y + slope * p.X;
+            var a1x = p.X == q.X ? Field.Multiply(A1, p.X, token) : Field.Zero;
+            bool inversePoints = p.X == q.X && (p.Y + q.Y + a1x + A3).IsZero;
+            token.ThrowIfCancellationRequested();
+            if (inversePoints) return EllipticCurvePointFq.Infinity;
+            FiniteFieldElement slope;
+            if (p.X != q.X) slope = Field.Divide(q.Y - p.Y, q.X - p.X, token);
+            else
+            {
+                var two = Field.CreateElement(2); var three = Field.CreateElement(3);
+                var numerator = Field.Multiply(three, Field.Multiply(p.X, p.X, token), token) +
+                    Field.Multiply(two, Field.Multiply(A2, p.X, token), token) + A4 - Field.Multiply(A1, p.Y, token);
+                var denominator = Field.Multiply(two, p.Y, token) + a1x + A3;
+                slope = Field.Divide(numerator, denominator, token);
+            }
+            var x = Field.Multiply(slope, slope, token) + Field.Multiply(A1, slope, token) - A2 - p.X - q.X;
+            var y = -Field.Multiply(slope + A1, x, token) - A3 - p.Y + Field.Multiply(slope, p.X, token);
+            token.ThrowIfCancellationRequested();
             return new EllipticCurvePointFq(x, y);
         }
         /// <summary>Double a point.</summary>
         public EllipticCurvePointFq Double(EllipticCurvePointFq point) => Add(point, point);
         /// <summary>Subtract a point.</summary>
         public EllipticCurvePointFq Subtract(EllipticCurvePointFq p, EllipticCurvePointFq q) => Add(p, Negate(q));
-        /// <summary>Multiply by a signed integer, checking cancellation between group operations.</summary>
+        /// <summary>Multiply by a signed integer, checking cancellation within field arithmetic and between group operations.</summary>
         public EllipticCurvePointFq Multiply(EllipticCurvePointFq point, BigInteger n, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested(); Validate(point);
-            if (n.Sign < 0) { point = Negate(point); n = -n; }
+            cancellationToken.ThrowIfCancellationRequested(); Validate(point, cancellationToken);
+            if (n.Sign < 0) { point = NegateCore(point, cancellationToken); n = -n; }
             var result = EllipticCurvePointFq.Infinity;
             while (n > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!n.IsEven) result = Add(result, point);
+                if (!n.IsEven) result = AddCore(result, point, cancellationToken);
                 n >>= 1;
-                if (n > 0) point = Double(point);
+                if (n > 0) point = AddCore(point, point, cancellationToken);
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return result;
         }
 
@@ -119,10 +152,10 @@ namespace EllipticCurves
             BigInteger count = 1; // Infinity.
             foreach (var x in Field.Elements(maxWork, cancellationToken))
             {
-                var rhs = Rhs(x); var b = A1 * x + A3;
+                var rhs = Rhs(x, cancellationToken); var b = Field.Multiply(A1, x, cancellationToken) + A3;
                 if (!characteristicTwo)
                 {
-                    var discriminant = b * b + four * rhs;
+                    var discriminant = Field.Multiply(b, b, cancellationToken) + Field.Multiply(four, rhs, cancellationToken);
                     if (discriminant.IsZero) count++;
                     else if (discriminant.Pow(squareExponent, cancellationToken).IsOne) count += 2;
                 }
@@ -145,6 +178,7 @@ namespace EllipticCurves
                     if (trace.IsZero) count += 2;
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return count;
         }
         /// <summary>Enumerate all points, infinity first, with a prechecked q^2 coordinate-pair limit.
@@ -155,10 +189,15 @@ namespace EllipticCurves
             yield return EllipticCurvePointFq.Infinity;
             foreach (var x in Field.Elements((long)Field.Order, cancellationToken))
             {
-                var rhs = Rhs(x); var b = A1 * x + A3;
+                var rhs = Rhs(x, cancellationToken); var b = Field.Multiply(A1, x, cancellationToken) + A3;
                 foreach (var y in Field.Elements((long)Field.Order, cancellationToken))
-                    if (y * y + b * y == rhs) yield return new EllipticCurvePointFq(x, y);
+                {
+                    bool onCurve = Field.Multiply(y, y, cancellationToken) + Field.Multiply(b, y, cancellationToken) == rhs;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (onCurve) yield return new EllipticCurvePointFq(x, y);
+                }
             }
+            cancellationToken.ThrowIfCancellationRequested();
         }
         /// <inheritdoc/>
         public bool Equals(EllipticCurveFq other) => other != null && Field.Equals(other.Field) &&

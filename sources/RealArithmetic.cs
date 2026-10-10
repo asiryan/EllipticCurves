@@ -14,7 +14,7 @@ namespace EllipticCurves
         internal readonly BigRational Tolerance;
         private RealEnclosure logTwo, pi;
         internal RealArithmetic(RealComputationOptions options, CancellationToken token)
-        { Options = options; Token = token; Scale = BigInteger.One << options.PrecisionBits; Tolerance = new BigRational(1, BigInteger.Pow(10, options.DecimalDigits)); }
+        { token.ThrowIfCancellationRequested(); Options = options; Token = token; Scale = BigInteger.One << options.PrecisionBits; Tolerance = new BigRational(1, BigInteger.Pow(10, options.DecimalDigits)); }
         internal static int BitLength(BigInteger n)
         { var b = BigInteger.Abs(n).ToByteArray(); int k = b.Length - 1; while (k > 0 && b[k] == 0) k--; int count = 8 * k; for (int v = b[k]; v > 0; v >>= 1) count++; return count; }
         internal RealEnclosure I(BigRational r) => new RealEnclosure(r, r);
@@ -35,28 +35,34 @@ namespace EllipticCurves
         internal RealEnclosure Abs(RealEnclosure a) => a.LowerBound >= 0 ? a : a.UpperBound <= 0 ? Neg(a) : new RealEnclosure(0, Max(-a.LowerBound, a.UpperBound));
         internal RealEnclosure Sqrt(RealEnclosure a)
         {
+            Token.ThrowIfCancellationRequested();
             if (a.LowerBound < 0) throw new ArithmeticException("Insufficient precision to enclose a real square root.");
-            BigInteger Root(BigRational x) => InternalMath.IntegerSqrt(DescentPolynomial.Floor(x * new BigRational(Scale * Scale)));
+            BigInteger Root(BigRational x) => InternalMath.IntegerSqrt(DescentPolynomial.Floor(x * new BigRational(Scale * Scale)), Token);
             var lo = Root(a.LowerBound); var hi = Root(a.UpperBound);
             if (new BigRational(hi * hi, Scale * Scale) < a.UpperBound) hi++;
+            Token.ThrowIfCancellationRequested();
             return new RealEnclosure(new BigRational(lo, Scale), new BigRational(hi, Scale));
         }
         internal RealEnclosure Log(RealEnclosure a)
         {
+            Token.ThrowIfCancellationRequested();
             if (a.LowerBound <= 0) throw new ArithmeticException("Insufficient precision to enclose a logarithm.");
             return new RealEnclosure(LogPoint(a.LowerBound).LowerBound, LogPoint(a.UpperBound).UpperBound);
         }
         private RealEnclosure UnitLog(BigRational q)
         {
+            Token.ThrowIfCancellationRequested();
             var z = I((q - 1) / (q + 1)); var z2 = Mul(z, z); var power = z; var sum = I(0);
             int count = Options.PrecisionBits / 3 + 12;
             for (int k = 0; k < count; k++)
             { Token.ThrowIfCancellationRequested(); sum = Add(sum, Div(power, I(2 * k + 1))); power = Mul(power, z2); }
             var tail = Div(Mul(I(2), Abs(power)), Mul(I(2 * count + 1), Sub(I(1), z2))).UpperBound;
+            Token.ThrowIfCancellationRequested();
             return Add(Mul(I(2), sum), new RealEnclosure(0, tail));
         }
         private RealEnclosure LogPoint(BigRational q)
         {
+            Token.ThrowIfCancellationRequested();
             int exponent = BitLength(q.Num) - BitLength(q.Den);
             var factor = exponent >= 0 ? new BigRational(BigInteger.One << exponent) : new BigRational(1, BigInteger.One << -exponent);
             q /= factor;
@@ -67,6 +73,7 @@ namespace EllipticCurves
         }
         internal RealEnclosure Pi()
         {
+            Token.ThrowIfCancellationRequested();
             if (pi != null) return pi;
             RealEnclosure Atan(int denominator)
             {
@@ -75,12 +82,16 @@ namespace EllipticCurves
                 for (int k = 0; k < count; k++)
                 { Token.ThrowIfCancellationRequested(); var term = Div(power, I(2 * k + 1)); sum = k % 2 == 0 ? Add(sum, term) : Sub(sum, term); power = Mul(power, z2); }
                 var tail = Div(Abs(power), I(2 * count + 1)).UpperBound;
+                Token.ThrowIfCancellationRequested();
                 return Add(sum, new RealEnclosure(-tail, tail));
             }
-            pi = Sub(Mul(I(16), Atan(5)), Mul(I(4), Atan(239))); return pi;
+            var result = Sub(Mul(I(16), Atan(5)), Mul(I(4), Atan(239)));
+            Token.ThrowIfCancellationRequested();
+            return pi = result;
         }
         internal RealEnclosure Agm(RealEnclosure a, RealEnclosure b)
         {
+            Token.ThrowIfCancellationRequested();
             if (a.LowerBound <= 0 || b.LowerBound <= 0) throw new ArithmeticException("AGM requires positive enclosures.");
             for (int k = 0; k < Options.MaxIterations; k++)
             {
@@ -91,10 +102,12 @@ namespace EllipticCurves
                 if (bounds.Width < Min(Tolerance / 100, new BigRational(1, BigInteger.One << (Options.PrecisionBits / 2)))) return bounds;
                 var nextA = Div(Add(a, b), I(2)); b = Sqrt(Mul(a, b)); a = nextA;
             }
+            Token.ThrowIfCancellationRequested();
             throw new ArithmeticException("AGM precision or iteration limit reached.");
         }
         internal RealEnclosure Finish(RealEnclosure a)
         {
+            Token.ThrowIfCancellationRequested();
             if (a.Width > Tolerance) throw new ArithmeticException("Requested accuracy was not reached; increase PrecisionBits and, for a large regulator, GuardDigits.");
             return a;
         }

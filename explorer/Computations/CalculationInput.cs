@@ -122,11 +122,20 @@ public static class CalculationInput
     }
 
     public static FiniteFieldElement Element(FiniteField field, string text)
+        => Element(field, text, default);
+
+    public static FiniteFieldElement Element(FiniteField field, string text, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
         var coefficients = (BigRational[])ParseScalar(typeof(FiniteFieldElement), text);
         var result = field.Zero;
         for (var i = coefficients.Length - 1; i >= 0; i--)
-            result = result * field.Generator + field.CreateElement(coefficients[i].Num) / field.CreateElement(coefficients[i].Den);
+        {
+            token.ThrowIfCancellationRequested();
+            var coefficient = field.Divide(field.CreateElement(coefficients[i].Num), field.CreateElement(coefficients[i].Den), token);
+            result = field.Multiply(result, field.Generator, token) + coefficient;
+        }
+        token.ThrowIfCancellationRequested();
         return result;
     }
 
@@ -151,10 +160,10 @@ public static class CalculationInput
                 return infinity ? EllipticCurvePointFp.Infinity : fp.CreatePoint(
                     (BigInteger)ParseScalar(typeof(BigInteger), values[key + ".x"]), (BigInteger)ParseScalar(typeof(BigInteger), values[key + ".y"]));
             var fq = (EllipticCurveFq)target;
-            return infinity ? EllipticCurvePointFq.Infinity : fq.CreatePoint(Element(fq.Field, values[key + ".x"]), Element(fq.Field, values[key + ".y"]));
+            return infinity ? EllipticCurvePointFq.Infinity : fq.CreatePoint(Element(fq.Field, values[key + ".x"], token), Element(fq.Field, values[key + ".y"], token));
         }
         if (type == typeof(FiniteFieldElement))
-            return Element(target is FiniteField field ? field : ((EllipticCurveFq)target).Field, values[key]);
+            return Element(target is FiniteField field ? field : ((EllipticCurveFq)target).Field, values[key], token);
         return ParseScalar(type, values[key]);
     }
 }

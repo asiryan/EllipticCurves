@@ -17,7 +17,10 @@ namespace EllipticCurves
             if (IsSingular) throw new InvalidOperationException("Isogenies require a nonsingular curve.");
             var generators = kernelGenerators.ToArray();
             foreach (var generator in generators)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!IsOnCurve(generator)) throw new ArgumentException("Kernel generator is not on the curve.", nameof(kernelGenerators));
+            }
             var kernel = new HashSet<EllipticCurvePoint> { EllipticCurvePoint.Infinity };
             foreach (var generator in generators)
             {
@@ -32,13 +35,18 @@ namespace EllipticCurves
                     if (multiples.Count == 12 && !p.IsInfinity) throw new ArgumentException("Kernel generator has infinite order.", nameof(kernelGenerators));
                 } while (!p.IsInfinity);
                 var previous = kernel.ToArray();
-                foreach (var q in previous) foreach (var t in multiples) kernel.Add(Add(q, t));
+                foreach (var q in previous) foreach (var t in multiples)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    kernel.Add(Add(q, t));
+                }
             }
             return VeluFromKernel(kernel, cancellationToken);
         }
 
         private RationalIsogeny VeluFromKernel(IEnumerable<EllipticCurvePoint> kernel, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             var sourceKernel = kernel.Distinct().OrderBy(p => p.IsInfinity ? 0 : 1).ThenBy(p => p.X).ThenBy(p => p.Y).ToArray();
             var change = GetShortModelIsomorphism(); var shortModel = change.Target;
             var shortKernel = sourceKernel.Where(p => !p.IsInfinity).Select(change.Map).ToArray();
@@ -86,7 +94,7 @@ namespace EllipticCurves
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("Isogenies require a nonsingular curve.");
             var result = new List<TwoIsogenyPair>();
-            foreach (var p in TorsionPoints)
+            foreach (var p in GetTorsionPoints(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!p.IsInfinity && Double(p).IsInfinity) result.Add(CreateTwoIsogeny(p, cancellationToken));

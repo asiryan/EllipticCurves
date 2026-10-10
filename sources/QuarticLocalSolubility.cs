@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -22,11 +23,12 @@ namespace EllipticCurves
             return InChart(q, p, false, budget) || InChart(q.Reverse(), p, true, budget);
         }
 
-        private static int Valuation(BigInteger n, BigInteger p)
+        private static int Valuation(BigInteger n, BigInteger p, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             if (n.IsZero) return int.MaxValue;
             int v = 0;
-            while (n % p == 0) { n /= p; v++; }
+            while (n % p == 0) { token.ThrowIfCancellationRequested(); n /= p; v++; }
             return v;
         }
         private static bool InChart(BinaryQuartic q, BigInteger p, bool atInfinity, DescentBudget budget)
@@ -41,7 +43,7 @@ namespace EllipticCurves
                 var ball = stack.Pop();
                 if (ball.digit < 0)
                 {
-                    int decision = Decide(q, ball.x, p, ball.depth);
+                    int decision = Decide(q, ball.x, p, ball.depth, budget.Token);
                     if (decision > 0) return true;
                     if (decision < 0) continue;
                     ball.digit = 0;
@@ -53,18 +55,18 @@ namespace EllipticCurves
             return false;
         }
 
-        private static int Decide(BinaryQuartic q, BigInteger x, BigInteger p, int depth)
+        private static int Decide(BinaryQuartic q, BigInteger x, BigInteger p, int depth, CancellationToken token)
         {
             var value = q.Evaluate(x);
             if (value.IsZero) return 1;
-            int valuation = Valuation(value, p);
+            int valuation = Valuation(value, p, token);
             var unit = value / BigInteger.Pow(p, valuation);
             bool even = valuation % 2 == 0;
             if (even && (p == 2 ? NativeNumberTheory.Mod(unit, 8) == 1
                 : BigInteger.ModPow(NativeNumberTheory.Mod(unit, p), (p - 1) / 2, p) == 1)) return 1;
 
             var derivative = ((4 * q.A * x + 3 * q.B) * x + 2 * q.C) * x + q.D;
-            int dv = Valuation(derivative, p);
+            int dv = Valuation(derivative, p, token);
             // Hensel produces an exact zero, hence a point with y=0. The zero is
             // congruent to x mod p, so also belongs to the infinity chart if used.
             if (valuation > 2L * dv) return 1;
@@ -74,9 +76,9 @@ namespace EllipticCurves
             // entire ball is nonsquare. Otherwise subdivide; no finite sieve is
             // promoted to a positive local-solubility result.
             long variation = Math.Min((long)dv + depth,
-                Math.Min((long)Valuation(6 * q.A * x * x + 3 * q.B * x + q.C, p) + 2L * depth,
-                Math.Min((long)Valuation(4 * q.A * x + q.B, p) + 3L * depth,
-                    (long)Valuation(q.A, p) + 4L * depth)));
+                Math.Min((long)Valuation(6 * q.A * x * x + 3 * q.B * x + q.C, p, token) + 2L * depth,
+                Math.Min((long)Valuation(4 * q.A * x + q.B, p, token) + 3L * depth,
+                    (long)Valuation(q.A, p, token) + 4L * depth)));
             if (variation <= valuation) return 0;
             if (!even || p != 2) return -1;
             if (variation >= valuation + 3L) return -1;

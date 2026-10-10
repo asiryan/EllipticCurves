@@ -69,13 +69,13 @@ namespace EllipticCurves
             int digits = (int)(BigInteger.Log10(n) + 1);
             int bound = digits < 30 ? 2000 : digits < 40 ? 8000 : digits < 50 ? 25000
                 : digits < 60 ? 60000 : digits < 70 ? 150000 : 300000;
-            var primes = NativeNumberTheory.SievePrimes(bound);
+            var primes = NativeNumberTheory.SievePrimes(bound, token);
             foreach (int p in primes)
             {
                 token.ThrowIfCancellationRequested();
                 if (n % p == 0) return p;
             }
-            int multiplier = ChooseMultiplier(n, primes);
+            int multiplier = ChooseMultiplier(n, primes, token);
             int workers = WorkerCount(digits, maxWorkers, Environment.ProcessorCount);
             if (workers == 1) return new NativeQuadraticSieve(n, multiplier, primes, token).Run();
             using (var stop = CancellationTokenSource.CreateLinkedTokenSource(token))
@@ -122,6 +122,7 @@ namespace EllipticCurves
         private NativeQuadraticSieve(BigInteger n, int multiplier, int[] primes, CancellationToken token,
             NativeQuadraticSieve owner = null)
         {
+            token.ThrowIfCancellationRequested();
             this.n = n;
             this.token = token;
             relationOwner = owner ?? this;
@@ -132,40 +133,51 @@ namespace EllipticCurves
             {
                 token.ThrowIfCancellationRequested();
                 int residue = (int)(sievedNumber % p);
-                if (p > 2 && residue != 0 && InternalMath.Legendre(residue, p) != 1) continue;
-                factorBase.Add(new BasePrime { P = p, SquareRoot = SquareRootModPrime(residue, p), Log = (float)Math.Log(p) });
+                if (p > 2 && residue != 0 && InternalMath.Legendre(residue, p, token) != 1) continue;
+                factorBase.Add(new BasePrime { P = p, SquareRoot = SquareRootModPrime(residue, p, token), Log = (float)Math.Log(p) });
             }
             else foreach (var prime in owner.factorBase)
+            {
+                token.ThrowIfCancellationRequested();
                 factorBase.Add(new BasePrime { P = prime.P, SquareRoot = prime.SquareRoot, Log = prime.Log });
+            }
             basis = new Row[factorBase.Count + 1];
             words = (basis.Length + 1 + 63) / 64;
             largeBound = (long)primes[primes.Length - 1] * 64;
-            targetA = InternalMath.IntegerSqrt(2 * sievedNumber) / radius;
+            targetA = InternalMath.IntegerSqrt(2 * sievedNumber, token) / radius;
             if (owner == null) PreparePrimePowers();
             else foreach (var power in owner.powers)
+            {
+                token.ThrowIfCancellationRequested();
                 powers.Add(new SievePower { Modulus = power.Modulus, PrimeIndex = power.PrimeIndex,
                     SquareRoots = power.SquareRoots, Log = power.Log });
+            }
+            token.ThrowIfCancellationRequested();
         }
 
-        private static int ChooseMultiplier(BigInteger n, int[] primes)
+        private static int ChooseMultiplier(BigInteger n, int[] primes, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             int best = 1;
             double bestScore = double.NegativeInfinity;
             foreach (int k in new[] { 1, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73 })
             {
+                token.ThrowIfCancellationRequested();
                 var kn = n * k;
                 int mod8 = (int)(kn % 8);
                 double score = -0.5 * Math.Log(k) + Math.Log(2) * (mod8 == 1 ? 2 : mod8 == 5 ? 1 : 0.5);
                 foreach (int p in primes)
                 {
+                    token.ThrowIfCancellationRequested();
                     if (p == 2) continue;
                     if (p > 1000) break;
                     int residue = (int)(kn % p);
                     if (residue == 0) score += Math.Log(p) / p;
-                    else if (InternalMath.Legendre(residue, p) == 1) score += 2 * Math.Log(p) / (p - 1);
+                    else if (InternalMath.Legendre(residue, p, token) == 1) score += 2 * Math.Log(p) / (p - 1);
                 }
                 if (score > bestScore) { bestScore = score; best = k; }
             }
+            token.ThrowIfCancellationRequested();
             return best;
         }
 
@@ -213,10 +225,15 @@ namespace EllipticCurves
                     }
                     for (int i = 0; i < factorBase.Count; i++)
                     {
+                        if ((i & 255) == 0) token.ThrowIfCancellationRequested();
                         var prime = factorBase[i];
                         int residue = index % prime.P;
                         if (residue != prime.Root1 && residue != prime.Root2) continue;
-                        while (value % prime.P == 0) { factors.Add(i + 1); value /= prime.P; }
+                        while (value % prime.P == 0)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            factors.Add(i + 1); value /= prime.P;
+                        }
                     }
                     if (value > largeBound) continue;
                     factors.AddRange(aFactors);
@@ -261,6 +278,7 @@ namespace EllipticCurves
                 int modulus = p;
                 while (true)
                 {
+                    token.ThrowIfCancellationRequested();
                     powers.Add(new SievePower { Modulus = modulus, PrimeIndex = index,
                         SquareRoots = roots.ToArray(), Log = prime.Log });
                     if (modulus > scores.Length / p) break;
@@ -268,6 +286,7 @@ namespace EllipticCurves
                     var lifted = new List<int>();
                     foreach (int r in roots)
                     {
+                        token.ThrowIfCancellationRequested();
                         if (p == 2)
                         {
                             for (int next = r; next < nextModulus; next += modulus)
@@ -314,6 +333,7 @@ namespace EllipticCurves
                 else index = first + (int)(NextRandom() % (uint)(last - first));
                 while (factorBase[index].SquareRoot == 0 || Array.IndexOf(aFactors, index + 1, 0, i) >= 0)
                 {
+                    token.ThrowIfCancellationRequested();
                     index++;
                     if (index == factorBase.Count) index = minimum;
                 }
@@ -324,6 +344,7 @@ namespace EllipticCurves
             b = 0;
             for (int i = 0; i < count; i++)
             {
+                token.ThrowIfCancellationRequested();
                 var prime = factorBase[aFactors[i] - 1];
                 var quotient = a / prime.P;
                 int gamma = (int)((long)prime.SquareRoot * Inverse((int)(quotient % prime.P), prime.P) % prime.P);
@@ -360,6 +381,7 @@ namespace EllipticCurves
 
         private void SievePolynomial(BigInteger c, int changedPart, int direction)
         {
+            token.ThrowIfCancellationRequested();
             if (changedPart >= 0)
             {
                 presieveOffset -= direction * presieveShifts[changedPart];
@@ -369,6 +391,7 @@ namespace EllipticCurves
             int offset = presieveOffset;
             for (int index = 0; index < scores.Length;)
             {
+                token.ThrowIfCancellationRequested();
                 int length = Math.Min(PresieveWheel - offset, scores.Length - index);
                 Array.Copy(presieve, offset, scores, index, length);
                 index += length; offset = 0;
@@ -478,37 +501,45 @@ namespace EllipticCurves
                 foreach (int factor in selected.Factors) exponents[factor]++;
             }
             for (int i = 1; i < exponents.Length; i++)
+            {
+                token.ThrowIfCancellationRequested();
                 if (exponents[i] != 0) y = y * BigInteger.ModPow(factorBase[i - 1].P, exponents[i] / 2, n) % n;
+            }
             // Both square roots are tried; even a trivial dependency is harmless.
             var divisor = BigInteger.GreatestCommonDivisor(x - y, n);
+            token.ThrowIfCancellationRequested();
             if (divisor > 1 && divisor < n) return divisor;
             divisor = BigInteger.GreatestCommonDivisor(x + y, n);
+            token.ThrowIfCancellationRequested();
             return divisor > 1 && divisor < n ? divisor : BigInteger.One;
         }
 
-        private static int SquareRootModPrime(int value, int p)
+        private static int SquareRootModPrime(int value, int p, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             if (p == 2 || value == 0) return value;
-            if (p % 4 == 3) return InternalMath.ModPow(value, (p + 1) / 4, p);
+            if (p % 4 == 3) return InternalMath.ModPow(value, (p + 1) / 4, p, token);
             int odd = p - 1, twos = 0;
-            while ((odd & 1) == 0) { odd >>= 1; twos++; }
+            while ((odd & 1) == 0) { token.ThrowIfCancellationRequested(); odd >>= 1; twos++; }
             int nonresidue = 2;
-            while (InternalMath.Legendre(nonresidue, p) != -1) nonresidue++;
-            long c = InternalMath.ModPow(nonresidue, odd, p);
-            long x = InternalMath.ModPow(value, (odd + 1) / 2, p);
-            long t = InternalMath.ModPow(value, odd, p);
+            while (InternalMath.Legendre(nonresidue, p, token) != -1) nonresidue++;
+            long c = InternalMath.ModPow(nonresidue, odd, p, token);
+            long x = InternalMath.ModPow(value, (odd + 1) / 2, p, token);
+            long t = InternalMath.ModPow(value, odd, p, token);
             while (t != 1)
             {
+                token.ThrowIfCancellationRequested();
                 int i = 0;
                 long power = t;
-                while (power != 1) { power = power * power % p; i++; }
+                while (power != 1) { token.ThrowIfCancellationRequested(); power = power * power % p; i++; }
                 long b = c;
-                for (int j = 0; j < twos - i - 1; j++) b = b * b % p;
+                for (int j = 0; j < twos - i - 1; j++) { token.ThrowIfCancellationRequested(); b = b * b % p; }
                 x = x * b % p;
                 c = b * b % p;
                 t = t * c % p;
                 twos = i;
             }
+            token.ThrowIfCancellationRequested();
             return (int)x;
         }
     }

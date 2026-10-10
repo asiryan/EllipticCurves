@@ -53,7 +53,7 @@ namespace EllipticCurves
             if (hasTwoTorsion)
             {
                 var quadraticDiscriminant = (a + root) * (a + root) - 4 * (b + a * root + root * root);
-                torsionDimension = quadraticDiscriminant > 0 && BigRational.IsSquare(new BigRational(quadraticDiscriminant), out _) ? 2 : 1;
+                torsionDimension = quadraticDiscriminant > 0 && BigRational.IsSquare(new BigRational(quadraticDiscriminant), out _, cancellationToken) ? 2 : 1;
             }
             var budget = new DescentBudget(options, cancellationToken);
             var pointRank = new RationalPointRank(e, torsionDimension, budget);
@@ -78,11 +78,11 @@ namespace EllipticCurves
                     foreach (var p in Factor(b, cancellationToken).Keys)
                     {
                         var p2 = p * p; var p4 = p2 * p2;
-                        while (a % p2 == 0 && b % p4 == 0) { a /= p2; b /= p4; }
+                        while (a % p2 == 0 && b % p4 == 0) { cancellationToken.ThrowIfCancellationRequested(); a /= p2; b /= p4; }
                     }
                     var dualB = a * a - 4 * b;
-                    firstImageLower = BigRational.IsSquare(new BigRational(b), out _) ? 0 : 1;
-                    secondImageLower = BigRational.IsSquare(new BigRational(dualB), out _) ? 0 : 1;
+                    firstImageLower = BigRational.IsSquare(new BigRational(b), out _, cancellationToken) ? 0 : 1;
+                    secondImageLower = BigRational.IsSquare(new BigRational(dualB), out _, cancellationToken) ? 0 : 1;
                     var first = IsogenyImageBounds(a, b, budget, dimension => firstImageLower = dimension);
                     var second = IsogenyImageBounds(-2 * a, dualB, budget, dimension => secondImageLower = dimension);
                     lower = Math.Max(pointRank.LowerBound, first.lower + second.lower - 2);
@@ -139,7 +139,11 @@ namespace EllipticCurves
             for (int i = 0; i < factors.Length; i++)
             {
                 if ((factors[i].Value & 1) != 0) torsionClass |= 1 << (i + 1);
-                for (int j = 0; j < used; j++) values[used + j] = values[j] * factors[i].Key;
+                for (int j = 0; j < used; j++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    values[used + j] = values[j] * factors[i].Key;
+                }
                 used *= 2;
             }
             var basis = new int[factors.Length + 1];

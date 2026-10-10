@@ -40,13 +40,13 @@ namespace EllipticCurves
                 while (delta % p12 == 0 && c4 % p4 == 0 && c6 % p6 == 0)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!TryIntegralModel(c4 / p4, c6 / p6, out _)) break;
+                    if (!TryIntegralModel(c4 / p4, c6 / p6, out _, cancellationToken)) break;
                     c4 /= p4;
                     c6 /= p6;
                     delta /= p12;
                 }
             }
-            if (!TryIntegralModel(c4, c6, out var model))
+            if (!TryIntegralModel(c4, c6, out var model, cancellationToken))
                 throw new InvalidOperationException("Unable to reconstruct integral invariants.");
             return model;
         }
@@ -99,11 +99,12 @@ namespace EllipticCurves
 
         // A reduced integral model has a1,a3 in {0,1} and a2 in {-1,0,1}.
         // Trying these 12 possibilities is an exact form of Kraus's integrality test.
-        private static bool TryIntegralModel(BigInteger c4, BigInteger c6, out EllipticCurveQ model)
+        private static bool TryIntegralModel(BigInteger c4, BigInteger c6, out EllipticCurveQ model, CancellationToken token)
         {
             for (int a1 = 0; a1 <= 1; a1++)
             for (int a2 = -1; a2 <= 1; a2++)
             {
+                token.ThrowIfCancellationRequested();
                 BigInteger b2 = a1 * a1 + 4 * a2;
                 if ((b2 * b2 - c4) % 24 != 0) continue;
                 var b4 = (b2 * b2 - c4) / 24;
@@ -138,6 +139,7 @@ namespace EllipticCurves
         // Mathematical reference: Cremona, Algorithms for Modular Elliptic Curves, III.3.2.
         private static int WildConductorExponent(EllipticCurveQ e, int p, int n, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             BigInteger r, s, t;
             if (p == 2)
             {

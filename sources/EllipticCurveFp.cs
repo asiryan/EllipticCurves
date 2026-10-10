@@ -42,39 +42,71 @@ namespace EllipticCurves
             var b8 = Mod(A1 * A1 * A6 + 4 * A2 * A6 - A1 * A3 * A4 + A2 * A3 * A3 - A4 * A4);
             C4 = Mod(b2 * b2 - 24 * b4); C6 = Mod(-b2 * b2 * b2 + 36 * b2 * b4 - 216 * b6);
             Discriminant = Mod(-b2 * b2 * b8 - 8 * b4 * b4 * b4 - 27 * b6 * b6 + 9 * b2 * b4 * b6);
+            cancellationToken.ThrowIfCancellationRequested();
             if (Discriminant.IsZero) throw new ArgumentException("The equation is singular over the requested prime field.");
         }
 
         private BigInteger Mod(BigInteger value) => NativeNumberTheory.Mod(value, Prime);
-        private BigInteger Inverse(BigInteger value)
+        private BigInteger ModPow(BigInteger value, BigInteger exponent, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
+            var result = BigInteger.ModPow(value, exponent, Prime);
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        private BigInteger Inverse(BigInteger value, CancellationToken token = default)
+        {
+            token.ThrowIfCancellationRequested();
             value = Mod(value);
             if (value.IsZero) throw new DivideByZeroException();
-            return BigInteger.ModPow(value, Prime - 2, Prime);
+            return ModPow(value, Prime - 2, token);
         }
-        private BigInteger Rhs(BigInteger x) => Mod(((x + A2) * x + A4) * x + A6);
-        private void Validate(EllipticCurvePointFp point)
-        { if (!IsOnCurve(point)) throw new ArgumentException("Point is not on this curve over its base field.", nameof(point)); }
+        private BigInteger Rhs(BigInteger x, CancellationToken token = default)
+        {
+            token.ThrowIfCancellationRequested();
+            var result = Mod(((x + A2) * x + A4) * x + A6);
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        private void Validate(EllipticCurvePointFp point, CancellationToken token = default)
+        { if (!IsOnCurveCore(point, token)) throw new ArgumentException("Point is not on this curve over its base field.", nameof(point)); }
 
         /// <summary>Reduce coordinates modulo p and create a point, rejecting points outside the curve.</summary>
         public EllipticCurvePointFp CreatePoint(BigInteger x, BigInteger y)
         { var point = new EllipticCurvePointFp(Prime, Mod(x), Mod(y)); Validate(point); return point; }
         /// <summary>Check both the field modulus and the curve equation.</summary>
-        public bool IsOnCurve(EllipticCurvePointFp point) => point.IsInfinity ||
-            (point.Prime == Prime && Mod(point.Y * point.Y + (A1 * point.X + A3) * point.Y - Rhs(point.X)).IsZero);
-        /// <summary>Negate a point.</summary>
-        public EllipticCurvePointFp Negate(EllipticCurvePointFp point)
-        { Validate(point); return point.IsInfinity ? point : new EllipticCurvePointFp(Prime, point.X, Mod(-point.Y - A1 * point.X - A3)); }
-        /// <summary>Add two points using the general Weierstrass group law.</summary>
-        public EllipticCurvePointFp Add(EllipticCurvePointFp p, EllipticCurvePointFp q)
+        public bool IsOnCurve(EllipticCurvePointFp point) => IsOnCurveCore(point, default);
+        private bool IsOnCurveCore(EllipticCurvePointFp point, CancellationToken token)
         {
-            Validate(p); Validate(q);
+            token.ThrowIfCancellationRequested();
+            bool result = point.IsInfinity || (point.Prime == Prime &&
+                Mod(point.Y * point.Y + (A1 * point.X + A3) * point.Y - Rhs(point.X, token)).IsZero);
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        /// <summary>Negate a point.</summary>
+        public EllipticCurvePointFp Negate(EllipticCurvePointFp point) => NegateCore(point, default);
+        private EllipticCurvePointFp NegateCore(EllipticCurvePointFp point, CancellationToken token)
+        {
+            Validate(point, token);
+            var result = point.IsInfinity ? point : new EllipticCurvePointFp(Prime, point.X, Mod(-point.Y - A1 * point.X - A3));
+            token.ThrowIfCancellationRequested();
+            return result;
+        }
+        /// <summary>Add two points using the general Weierstrass group law.</summary>
+        public EllipticCurvePointFp Add(EllipticCurvePointFp p, EllipticCurvePointFp q) => AddCore(p, q, default);
+        private EllipticCurvePointFp AddCore(EllipticCurvePointFp p, EllipticCurvePointFp q, CancellationToken token)
+        {
+            Validate(p, token); Validate(q, token);
             if (p.IsInfinity) return q; if (q.IsInfinity) return p;
-            if (p.X == q.X && Mod(p.Y + q.Y + A1 * p.X + A3).IsZero) return EllipticCurvePointFp.Infinity;
-            var slope = p.X != q.X ? Mod((q.Y - p.Y) * Inverse(q.X - p.X)) :
-                Mod((3 * p.X * p.X + 2 * A2 * p.X + A4 - A1 * p.Y) * Inverse(2 * p.Y + A1 * p.X + A3));
+            bool inversePoints = p.X == q.X && Mod(p.Y + q.Y + A1 * p.X + A3).IsZero;
+            token.ThrowIfCancellationRequested();
+            if (inversePoints) return EllipticCurvePointFp.Infinity;
+            var slope = p.X != q.X ? Mod((q.Y - p.Y) * Inverse(q.X - p.X, token)) :
+                Mod((3 * p.X * p.X + 2 * A2 * p.X + A4 - A1 * p.Y) * Inverse(2 * p.Y + A1 * p.X + A3, token));
             var x = Mod(slope * slope + A1 * slope - A2 - p.X - q.X);
             var y = Mod(-(slope + A1) * x - A3 - p.Y + slope * p.X);
+            token.ThrowIfCancellationRequested();
             return new EllipticCurvePointFp(Prime, x, y);
         }
         /// <summary>Double a point.</summary>
@@ -84,15 +116,16 @@ namespace EllipticCurves
         /// <summary>Multiply by an arbitrary signed integer.</summary>
         public EllipticCurvePointFp Multiply(EllipticCurvePointFp point, BigInteger n, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested(); Validate(point);
-            if (n.Sign < 0) { point = Negate(point); n = -n; }
+            cancellationToken.ThrowIfCancellationRequested(); Validate(point, cancellationToken);
+            if (n.Sign < 0) { point = NegateCore(point, cancellationToken); n = -n; }
             var result = EllipticCurvePointFp.Infinity;
             while (n > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!n.IsEven) result = Add(result, point);
-                n >>= 1; if (n > 0) point = Double(point);
+                if (!n.IsEven) result = AddCore(result, point, cancellationToken);
+                n >>= 1; if (n > 0) point = AddCore(point, point, cancellationToken);
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return result;
         }
 
@@ -109,16 +142,17 @@ namespace EllipticCurves
             for (BigInteger x = 0; x < Prime; x++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var rhs = Rhs(x); var b = Mod(A1 * x + A3);
+                var rhs = Rhs(x, cancellationToken); var b = Mod(A1 * x + A3);
                 if (Prime == 2)
                 { for (int y = 0; y < 2; y++) if (Mod(y * y + b * y - rhs).IsZero) count++; }
                 else
                 {
                     var d = Mod(b * b + 4 * rhs);
                     if (d.IsZero) count++;
-                    else if (BigInteger.ModPow(d, (Prime - 1) / 2, Prime).IsOne) count += 2;
+                    else if (ModPow(d, (Prime - 1) / 2, cancellationToken).IsOne) count += 2;
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return count;
         }
         /// <summary>Enumerate all points, with infinity first. The search is complete when enumeration finishes.</summary>
@@ -129,46 +163,57 @@ namespace EllipticCurves
             for (BigInteger x = 0; x < Prime; x++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var rhs = Rhs(x); var b = Mod(A1 * x + A3);
+                var rhs = Rhs(x, cancellationToken); var b = Mod(A1 * x + A3);
                 if (Prime == 2)
-                { for (int y = 0; y < 2; y++) if (Mod(y * y + b * y - rhs).IsZero) yield return new EllipticCurvePointFp(Prime, x, y); }
+                {
+                    for (int y = 0; y < 2; y++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (Mod(y * y + b * y - rhs).IsZero) yield return new EllipticCurvePointFp(Prime, x, y);
+                    }
+                }
                 else if (TrySquareRoot(Mod(b * b + 4 * rhs), cancellationToken, out var root))
                 {
                     yield return new EllipticCurvePointFp(Prime, x, Mod((root - b) * half));
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (!root.IsZero) yield return new EllipticCurvePointFp(Prime, x, Mod((-root - b) * half));
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
         }
         private bool TrySquareRoot(BigInteger value, CancellationToken token, out BigInteger root)
         {
+            token.ThrowIfCancellationRequested();
             root = 0; if (value.IsZero) return true;
-            if (BigInteger.ModPow(value, (Prime - 1) / 2, Prime) != 1) return false;
-            if (Prime % 4 == 3) { root = BigInteger.ModPow(value, (Prime + 1) / 4, Prime); return true; }
+            if (ModPow(value, (Prime - 1) / 2, token) != 1) return false;
+            if (Prime % 4 == 3) { root = ModPow(value, (Prime + 1) / 4, token); return true; }
             BigInteger odd = Prime - 1; int s = 0;
-            while (odd.IsEven) { odd >>= 1; s++; }
+            while (odd.IsEven) { token.ThrowIfCancellationRequested(); odd >>= 1; s++; }
             BigInteger z = 2;
-            while (BigInteger.ModPow(z, (Prime - 1) / 2, Prime) != Prime - 1) { token.ThrowIfCancellationRequested(); z++; }
-            var c = BigInteger.ModPow(z, odd, Prime); root = BigInteger.ModPow(value, (odd + 1) / 2, Prime);
-            var t = BigInteger.ModPow(value, odd, Prime);
+            while (ModPow(z, (Prime - 1) / 2, token) != Prime - 1) z++;
+            var c = ModPow(z, odd, token); root = ModPow(value, (odd + 1) / 2, token);
+            var t = ModPow(value, odd, token);
             while (t != 1)
             {
                 token.ThrowIfCancellationRequested(); int i = 0; var square = t;
-                while (square != 1 && i < s) { square = Mod(square * square); i++; }
+                while (square != 1 && i < s) { token.ThrowIfCancellationRequested(); square = Mod(square * square); i++; }
                 if (i == s) throw new ArithmeticException("Modular square-root iteration failed.");
-                var b = BigInteger.ModPow(c, BigInteger.One << (s - i - 1), Prime);
+                var b = ModPow(c, BigInteger.One << (s - i - 1), token);
                 root = Mod(root * b); c = Mod(b * b); t = Mod(t * c); s = i;
             }
+            token.ThrowIfCancellationRequested();
             return true;
         }
         /// <summary>Exact point order, using a complete direct point count and factorization of the group order.</summary>
         public BigInteger GetPointOrder(EllipticCurvePointFp point, long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested(); Validate(point);
+            cancellationToken.ThrowIfCancellationRequested(); Validate(point, cancellationToken);
             if (maxWork < 0) throw new ArgumentOutOfRangeException(nameof(maxWork));
             if (point.IsInfinity) return 1;
             var order = CountPoints(maxWork, cancellationToken);
             foreach (var prime in NativeNumberTheory.Factor(order, cancellationToken).Keys)
                 while (order % prime == 0 && Multiply(point, order / prime, cancellationToken).IsInfinity) order /= prime;
+            cancellationToken.ThrowIfCancellationRequested();
             return order;
         }
         /// <inheritdoc/>

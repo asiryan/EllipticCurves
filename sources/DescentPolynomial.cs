@@ -16,10 +16,15 @@ namespace EllipticCurves
             return r.Sign < 0 ? q - 1 : q;
         }
         internal static BigInteger Ceiling(BigRational x) => -Floor(-x);
-        internal static BigRational Evaluate(BigRational[] f, BigRational x)
+        internal static BigRational Evaluate(BigRational[] f, BigRational x, CancellationToken token = default)
         {
+            token.ThrowIfCancellationRequested();
             var y = BigRational.Zero;
-            for (int i = f.Length - 1; i >= 0; i--) y = y * x + f[i];
+            for (int i = f.Length - 1; i >= 0; i--)
+            {
+                token.ThrowIfCancellationRequested();
+                y = y * x + f[i];
+            }
             return y;
         }
         private static BigRational[] Trim(BigRational[] f)
@@ -38,7 +43,11 @@ namespace EllipticCurves
             {
                 token.ThrowIfCancellationRequested();
                 var q = result[i - g.Length + 1] = r[i] / g[g.Length - 1];
-                for (int j = 0; j < g.Length; j++) r[i - g.Length + 1 + j] -= q * g[j];
+                for (int j = 0; j < g.Length; j++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    r[i - g.Length + 1 + j] -= q * g[j];
+                }
             }
             if (Trim(r).Length != 0) throw new InvalidOperationException("Inexact polynomial division.");
             return Trim(result);
@@ -50,7 +59,11 @@ namespace EllipticCurves
             {
                 token.ThrowIfCancellationRequested();
                 var q = r[i] / g[g.Length - 1];
-                for (int j = 0; j < g.Length; j++) r[i - g.Length + 1 + j] -= q * g[j];
+                for (int j = 0; j < g.Length; j++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    r[i - g.Length + 1 + j] -= q * g[j];
+                }
             }
             return Trim(r);
         }
@@ -65,16 +78,22 @@ namespace EllipticCurves
                 if (r.Length == 0) return Sturm(Quotient(sequence[0], sequence[sequence.Count - 1], token), token);
                 // Positive normalization limits coefficient growth and preserves variations.
                 var scale = r[r.Length - 1].Abs();
-                sequence.Add(r.Select(x => -x / scale).ToArray());
+                var normalized = new BigRational[r.Length];
+                for (int i = 0; i < r.Length; i++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    normalized[i] = -r[i] / scale;
+                }
+                sequence.Add(normalized);
             }
             return sequence;
         }
-        private static int Variations(List<BigRational[]> sequence, BigRational x)
+        private static int Variations(List<BigRational[]> sequence, BigRational x, CancellationToken token)
         {
             int previous = 0, count = 0;
             foreach (var f in sequence)
             {
-                int sign = Evaluate(f, x).Sign;
+                int sign = Evaluate(f, x, token).Sign;
                 if (sign == 0) continue;
                 if (previous != 0 && previous != sign) count++;
                 previous = sign;
@@ -90,21 +109,24 @@ namespace EllipticCurves
             var sequence = Sturm(f, budget.Token);
             BigInteger bound = 1;
             for (int i = 0; i < f.Length - 1; i++)
+            {
+                budget.Token.ThrowIfCancellationRequested();
                 bound = BigInteger.Max(bound, 1 + Ceiling((f[i] / f[f.Length - 1]).Abs()));
+            }
             var left = new BigRational(-bound); var right = new BigRational(bound);
             var stack = new Stack<(BigRational l, BigRational r, int vl, int vr)>();
-            stack.Push((left, right, Variations(sequence, left), Variations(sequence, right)));
+            stack.Push((left, right, Variations(sequence, left, budget.Token), Variations(sequence, right, budget.Token)));
             while (stack.Count != 0)
             {
                 budget.Step();
                 var s = stack.Pop(); int count = s.vl - s.vr;
                 if (count == 0) continue;
-                if (count == 1 && Evaluate(f, s.r).IsZero)
+                if (count == 1 && Evaluate(f, s.r, budget.Token).IsZero)
                 { roots.Add(RationalInterval.Exact(s.r)); continue; }
                 if (count == 1 && s.r - s.l <= width)
                 { roots.Add(new RationalInterval(s.l, s.r)); continue; }
                 var mid = (s.l + s.r) / 2;
-                int vm = Variations(sequence, mid);
+                int vm = Variations(sequence, mid, budget.Token);
                 stack.Push((mid, s.r, vm, s.vr));
                 stack.Push((s.l, mid, s.vl, vm));
             }
@@ -119,18 +141,26 @@ namespace EllipticCurves
             if (f.Length <= 1) return false;
             if (f[0].IsZero) return true;
             BigInteger denominator = 1;
-            foreach (var a in f) denominator = InternalMath.Lcm(denominator, a.Den);
-            var coefficients = f.Select(a => a.Num * (denominator / a.Den)).ToArray();
-            BigInteger gcd = 0;
-            foreach (var a in coefficients) gcd = BigInteger.GreatestCommonDivisor(gcd, a);
-            var leading = BigInteger.Abs(coefficients[coefficients.Length - 1] / gcd);
+            foreach (var a in f)
+            {
+                budget.Token.ThrowIfCancellationRequested();
+                denominator = InternalMath.Lcm(denominator, a.Den);
+            }
+            BigInteger gcd = 0, leadingCoefficient = 0;
+            foreach (var a in f)
+            {
+                budget.Token.ThrowIfCancellationRequested();
+                leadingCoefficient = a.Num * (denominator / a.Den);
+                gcd = BigInteger.GreatestCommonDivisor(gcd, leadingCoefficient);
+            }
+            var leading = BigInteger.Abs(leadingCoefficient / gcd);
             // Rational root theorem: leading*x is integral. Root isolation avoids
             // factoring the often very large constant of an equivalence polynomial.
             foreach (var root in RealRoots(f, new BigRational(1, 4 * leading), budget))
                 for (var n = Ceiling(root.Lower * new BigRational(leading)); n <= Floor(root.Upper * new BigRational(leading)); n++)
                 {
                     budget.Step();
-                    if (Evaluate(f, new BigRational(n, leading)).IsZero) return true;
+                    if (Evaluate(f, new BigRational(n, leading), budget.Token).IsZero) return true;
                 }
             return false;
         }

@@ -134,9 +134,11 @@ enlargements. The independence calculation defaults to 16 digits at 384 bits.
 Preparation (minimalization, torsion, heights) is outside the work counter.
 Polynomial coefficient sizes and exact root-isolation costs can grow rapidly;
 the method is intended for modest rank and small saturation primes. Counters are
-not wall-clock or memory limits. Cancellation is cooperative; the existing torsion
-enumeration is not interruptible internally, and cancellation is observed when
-that preparation completes.
+not wall-clock or memory limits. Cancellation is cooperative throughout preparation
+and saturation, including torsion factorization/enumeration, exact root extraction,
+point multiplication and polynomial searches. An individual `BigInteger` operation
+finishes before the next cancellation check. Cancellation throws
+`OperationCanceledException`; it is not a work-limit or incomplete-proof result.
 
 ## LMFDB adapter
 
@@ -165,7 +167,9 @@ records are reported explicitly.
 `MordellWeilGenerators` and `TorsionGenerators` are on `GlobalMinimalModel`.
 Stored triples [a,b,c] use weighted coordinates x=a/c², y=b/c³; each parsed point
 is checked against the model. `GetGeneratorsOnModel(curve)` performs the exact
-coordinate change. Missing optional fields are null; present empty lists remain
+coordinate change. `GetGeneratorsOnModel(curve, token)` also cancels exact
+isomorphism preparation and generator mapping; `FetchAsync` passes its token into
+candidate isomorphism checks. Missing optional fields are null; present empty lists remain
 empty, which matters for rank-zero curves. `FromStoredDataJson(json)` supports
 offline aggregate snapshots such as
 [the 37.a1 data page](https://www.lmfdb.org/EllipticCurve/Q/data/37.a1).

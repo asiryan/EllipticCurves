@@ -8,8 +8,8 @@ namespace EllipticCurves
     {
         internal static DyadicInterval Leading(BigInteger conductor, long[] a, int rank, int count, CancellationToken token)
         {
-            var alpha = DyadicInterval.Integer(2) * DyadicInterval.Pi() / DyadicInterval.SqrtInteger(conductor);
-            var q = DyadicInterval.ExpNegative(alpha); var power = DyadicInterval.Integer(1);
+            var alpha = DyadicInterval.Integer(2) * DyadicInterval.Pi(token) / DyadicInterval.SqrtInteger(conductor, token);
+            var q = DyadicInterval.ExpNegative(alpha, token); var power = DyadicInterval.Integer(1);
             var sum = DyadicInterval.Integer(0);
             for (int n = 1; n <= count; n++)
             {
@@ -38,7 +38,7 @@ namespace EllipticCurves
         {
             var l = new DyadicInterval(start, start); var end = DyadicInterval.Integer(96);
             if (start >= end.Lower)
-                return new DyadicInterval(0, (DyadicInterval.ExpNegative(l) / l).Upper);
+                return new DyadicInterval(0, (DyadicInterval.ExpNegative(l, token) / l).Upper);
             var sum = DyadicInterval.Integer(0);
             while (l.Lower < end.Lower)
             {
@@ -56,6 +56,7 @@ namespace EllipticCurves
                 // The even coefficients are exp(-c)/c * sum_(k=0)^j c^k/k! / c^j.
                 for (int j = 0; j < 80; j++)
                 {
+                    token.ThrowIfCancellationRequested();
                     if (j > 0)
                     {
                         exponentialTerm = exponentialTerm * c / DyadicInterval.Integer(j);
@@ -64,14 +65,14 @@ namespace EllipticCurves
                     if (j % 2 == 0) series += partialExponential * qPower / DyadicInterval.Integer(j + 1);
                     qPower *= q;
                 }
-                var integral = DyadicInterval.Integer(2) * h * DyadicInterval.ExpNegative(c) / c * series;
+                var integral = DyadicInterval.Integer(2) * h * DyadicInterval.ExpNegative(c, token) / c * series;
                 // q<=1/3; S_j(c)<=exp(c) gives a geometric bound for j>=80 (positive terms).
                 var remainder = DyadicInterval.Integer(2) * q * qPower
                     / (DyadicInterval.Integer(81) * (DyadicInterval.Integer(1) - q * q));
                 sum += new DyadicInterval(integral.Lower, integral.Upper + remainder.Upper);
                 l = r;
             }
-            return new DyadicInterval(sum.Lower, sum.Upper + (DyadicInterval.ExpNegative(end) / end).Upper);
+            return new DyadicInterval(sum.Lower, sum.Upper + (DyadicInterval.ExpNegative(end, token) / end).Upper);
         }
     }
 }

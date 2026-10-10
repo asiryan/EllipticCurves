@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Numerics;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -123,7 +124,12 @@ namespace EllipticCurves
         /// denominator to be perfect squares in Z.
         /// </summary>
         public static bool IsSquare(BigRational r, out BigRational s)
+            => IsSquare(r, out s, default);
+
+        /// <summary>Exact rational-square test with cooperative cancellation during integer square-root iterations.</summary>
+        public static bool IsSquare(BigRational r, out BigRational s, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             s = default;
             if (r.Sign < 0) return false; // no real square roots for negative rationals
 
@@ -131,33 +137,43 @@ namespace EllipticCurves
             var an = BigInteger.Abs(r.Num);
             var ad = r.Den;
 
-            if (!TryIntegerSquareRoot(an, out var sn)) return false;
-            if (!TryIntegerSquareRoot(ad, out var sd)) return false;
+            if (!TryIntegerSquareRoot(an, out var sn, cancellationToken)) return false;
+            if (!TryIntegerSquareRoot(ad, out var sd, cancellationToken)) return false;
 
             s = new BigRational(sn, sd);
             // Safety: verify s^2 == r exactly (guards against any corner cases).
-            return (s * s) == r;
+            bool exact = (s * s) == r;
+            cancellationToken.ThrowIfCancellationRequested();
+            return exact;
         }
 
         /// <summary>
         /// Try exact integer square root: returns true iff n is a perfect square and
         /// outputs rt = sqrt(n). Otherwise returns false and sets rt = floor(sqrt(n)).
         /// </summary>
-        private static bool TryIntegerSquareRoot(BigInteger n, out BigInteger rt)
+        private static bool TryIntegerSquareRoot(BigInteger n, out BigInteger rt, CancellationToken cancellationToken)
         {
-            rt = IntegerSquareRoot(n);
-            return rt * rt == n;
+            rt = IntegerSquareRoot(n, cancellationToken);
+            bool exact = rt * rt == n;
+            cancellationToken.ThrowIfCancellationRequested();
+            return exact;
         }
 
         /// <summary>
         /// floor(sqrt(n)) for n ≥ 0 using a monotone Newton iteration.
         /// For n ∈ {0,1} returns n; otherwise converges from above.
         /// </summary>
-        private static BigInteger IntegerSquareRoot(BigInteger n)
+        private static BigInteger IntegerSquareRoot(BigInteger n, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (n <= 1) return n;
             BigInteger x0 = n, x1 = (n >> 1) + 1;
-            while (x1 < x0) { x0 = x1; x1 = (x1 + n / x1) >> 1; }
+            while (x1 < x0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                x0 = x1; x1 = (x1 + n / x1) >> 1;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
             return x0;
         }
 

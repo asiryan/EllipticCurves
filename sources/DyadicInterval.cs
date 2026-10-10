@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -42,21 +43,28 @@ namespace EllipticCurves
         }
         internal DyadicInterval Widen(BigInteger units) => new DyadicInterval(Lower - units, Upper + units);
 
-        internal static DyadicInterval SqrtInteger(BigInteger n)
+        internal static DyadicInterval SqrtInteger(BigInteger n, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var square = n * Scale * Scale;
-            var root = InternalMath.IntegerSqrt(square);
+            var root = InternalMath.IntegerSqrt(square, cancellationToken);
             return new DyadicInterval(root, root * root == square ? root : root + 1);
         }
 
-        internal static DyadicInterval ExpNegative(DyadicInterval x)
+        internal static DyadicInterval ExpNegative(DyadicInterval x, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (x.Lower.Sign < 0) throw new ArgumentOutOfRangeException(nameof(x));
             int shifts = 0;
-            while (x.Upper > Scale) { x /= Integer(2); shifts++; }
+            while (x.Upper > Scale)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                x /= Integer(2); shifts++;
+            }
             var sum = Integer(1); var term = sum;
             for (int k = 1; ; k++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 term = term * x / Integer(k); sum += term;
                 if (term.Upper <= 1)
                 {
@@ -66,25 +74,38 @@ namespace EllipticCurves
                 }
             }
             var result = Integer(1) / sum;
-            for (int k = 0; k < shifts; k++) result *= result;
+            for (int k = 0; k < shifts; k++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                result *= result;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
             return result;
         }
 
-        internal static DyadicInterval Pi()
+        internal static DyadicInterval Pi(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Machin's formula and the alternating-series remainder.
             DyadicInterval Atan(int q)
             {
                 var power = new BigInteger(q); var sum = Integer(0);
                 for (int k = 0; ; k++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var term = Fraction(1, (2 * k + 1) * power);
                     sum = k % 2 == 0 ? sum + term : sum - term;
-                    if (term.Upper <= 1) return sum.Widen(1);
+                    if (term.Upper <= 1)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return sum.Widen(1);
+                    }
                     power *= q * q;
                 }
             }
-            return Integer(16) * Atan(5) - Integer(4) * Atan(239);
+            var result = Integer(16) * Atan(5) - Integer(4) * Atan(239);
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
         }
     }
 }

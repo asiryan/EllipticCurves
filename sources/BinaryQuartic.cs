@@ -58,7 +58,7 @@ namespace EllipticCurves
                 squareRoot = 0;
                 var value = Evaluate(x, z);
                 if (value < 0) return false;
-                squareRoot = InternalMath.IntegerSqrt(value);
+                squareRoot = InternalMath.IntegerSqrt(value, budget.Token);
                 return squareRoot * squareRoot == value;
             }
             if (!budget.PointStep()) return false;

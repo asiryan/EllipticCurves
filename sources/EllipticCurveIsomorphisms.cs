@@ -11,11 +11,16 @@ namespace EllipticCurves
 
         /// <summary>Find a rational isomorphism to the given model, if one exists.</summary>
         public bool TryGetIsomorphism(EllipticCurveQ target, out WeierstrassIsomorphism isomorphism)
+            => TryGetIsomorphism(target, out isomorphism, default);
+
+        /// <summary>Find a rational isomorphism with cooperative cancellation of exact root extraction.</summary>
+        public bool TryGetIsomorphism(EllipticCurveQ target, out WeierstrassIsomorphism isomorphism, CancellationToken cancellationToken)
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
+            cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular || target.IsSingular) throw new InvalidOperationException("Singular models are not supported.");
             isomorphism = null;
-            if (!InternalMath.IsQIsomorphic(C4, C6, Discriminant, target.C4, target.C6, target.Discriminant, out var u)) return false;
+            if (!InternalMath.IsQIsomorphic(C4, C6, Discriminant, target.C4, target.C6, target.Discriminant, out var u, cancellationToken)) return false;
             var s = (u * target.A1 - A1) / 2;
             var r = (u * u * target.A2 - A2 + s * A1 + s * s) / 3;
             var t = (BigRational.Pow(u, 3) * target.A3 - A3 - r * A1) / 2;
@@ -29,7 +34,7 @@ namespace EllipticCurves
         public WeierstrassIsomorphism GetMinimalModelIsomorphism(CancellationToken cancellationToken = default)
         {
             var minimal = GetGlobalMinimalModel(cancellationToken);
-            if (!TryGetIsomorphism(minimal, out var map)) throw new InvalidOperationException("Minimal model is not isomorphic to the input.");
+            if (!TryGetIsomorphism(minimal, out var map, cancellationToken)) throw new InvalidOperationException("Minimal model is not isomorphic to the input.");
             // The coordinate-change constructor makes a new curve. Its target
             // was checked equal to minimal, so reuse the same prepared model.
             map.Target.minimalModelCache.Get(() => minimal, cancellationToken);
