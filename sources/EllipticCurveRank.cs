@@ -38,6 +38,12 @@ namespace EllipticCurves
         /// a null upper bound and preserves the proved lower bound in either descent.
         /// No BSD, GRH or parity assumption is used.
         /// </summary>
+        /// <remarks>Limits count selected descent and point-search steps, not elapsed time or memory.
+        /// Minimalization, factorization, 2-torsion detection and good-prime character preparation are outside these counters.</remarks>
+        /// <exception cref="ArgumentNullException">Options are null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">An option is outside its supported range.</exception>
+        /// <exception cref="InvalidOperationException">The curve is singular or a proof consistency check fails.</exception>
+        /// <exception cref="OperationCanceledException">Cancellation was requested; cancellation does not return partial bounds.</exception>
         public RankBounds GetRankBounds(RankComputationOptions options, CancellationToken cancellationToken = default)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));

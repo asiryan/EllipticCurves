@@ -14,7 +14,8 @@ Mathematics (ICARM), supported by NSF Grant DMS 2425401.
 `/api/ec_curvedata/?conductor=i37&_format=json&_fields=lmfdb_label,ainvs&_sort=conductor,lmfdb_label`.
 The Explorer import tests use its labels and exact coefficients without network access.
 
-Generated using PARI/GP 2.19.0 development 31236-59c418aa0c, compiled 2026-09-08,
+The arithmetic CSV fixtures were generated using PARI/GP 2.19.0 development
+31236-59c418aa0c, compiled 2026-09-08,
 from the [official Windows snapshot](https://pari.math.u-bordeaux.fr/download.html).
 All inputs are explicit coefficients. The scripts use `ellglobalred`,
 `ellminimalmodel`, `elllocalred`, `ellrank`, `ell2cover`, `ellrootno`, `ellan`, `ellanalyticrank`
@@ -112,7 +113,8 @@ foreach ($entry in @(@('L,','local-data'), @('P,','periods'), @('H,','heights'))
 }
 ```
 
-`lmfdb-*.json` are unmodified aggregate JSON responses downloaded on 2026-09-10
+`lmfdb-11a1.json`, `lmfdb-37a1.json`, `lmfdb-48a3.json`, `lmfdb-389a1.json` and
+`lmfdb-5077a1.json` are unmodified aggregate JSON responses downloaded on 2026-09-10
 from `https://www.lmfdb.org/EllipticCurve/Q/data/{label}?_format=json`, for labels
 11.a1, 37.a1, 48.a3, 389.a1 and 5077.a1. Their original table names, counts and
 decimal precision metadata are preserved. Sources:

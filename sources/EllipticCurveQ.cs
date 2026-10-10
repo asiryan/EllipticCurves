@@ -365,6 +365,8 @@ namespace EllipticCurves
         /// <summary>Compute and cache all rational torsion points on the input model.
         /// Cancellation covers factorization, reductions, divisor enumeration and root searches.
         /// Only completed results are cached; a cancelled attempt can be retried.</summary>
+        /// <remarks>Concurrent callers wait with their own cancellation tokens. A cancelled token is checked even for a cached result.
+        /// A single BigInteger operation completes before the next cancellation check.</remarks>
         public IReadOnlyList<EllipticCurvePoint> GetTorsionPoints(CancellationToken cancellationToken = default)
             => torsionPointsCache.Get(() => ComputeTorsionPoints(cancellationToken), cancellationToken);
 

@@ -2,7 +2,8 @@ using System;
 
 namespace EllipticCurves
 {
-    /// <summary>Resource limits for exact rational text parsing. Limits apply before an input is accepted.</summary>
+    /// <summary>Acceptance limits for exact rational text parsing, snapshotted at the start of each call.
+    /// Early size estimates and exact integer-size checks enforce these limits; they are not elapsed-time or peak-allocation bounds.</summary>
     public sealed class RationalParsingOptions
     {
         /// <summary>Maximum input length, including whitespace. Must be positive; defaults to 20,000 characters.</summary>
@@ -11,7 +12,7 @@ namespace EllipticCurves
         public int MaxExponent { get; set; } = 4096;
         /// <summary>Maximum bit length of the final normalized numerator and denominator. Must be positive; defaults to 32,768 bits.</summary>
         public int MaxValueBits { get; set; } = 32768;
-        /// <summary>Maximum bit length of integers used to construct the numeric components and the final fraction.
+        /// <summary>Maximum accepted bit length of component integers, decimal powers and final fraction products, before normalization.
         /// Must be positive; defaults to 131,072 bits. This separate budget permits large components that cancel in a fraction.</summary>
         public int MaxIntermediateBits { get; set; } = 131072;
 

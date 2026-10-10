@@ -19,7 +19,8 @@ integer arithmetic without a floating-point intermediate, independently of cultu
 `Parse(null)` throws `ArgumentNullException`. Malformed text, a zero denominator
 and resource-limit exhaustion throw `FormatException`. `TryParse` returns false
 for these inputs, including null, and sets its output to `BigRational.Zero`.
-Invalid parsing options throw `ArgumentOutOfRangeException` in either API.
+Invalid parsing options throw `ArgumentOutOfRangeException` in either API,
+before text validation or assignment to the `TryParse` output.
 
 `RationalParsingOptions` can be supplied to `Parse(text, options)` or
 `TryParse(text, options, out value)`. Null options select the defaults:
@@ -33,7 +34,12 @@ Invalid parsing options throw `ArgumentOutOfRangeException` in either API.
 
 Length and bit limits must be positive; the exponent limit may be zero.
 Intermediate limits are separate because large components can cancel to a small
-result, such as `N/N`. Limit checks precede oversized powers and products.
+result, such as `N/N`. Each component must still fit the intermediate budget;
+for example, zero divided by an excessive component is rejected. The parser
+checks length and exponents first, rejects obviously excessive digit strings and
+decimal powers before allocation, and checks exact integer and product sizes
+after construction. These are acceptance limits, not strict peak-memory or
+elapsed-time bounds. Parsing has no cancellation-token overload.
 The limits are snapshotted at the start of each call. A larger exact value can
 be parsed with explicitly increased limits; round-tripping `value.ToString()`
 requires enough space and bit allowance for that value.
@@ -63,7 +69,8 @@ returns an affine point in the existing `EllipticCurvePoint` representation.
 Validation precedes identity shortcuts and a zero multiplier. The point at
 infinity is accepted on any nonsingular model. `MultiplyChecked` honors
 cancellation before validation and within scalar multiplication; the input is
-validated once rather than on every internal group operation.
+validated once rather than on every internal group operation. Cancellation cannot
+interrupt a membership check or an individual rational group operation.
 
 Points are coordinate values without a stored curve identity. Membership is
 checked against the receiving curve's equation. `default(EllipticCurvePoint)`
@@ -85,5 +92,7 @@ second GCD, while the public fraction constructor continues to normalize arbitra
 inputs. Results keep a positive denominator, coprime numerator and denominator,
 and the canonical zero `0/1`, including `default(BigRational)`.
 
-The scalar multiplication loop skips its unused final doubling. These changes
-reduce temporary integer sizes while keeping exact mathematical results.
+The scalar multiplication loop skips its unused final doubling. Cross cancellation
+can reduce temporary integer sizes when operands share factors; for small or
+coprime inputs, the added GCD work may outweigh that benefit. Mathematical results
+remain exact.

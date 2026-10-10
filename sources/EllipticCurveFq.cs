@@ -7,6 +7,10 @@ namespace EllipticCurves
 {
     /// <summary>A nonsingular general Weierstrass curve over a specified finite field F_(p^k).
     /// Supports characteristics two and three. Counting visits q x-coordinates; point enumeration visits q^2 pairs.</summary>
+    /// <remarks>Point operations validate membership and field presentations before identity shortcuts or a zero multiplier.
+    /// Infinity is accepted; a default affine point is invalid. Group operations throw ArgumentException for invalid points.
+    /// Construction and basic group operations have no cancellation token. Multiply, CountPoints and Points check cooperative cancellation;
+    /// individual BigInteger operations and field addition are not interruptible.</remarks>
     public sealed class EllipticCurveFq : IEquatable<EllipticCurveFq>
     {
         /// <summary>Base field, including its defining polynomial.</summary>
@@ -31,6 +35,8 @@ namespace EllipticCurves
         public FiniteFieldElement JInvariant => C4 * C4 * C4 / Discriminant;
 
         /// <summary>Create a curve with coefficients in the specified field presentation; reject singular equations.</summary>
+        /// <exception cref="ArgumentNullException">field is null.</exception>
+        /// <exception cref="ArgumentException">A coefficient is invalid or belongs to an incompatible field, or the equation is singular.</exception>
         public EllipticCurveFq(FiniteField field, FiniteFieldElement a1, FiniteFieldElement a2,
             FiniteFieldElement a3, FiniteFieldElement a4, FiniteFieldElement a6)
         {
@@ -64,7 +70,7 @@ namespace EllipticCurves
         { var point = new EllipticCurvePointFq(x, y); Validate(point); return point; }
         /// <summary>Create a point with integer coordinates in the prime subfield.</summary>
         public EllipticCurvePointFq CreatePoint(BigInteger x, BigInteger y) => CreatePoint(Field.CreateElement(x), Field.CreateElement(y));
-        /// <summary>Check the field presentations and curve equation. Default points are invalid.</summary>
+        /// <summary>Accept infinity, or check the field presentations and curve equation. Default points return false.</summary>
         public bool IsOnCurve(EllipticCurvePointFq point) => IsOnCurveCore(point, default);
         private bool IsOnCurveCore(EllipticCurvePointFq point, CancellationToken token)
         {
@@ -138,8 +144,10 @@ namespace EllipticCurves
             if (Field.Order * Field.Order > maxWork)
                 throw new ArithmeticException("Direct point enumeration requires q^2 coordinate-pair checks; the work limit is too small.");
         }
-        /// <summary>Count every point including infinity by counting the solutions in y for each x. maxWork bounds q x-coordinates,
-        /// not field operations or elapsed time. A limit throws instead of returning a partial count.</summary>
+        /// <summary>Count every point including infinity by counting the solutions in y for each x. maxWork must be nonnegative
+        /// and bounds q x-coordinates, not field operations or elapsed time. A limit throws before counting starts.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
+        /// <exception cref="ArithmeticException">q exceeds maxWork.</exception>
         public BigInteger CountPoints(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -181,8 +189,11 @@ namespace EllipticCurves
             cancellationToken.ThrowIfCancellationRequested();
             return count;
         }
-        /// <summary>Enumerate all points, infinity first, with a prechecked q^2 coordinate-pair limit.
+        /// <summary>Lazily enumerate all points, infinity first, with a q^2 coordinate-pair limit.
+        /// Limits and cancellation are checked on the first MoveNext, before yielding infinity.
         /// Enumeration must finish to establish completeness.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
+        /// <exception cref="ArithmeticException">q^2 exceeds maxWork.</exception>
         public IEnumerable<EllipticCurvePointFq> Points(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
             CheckSearchLimit(maxWork, cancellationToken);

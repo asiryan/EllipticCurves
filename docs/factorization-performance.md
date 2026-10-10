@@ -110,7 +110,8 @@ sums work across threads; it is not elapsed time. Each sample has a five-minute 
 
 ## Reproduce the original comparison
 
-From the repository root, with .NET 8 or newer installed:
+From the repository root, with the .NET 8 SDK installed (or a newer SDK together
+with the .NET 8 runtime):
 
 ```powershell
 dotnet run --project tests/FactorizationBenchmark/FactorizationBenchmark.csproj -c Release

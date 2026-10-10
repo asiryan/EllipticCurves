@@ -30,8 +30,13 @@ The area is enclosed by the existing root-isolation/AGM period algorithm. Logari
 the exact rational correction and all subsequent operations round outwards.
 The final width is checked after taking the logarithm; an inadequate period
 enclosure or insufficient precision throws instead of silently lowering accuracy.
-Singular curves, invalid options, exhausted period work and cancellation follow
-the existing period API's behavior. Neither height is constrained to be positive.
+Singular curves throw `InvalidOperationException`; invalid options throw
+`ArgumentOutOfRangeException`; exhausted root/AGM work or inadequate accuracy
+throws `ArithmeticException`. Cancellation throws `OperationCanceledException`
+at cooperative checks. Null options select defaults: 12 decimal digits, 256
+precision bits, 512 maximum iterations and 100000 root-isolation steps. The API
+does not automatically increase precision or retry after a work-limit failure.
+Neither height is constrained to be positive.
 
 ```csharp
 var e = new EllipticCurveQ(0, 0, 1, -1, 0);
@@ -45,7 +50,9 @@ var stable = e.StableFaltingsHeight(options);
 `FiniteField(p, definingPolynomial, token)` represents F_p[t]/(f), including degree
 one. The coefficient list is ascending: `[1,0,1]` means 1+t^2. Construction reduces
 coefficients modulo p, removes trailing zeros and makes f monic. Constant or zero
-polynomials and composite characteristics are rejected.
+polynomials and reducible polynomials throw `ArgumentException`; a nonprime
+characteristic throws `ArgumentOutOfRangeException`. A null coefficient list
+throws `ArgumentNullException`.
 
 The characteristic is proved prime with the existing native number-theory routines.
 Irreducibility uses the exact Rabin criterion: for degree k, t^(p^k)=t modulo f,
@@ -69,10 +76,12 @@ Elements support addition, subtraction, negation, multiplication, division,
 `Inverse(token)` and `Pow(signedExponent, token)`. Field methods expose the same
 operations. Integer addition, subtraction and multiplication embed the integer
 in the prime subfield; an integer is not interpreted as a base-p element encoding.
-Zero division and negative powers of zero throw. The convention for exponent zero
-is a^0=1, including 0^0. Multiplication is dense polynomial multiplication/reduction;
+Zero division and negative powers of zero throw `DivideByZeroException`. The
+convention for exponent zero is a^0=1, including 0^0. Multiplication is dense polynomial multiplication/reduction;
 inversion uses a^(q-2). A default-initialized element is invalid and arithmetic
-rejects it.
+rejects it. Calling `Inverse` or `Pow` on a default element throws
+`InvalidOperationException`; passing a default or incompatible element to a field
+arithmetic method throws `ArgumentException`.
 
 Fields compare by characteristic and normalized defining polynomial. Separately
 constructed equal presentations can interoperate. Equal cardinality alone does
@@ -81,7 +90,10 @@ part of this API. Equality and hashes include the presentation.
 
 `Elements(maxElements, token)` lazily enumerates the whole field in increasing
 base-p coefficient encoding, starting with zero. It rejects a field whose order
-exceeds maxElements (default 1000000) before yielding its first element.
+exceeds maxElements (default 1000000) with `ArithmeticException` before yielding
+its first element; a negative limit throws `ArgumentOutOfRangeException`. As with
+point enumeration, validation begins on the first `MoveNext`, not when the
+enumerable is obtained.
 
 ## Curves and points over F_(p^k)
 
@@ -129,14 +141,21 @@ yielded first. Its limit counts q^2 coordinate pairs, so the default 1000000
 supports q<=1000. Both limits are checked using BigInteger to avoid overflow.
 A work-limit exception does not report a partial count. Stopping lazy point
 enumeration early does not establish completeness.
+Both methods reject negative limits with `ArgumentOutOfRangeException` and
+insufficient limits with `ArithmeticException`; `Points` checks its limit on the
+first `MoveNext`, before yielding infinity.
 
 Work limits count x-coordinates or pairs, not field operations or seconds.
 One field operation can itself be expensive for large degree or characteristic.
-Construction and basic arithmetic have no work counter. Cancellation is checked
-in polynomial power/reduction loops, trace squarings, between point group
-operations, and at every enumerated x or pair; the operators and a single
-BigInteger operation are not internally interruptible. Large fields remain usable
-for arithmetic even when counting or enumeration is disallowed. The existing
+Construction and basic arithmetic have no work counter. The `FiniteField`
+constructor and `Multiply`, `Divide`, `Inverse` and `Pow` methods accept tokens.
+`CreateElement`, field addition/subtraction/negation, the element operators and
+`EllipticCurveFq` construction have no cancellation parameter. Curve `Multiply`,
+`CountPoints` and `Points` propagate tokens into field multiplication, inversion
+and powers. Cancellation is checked in those polynomial loops, trace squarings,
+between point group operations, and at every enumerated x or pair; a single
+BigInteger operation or field addition is not internally interruptible. Large
+fields remain usable for arithmetic even when counting or enumeration is disallowed. The existing
 `EllipticCurveFp` API retains its specialized direct counting for prime fields.
 
 This addition does not implement SEA, discrete logarithms, field embeddings,

@@ -21,6 +21,8 @@ namespace EllipticCurves
         /// integral reconstruction. Integer factorization can be expensive; cancellation is supported.
         /// Successful results are cached on this curve instance.
         /// </summary>
+        /// <remarks>Concurrent callers wait with their own cancellation tokens. Failed or cancelled preparation is not cached.
+        /// Cancellation is checked before returning a cached value; its original worker settings do not force recomputation.</remarks>
         public EllipticCurveQ GetGlobalMinimalModel(CancellationToken cancellationToken = default)
             => GetGlobalMinimalModelCore(cancellationToken, 0);
 

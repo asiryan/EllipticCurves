@@ -1,7 +1,7 @@
 # Elliptic Curves Explorer
 
 A WPF desktop application on .NET 8 for exploring elliptic-curve geometry and
-the full computational API of the EllipticCurves library. Native calculations run
+the mathematical API of the EllipticCurves library. Native calculations run
 locally. The explicit LMFDB search and fetch commands are the only operations that use the
 network; plotting and editing do not make network requests.
 
@@ -235,15 +235,18 @@ The point at infinity is not drawn in the affine plot.
 Inputs outside the numerical plot's representable range retain exact invariants
 and show a plot precision message. To bound input processing, text is limited to
 100,000 characters per equation and 20,000 per number, with scientific exponents
-limited to ±4096. Each side of an equation accepts up to 4096 terms. Numerators and denominators
-of intermediate expressions and normalized coefficients are limited to 32768 bits
-(roughly 9800 decimal digits); parser nesting is also limited to 64 levels.
+limited to ±4096. Numeric input uses the library's exact `BigRational` parser,
+with a separate 131072-bit budget for constructing components before fraction
+reduction. Accepted numbers, normalized coefficients and intermediate equation
+expressions are limited to 32768-bit numerators and denominators (roughly 9800
+decimal digits). Each side of an equation accepts up to 4096 terms; parser nesting
+is limited to 64 levels. See [numeric parsing and checked points](../docs/rational-input-and-points.md).
 These checks bound expression growth during input processing. Long terminating
 decimals may be formatted as fractions so generated equations remain readable by
 the editor, calculations and session files. Slider results that exceed the coefficient
 limit are reported as invalid input and cannot be saved until corrected.
 
-Gold markers are exact affine rational points found with `RationalPoints(12, 4)`:
+Gold markers are exact affine rational points found with `RationalPoints(12, 4, cancellationToken)`:
 their x-coordinates are `m/n`, with `|m| ≤ 12` and `1 ≤ n ≤ 4`. This is a bounded
 sample, not a complete list of rational points or a Mordell–Weil basis. The search
 runs in the background after a 120 ms debounce. Superseded searches are cancelled,
@@ -351,7 +354,7 @@ plot panel's own toolbar.
 
 | Category | Available calculations |
 | --- | --- |
-| Curve and models | Exact coefficients and invariants, real components, CM discriminant, short and global minimal models, twists, construction from j |
+| Curve and models | Exact coefficients and invariants, real components, CM discriminant, short and global minimal models, twists, construction from j, validated affine point construction |
 | Rational points and torsion | Membership, addition, subtraction, negation, doubling, scalar multiplication, bounded rational/integral searches, all torsion points, torsion order and group structure |
 | Ranks and arithmetic | Both rank-bound interfaces, rank verification from supplied points, analytic rank and certification, conductor and its factorization, root number, local reduction data, Tamagawa product |
 | Heights and periods | Naive, canonical, local and archimedean heights, height pairing and matrix, regulator, Faltings and stable Faltings heights, certified periods and numerical elliptic logarithms |
@@ -368,6 +371,9 @@ decimal separator. Field elements and defining
 polynomials use coefficients in ascending powers of t separated by semicolons:
 `0; 1` is t and `2; 0; 1` is t^2 + 2. Over Fp, curve tools reduce the **entered**
 coefficients; the separate reduction operations use a **global minimal model**.
+Rational group operations reject singular models and coordinates outside the
+captured curve. The library's `Checked` aliases share the existing actions rather
+than adding duplicate menu entries.
 
 Both rank-bound actions enable parallel general descent by default, using up to
 four workers (`min(4, max(1, Environment.ProcessorCount - 1))`). The
@@ -438,8 +444,8 @@ responses rather than live LMFDB requests.
 The calculation catalog covers public mathematical methods on rational curves,
 Fp/Fq curves, finite fields and rational numbers; explicit entries cover computed
 properties, returned isomorphism/isogeny maps and LMFDB. Object identity methods,
-formatting and duplicate aliases are not separate actions. Coverage tests check
-every public method, parameter conversion and representative offline invocation.
+text parsing, formatting and duplicate aliases are not separate actions. Coverage tests
+check every eligible mathematical method, parameter conversion and representative offline invocation.
 
 The executable's private `--compute-worker` entry point uses redirected UTF-8
 streams before creating WPF. `CalculationRunner` owns its child process and

@@ -64,8 +64,11 @@ rational roots and validates both ordinate signs with the exact group law.
 An empty result proves nondivisibility. `TryDividePoint` selects a preimage when
 one exists; its output is an unused infinity sentinel when it returns false.
 
-The degree limit applies to the n^2 multiplication equation. Counted polynomial
-and root-isolation work is limited separately. An incomplete search throws
+The defaults are `MaxWork=2000000` and `MaxDivisionDegree=1024`. The degree limit
+applies to the n^2 multiplication equation for a finite target. P=O is handled by
+the full torsion set, and n=+/-1 needs no polynomial search; neither path consumes
+the polynomial work allowance. Counted polynomial and root-isolation work is
+limited separately. An incomplete search throws
 `ArithmeticException`, so callers cannot mistake exhaustion for nondivisibility.
 Cancellation is cooperative during torsion preparation, polynomial searches,
 exact root extraction and validation by point multiplication. Torsion preparation
@@ -110,6 +113,9 @@ normalized Velu quotient has coefficients 16*A and 64*B; scaling by u=2 and
 undoing the original short-model change gives the dual with the correct sign.
 `GetTwoIsogenies()` returns one such pair for each rational nonzero 2-torsion point.
 Passing its cancellation token also cancels the preparation of the torsion subgroup.
+The tokens on all three construction APIs apply to kernel preparation and
+construction. A returned `RationalIsogeny.Map(P)` has no cancellation-token
+parameter; construction does not retain its caller's token for later map evaluation.
 
 This API requires a pointwise rational kernel. It does not accept a kernel
 polynomial with nonrational roots, discover all rational isogenies, or construct

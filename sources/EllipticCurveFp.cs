@@ -7,6 +7,9 @@ namespace EllipticCurves
 {
     /// <summary>A nonsingular general Weierstrass curve over F_p, including characteristics two and three.
     /// Counting and enumeration use direct search, not SEA.</summary>
+    /// <remarks>Point operations validate membership and the prime modulus, including before identity shortcuts and a zero multiplier.
+    /// Infinity is accepted; a default affine point is invalid. Group operations throw ArgumentException for invalid points.
+    /// Token-taking operations observe cooperative cancellation between arithmetic steps; individual BigInteger operations are not interruptible.</remarks>
     public sealed class EllipticCurveFp : IEquatable<EllipticCurveFp>
     {
         /// <summary>Prime defining the base field.</summary>
@@ -32,6 +35,8 @@ namespace EllipticCurves
 
         /// <summary>Create a curve, prove primality of p and reject singular equations.
         /// Primality verification can be expensive for primes beyond 64 bits.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">prime is not prime.</exception>
+        /// <exception cref="ArgumentException">The equation is singular modulo prime.</exception>
         public EllipticCurveFp(BigInteger prime, BigInteger a1, BigInteger a2, BigInteger a3, BigInteger a4, BigInteger a6,
             CancellationToken cancellationToken = default)
         {
@@ -74,7 +79,7 @@ namespace EllipticCurves
         /// <summary>Reduce coordinates modulo p and create a point, rejecting points outside the curve.</summary>
         public EllipticCurvePointFp CreatePoint(BigInteger x, BigInteger y)
         { var point = new EllipticCurvePointFp(Prime, Mod(x), Mod(y)); Validate(point); return point; }
-        /// <summary>Check both the field modulus and the curve equation.</summary>
+        /// <summary>Accept infinity, or check both the field modulus and the curve equation. Default points return false.</summary>
         public bool IsOnCurve(EllipticCurvePointFp point) => IsOnCurveCore(point, default);
         private bool IsOnCurveCore(EllipticCurvePointFp point, CancellationToken token)
         {
@@ -135,7 +140,10 @@ namespace EllipticCurves
             if (maxWork < 0) throw new ArgumentOutOfRangeException(nameof(maxWork));
             if (Prime > maxWork) throw new ArithmeticException("The direct search needs at least p x-coordinate steps.");
         }
-        /// <summary>Count all points, including infinity. The limit counts x-coordinates, not modular operations.</summary>
+        /// <summary>Count all points, including infinity. maxWork must be nonnegative and at least p;
+        /// it counts x-coordinates, not modular operations or elapsed time. A limit throws before counting starts.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
+        /// <exception cref="ArithmeticException">p exceeds maxWork.</exception>
         public BigInteger CountPoints(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
             CheckSearchLimit(maxWork, cancellationToken); BigInteger count = 1;
@@ -155,7 +163,11 @@ namespace EllipticCurves
             cancellationToken.ThrowIfCancellationRequested();
             return count;
         }
-        /// <summary>Enumerate all points, with infinity first. The search is complete when enumeration finishes.</summary>
+        /// <summary>Lazily enumerate all points, with infinity first. maxWork counts p x-coordinates.
+        /// Limits and cancellation are checked on the first MoveNext, before yielding infinity.
+        /// The search is complete when enumeration finishes.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
+        /// <exception cref="ArithmeticException">p exceeds maxWork.</exception>
         public IEnumerable<EllipticCurvePointFp> Points(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
             CheckSearchLimit(maxWork, cancellationToken); yield return EllipticCurvePointFp.Infinity;
@@ -204,7 +216,9 @@ namespace EllipticCurves
             token.ThrowIfCancellationRequested();
             return true;
         }
-        /// <summary>Exact point order, using a complete direct point count and factorization of the group order.</summary>
+        /// <summary>Exact point order. Infinity returns one without counting; maxWork must still be nonnegative.
+        /// For affine points, uses a complete direct point count and certified factorization of the group order,
+        /// so maxWork must be at least p and has the same meaning as in CountPoints.</summary>
         public BigInteger GetPointOrder(EllipticCurvePointFp point, long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested(); Validate(point, cancellationToken);

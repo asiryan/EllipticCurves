@@ -35,7 +35,7 @@ namespace EllipticCurves
 
         /// <summary>
         /// Create from a numerator/denominator pair and normalize:
-        ///  • throw if den == 0
+        ///  • throw DivideByZeroException if den == 0, including for 0/0
         ///  • move the sign into the numerator
         ///  • divide by gcd(|num|, den)
         ///  • normalize zero to 0/1
@@ -184,8 +184,8 @@ namespace EllipticCurves
         public static BigRational operator -(BigRational a) => a.Negate();
 
         /// <summary>
-        /// r^k for integer k ≥ 0. For k == 0 returns 1 by convention.
-        /// Note: if you need negative powers, use Reciprocal with a positive exponent.
+        /// r^k for integer k ≥ 0. For k == 0 returns 1, including 0^0.
+        /// Negative k throws ArgumentOutOfRangeException; use Reciprocal with a positive exponent instead.
         /// </summary>
         public static BigRational Pow(BigRational r, int k)
         {
@@ -198,13 +198,14 @@ namespace EllipticCurves
 
         /// <summary>
         /// Exact test for a rational square: returns true iff r = s^2 for some s ∈ Q
-        /// and outputs s in canonical form. Works by requiring both numerator and
-        /// denominator to be perfect squares in Z.
+        /// and outputs the nonnegative root s in canonical form. Returns false with s = Zero
+        /// for a negative value or a nonsquare. Requires both numerator and denominator to be perfect squares in Z.
         /// </summary>
         public static bool IsSquare(BigRational r, out BigRational s)
             => IsSquare(r, out s, default);
 
-        /// <summary>Exact rational-square test with cooperative cancellation during integer square-root iterations.</summary>
+        /// <summary>Exact rational-square test returning the nonnegative root, or false with s = Zero.
+        /// Checks cancellation on entry and during integer square-root iterations; individual BigInteger operations are not interruptible.</summary>
         public static bool IsSquare(BigRational r, out BigRational s, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

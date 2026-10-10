@@ -119,10 +119,14 @@ Selmer calculation; in that case the proved upper bound is retained. A lower bou
 of zero alone never proves rank zero.
 
 Descent work counts region enumeration, root-isolation/equivalence work and local
-lifting steps. Point work is shared by the original curve and covering searches.
+lifting steps. Point work is shared by the minimal-model curve and covering searches.
 Neither counter measures wall time or bounds a single arbitrary-precision operation.
 Initial minimization, factorization and rational 2-torsion detection are cancellable
-but outside these counters. Very large invariants can require impractical work.
+but outside these counters. Good-prime character preparation and the exact
+first-12-multiples infinite-order test are also outside them. Very large invariants
+can require impractical work. Cancellation is cooperative in preparation and
+descent; it throws instead of returning partial bounds. A single `BigInteger`
+operation finishes before the next cancellation check.
 
 `TwoSelmerDimension` is populated only after complete general descent.
 `UsedGeneralTwoDescent` and `UsedTwoIsogenyDescent` describe the selected method,

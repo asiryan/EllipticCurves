@@ -9,6 +9,10 @@ namespace EllipticCurves
     {
         /// <summary>All rational Q satisfying [n]Q = point, on the input model. Rejects n = 0 and int.MinValue.
         /// An empty list proves nondivisibility; a work or degree limit throws instead.</summary>
+        /// <remarks>The degree/work limits apply to polynomial searches for a finite target.
+        /// Infinity uses the full rational torsion set, and n = +/-1 needs no polynomial search. Torsion preparation is outside MaxWork.</remarks>
+        /// <exception cref="ArithmeticException">A degree or work limit prevents a complete division search.</exception>
+        /// <exception cref="OperationCanceledException">Cancellation was requested; no partial list is returned.</exception>
         public IReadOnlyList<EllipticCurvePoint> GetDivisionPoints(EllipticCurvePoint point, int n,
             PointDivisionOptions options = null, CancellationToken cancellationToken = default)
         {

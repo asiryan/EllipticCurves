@@ -8,12 +8,13 @@ namespace EllipticCurves
     {
         /// <summary>Parse exact invariant text: a signed ASCII integer or decimal, optional e/E exponent,
         /// or two such numbers separated by /. Leading/trailing whitespace and Unicode minus are accepted.
-        /// No floating-point conversion is used. Default resource limits apply.</summary>
+        /// No floating-point conversion is used. Default resource limits apply.
+        /// Null text throws ArgumentNullException; invalid text, a zero denominator or an exceeded limit throws FormatException.</summary>
         public static BigRational Parse(string text) => Parse(text, null);
 
         /// <summary>Parse exact invariant text with the supplied limits; null options select defaults.
         /// Null text throws ArgumentNullException. Malformed text, a zero denominator or an exceeded limit throws FormatException.
-        /// Invalid limits throw ArgumentOutOfRangeException.</summary>
+        /// Invalid limits throw ArgumentOutOfRangeException and are checked before the text is parsed.</summary>
         public static BigRational Parse(string text, RationalParsingOptions options)
         {
             var limits = (options ?? new RationalParsingOptions()).Snapshot();
@@ -28,7 +29,7 @@ namespace EllipticCurves
         public static bool TryParse(string text, out BigRational value) => TryParse(text, null, out value);
 
         /// <summary>Try to parse exact invariant text with the supplied limits; null options select defaults.
-        /// A failed parse clears value to zero. Invalid limits throw ArgumentOutOfRangeException.</summary>
+        /// Returning false clears value to zero. Invalid limits throw ArgumentOutOfRangeException before parsing or assigning value.</summary>
         public static bool TryParse(string text, RationalParsingOptions options, out BigRational value)
             => TryParseCore(text, (options ?? new RationalParsingOptions()).Snapshot(), out value);
 

@@ -10,6 +10,12 @@ namespace EllipticCurves
         /// Only an interval certificate for rank 0 or 1 produces ProvenRank; higher estimates are numerical.
         /// Limits apply to Fourier coefficients and integration, not to integer factorization.
         /// </summary>
+        /// <remarks>Numerical ambiguity or exhausted coefficient/integration limits returns Inconclusive.
+        /// A resolved numerical rank without a successful interval certificate returns NumericalEstimate, with ProvenRank null.
+        /// Numerical derivatives and their estimated errors are not rigorous enclosures; only the separate certificate proves rank 0 or 1.</remarks>
+        /// <exception cref="ArgumentOutOfRangeException">An option is outside its supported range.</exception>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="OperationCanceledException">Cancellation was requested, including during factorization or certification.</exception>
         public AnalyticRankResult EstimateAnalyticRank(AnalyticRankOptions options = null, CancellationToken cancellationToken = default)
         {
             options = options ?? new AnalyticRankOptions();

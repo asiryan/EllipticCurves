@@ -30,6 +30,8 @@ namespace EllipticCurves
         }
 
         /// <summary>Add points after checking nonsingularity and the membership of both inputs, including before identity shortcuts.</summary>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="ArgumentException">An input point is not on this curve.</exception>
         public EllipticCurvePoint AddChecked(EllipticCurvePoint p, EllipticCurvePoint q)
         {
             ValidateCheckedCurve();
@@ -39,6 +41,8 @@ namespace EllipticCurves
         }
 
         /// <summary>Double a point after checking nonsingularity and membership in this curve.</summary>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="ArgumentException">The point is not on this curve.</exception>
         public EllipticCurvePoint DoubleChecked(EllipticCurvePoint p)
         {
             ValidateCheckedCurve();
@@ -47,6 +51,8 @@ namespace EllipticCurves
         }
 
         /// <summary>Negate a point after checking nonsingularity and membership in this curve.</summary>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="ArgumentException">The point is not on this curve.</exception>
         public EllipticCurvePoint NegateChecked(EllipticCurvePoint p)
         {
             ValidateCheckedCurve();
@@ -55,6 +61,8 @@ namespace EllipticCurves
         }
 
         /// <summary>Subtract points after checking nonsingularity and the membership of both inputs.</summary>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="ArgumentException">An input point is not on this curve.</exception>
         public EllipticCurvePoint SubtractChecked(EllipticCurvePoint p, EllipticCurvePoint q)
         {
             ValidateCheckedCurve();
@@ -64,7 +72,9 @@ namespace EllipticCurves
         }
 
         /// <summary>Multiply a point after checking nonsingularity and membership, even when n is zero.
-        /// Checks the input once and observes cancellation between subsequent group operations.</summary>
+        /// Checks cancellation on entry, then validates the input once. Subsequent cancellation checks occur between group operations.</summary>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="ArgumentException">The point is not on this curve.</exception>
         public EllipticCurvePoint MultiplyChecked(EllipticCurvePoint p, BigInteger n,
             CancellationToken cancellationToken = default)
         {

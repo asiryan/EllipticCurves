@@ -10,6 +10,11 @@ namespace EllipticCurves
         /// <summary>Construct a Velu isogeny from generators of a finite subgroup of E(Q).
         /// All kernel points must be rational; this does not discover nonrational Galois-stable kernels.
         /// The target is a short model and is not necessarily minimal.</summary>
+        /// <remarks>The token cancels construction, including validation and enumeration of the finite kernel.
+        /// Later calls to the returned isogeny's Map method do not use this token.</remarks>
+        /// <exception cref="ArgumentException">A kernel generator is outside the curve or has infinite order.</exception>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="OperationCanceledException">Cancellation was requested during construction.</exception>
         public RationalIsogeny CreateIsogeny(IReadOnlyList<EllipticCurvePoint> kernelGenerators, CancellationToken cancellationToken = default)
         {
             if (kernelGenerators == null) throw new ArgumentNullException(nameof(kernelGenerators));
@@ -89,6 +94,7 @@ namespace EllipticCurves
         }
 
         /// <summary>All 2-isogenies over Q, one for each nonzero rational 2-torsion point, with duals.</summary>
+        /// <remarks>Cancellation includes full rational torsion preparation when it is not already cached.</remarks>
         public IReadOnlyList<TwoIsogenyPair> GetTwoIsogenies(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();

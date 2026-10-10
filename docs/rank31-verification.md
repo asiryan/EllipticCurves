@@ -20,6 +20,9 @@ certificate engine. Applications use the public
 [`GetRankLowerBound`](../README.md#rank-lower-bounds-from-supplied-points) API;
 Explorer exposes it as
 [Verify rank from supplied points](../explorer/README.md#verify-rank-from-supplied-points).
+The public API defaults to primes through 1009 and accepts a cancellation token;
+its finite set of characters may certify fewer independent points than supplied.
+A smaller lower bound does not prove dependence.
 
 ## What is proved
 
@@ -58,8 +61,10 @@ On 2026-09-13, with .NET 8.0.31 on the local Windows machine:
 | 1009 | 31 | 31 |
 
 One run took approximately 19 ms for reading the data and all four verification
-passes, excluding test discovery and .NET startup. Each test has a 30-second
-cancellation limit. This is a recorded run, not a performance guarantee.
+passes, excluding test discovery and .NET startup. Each test passes a token
+cancelled after 30 seconds into the cooperative verification loops; this is not
+a hard time limit on file reading or a single integer operation. This is a
+recorded run, not a performance guarantee.
 
 Replacing the last point with either a duplicate or
 the sum of the first two points yields a bound of 30. Incrementing a supplied
