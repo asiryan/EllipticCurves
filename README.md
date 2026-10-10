@@ -254,7 +254,8 @@ var regulator = e.Regulator(new[] { generator });
 var periods = e.GetPeriods();                     // RealPeriod approximately 5.98691729246
 
 var saturation = e.Saturate(
-    new[] { e.Multiply(generator, 6) }, new[] { 2, 3 });
+    new[] { e.Multiply(generator, 6) },
+    new[] { 2, 3 });
 // On completion: IndexGain = 6, CertifiedPrimes = [2, 3].
 // IsComplete certifies only the requested primes, not a full Mordell-Weil basis.
 ```
@@ -296,9 +297,11 @@ var logarithm = e.RealEllipticLogarithm(p);             // numerical, on the min
 
 var cm = new EllipticCurveQ(0, 0, 0, 0, 1);
 Console.WriteLine(cm.CmDiscriminant);                   // -3; zero denotes non-CM
-var threeIsogeny = cm.CreateIsogeny(new[] { new EllipticCurvePoint(0, 1) });
+var threeIsogeny = cm.CreateIsogeny(
+    new[] { new EllipticCurvePoint(0, 1) });
 Console.WriteLine(threeIsogeny.Degree);                 // 3
-var two = cm.CreateTwoIsogeny(new EllipticCurvePoint(-1, 0));
+var two = cm.CreateTwoIsogeny(
+    new EllipticCurvePoint(-1, 0));
 // two.Dual.Map(two.Forward.Map(Q)).Equals(cm.Double(Q)) is true.
 
 var finite = e.ReduceModuloPrime(5);
