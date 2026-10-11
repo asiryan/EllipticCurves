@@ -5,9 +5,9 @@ namespace EllipticCurves
     /// <summary>Limits for exact rational division points. Exhaustion throws ArithmeticException.</summary>
     public sealed class PointDivisionOptions
     {
-        /// <summary>Maximum counted polynomial and root-isolation steps; excludes torsion preparation.</summary>
+        /// <summary>Maximum counted polynomial and root-isolation steps; excludes torsion preparation. Default: 2000000.</summary>
         public long MaxWork { get; set; } = 2000000;
-        /// <summary>Maximum degree n^2 of a multiplication equation for an affine target, between 1 and 100000.</summary>
+        /// <summary>Maximum degree n^2 of a multiplication equation for an affine target, between 1 and 100000. Default: 1024.</summary>
         public int MaxDivisionDegree { get; set; } = 1024;
         internal PointDivisionOptions Snapshot()
         {

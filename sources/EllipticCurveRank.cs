@@ -20,8 +20,8 @@ namespace EllipticCurves
         /// Also bounds both numerator and denominator of the searched x coordinates on the minimal model.
         /// Zero disables point search. Increasing this can improve the lower bound.</param>
         /// <param name="maxSquareClasses">Maximum number of signed square classes per isogeny.
-        /// Exceeding this limit throws NotSupportedException in isogeny descent.
-        /// In general descent this bounds covering classes and exhaustion gives a null upper bound.</param>
+        /// In general descent this bounds covering classes including the identity.
+        /// Exceeding this limit returns a null upper bound and preserves the proved lower bound.</param>
         /// <param name="cancellationToken">Cancels factorization, enumeration and point searches.</param>
         public RankBounds GetRankBounds(int searchBound = 32, int maxSquareClasses = 65536,
             CancellationToken cancellationToken = default)
@@ -34,10 +34,16 @@ namespace EllipticCurves
         /// <summary>
         /// Compute unconditional lower and upper rank bounds with explicit work limits.
         /// Reaching MaxDescentWork returns a null upper bound; point-search exhaustion
-        /// never invalidates already proved bounds. Exceeding MaxSquareClasses throws
-        /// NotSupportedException in 2-isogeny descent and returns a null upper bound
-        /// in general descent. No BSD, GRH or parity assumption is used.
+        /// never invalidates already proved bounds. Exceeding MaxSquareClasses returns
+        /// a null upper bound and preserves the proved lower bound in either descent.
+        /// No BSD, GRH or parity assumption is used.
         /// </summary>
+        /// <remarks>Limits count selected descent and point-search steps, not elapsed time or memory.
+        /// Minimalization, factorization, 2-torsion detection and good-prime character preparation are outside these counters.</remarks>
+        /// <exception cref="ArgumentNullException">Options are null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">An option is outside its supported range.</exception>
+        /// <exception cref="InvalidOperationException">The curve is singular or a proof consistency check fails.</exception>
+        /// <exception cref="OperationCanceledException">Cancellation was requested; cancellation does not return partial bounds.</exception>
         public RankBounds GetRankBounds(RankComputationOptions options, CancellationToken cancellationToken = default)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -53,7 +59,7 @@ namespace EllipticCurves
             if (hasTwoTorsion)
             {
                 var quadraticDiscriminant = (a + root) * (a + root) - 4 * (b + a * root + root * root);
-                torsionDimension = quadraticDiscriminant > 0 && BigRational.IsSquare(new BigRational(quadraticDiscriminant), out _) ? 2 : 1;
+                torsionDimension = quadraticDiscriminant > 0 && BigRational.IsSquare(new BigRational(quadraticDiscriminant), out _, cancellationToken) ? 2 : 1;
             }
             var budget = new DescentBudget(options, cancellationToken);
             var pointRank = new RationalPointRank(e, torsionDimension, budget);
@@ -78,11 +84,11 @@ namespace EllipticCurves
                     foreach (var p in Factor(b, cancellationToken).Keys)
                     {
                         var p2 = p * p; var p4 = p2 * p2;
-                        while (a % p2 == 0 && b % p4 == 0) { a /= p2; b /= p4; }
+                        while (a % p2 == 0 && b % p4 == 0) { cancellationToken.ThrowIfCancellationRequested(); a /= p2; b /= p4; }
                     }
                     var dualB = a * a - 4 * b;
-                    firstImageLower = BigRational.IsSquare(new BigRational(b), out _) ? 0 : 1;
-                    secondImageLower = BigRational.IsSquare(new BigRational(dualB), out _) ? 0 : 1;
+                    firstImageLower = BigRational.IsSquare(new BigRational(b), out _, cancellationToken) ? 0 : 1;
+                    secondImageLower = BigRational.IsSquare(new BigRational(dualB), out _, cancellationToken) ? 0 : 1;
                     var first = IsogenyImageBounds(a, b, budget, dimension => firstImageLower = dimension);
                     var second = IsogenyImageBounds(-2 * a, dualB, budget, dimension => secondImageLower = dimension);
                     lower = Math.Max(pointRank.LowerBound, first.lower + second.lower - 2);
@@ -129,7 +135,7 @@ namespace EllipticCurves
             {
                 classCount *= 2;
                 if (classCount > maxClasses)
-                    throw new NotSupportedException("The 2-isogeny descent exceeds maxSquareClasses. Increase the limit or use a smaller model.");
+                    throw new DescentLimitException("MaxSquareClasses was exceeded in 2-isogeny descent; the upper-bound computation is incomplete.");
             }
             int count = (int)classCount;
             var values = new BigInteger[count];
@@ -139,7 +145,11 @@ namespace EllipticCurves
             for (int i = 0; i < factors.Length; i++)
             {
                 if ((factors[i].Value & 1) != 0) torsionClass |= 1 << (i + 1);
-                for (int j = 0; j < used; j++) values[used + j] = values[j] * factors[i].Key;
+                for (int j = 0; j < used; j++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    values[used + j] = values[j] * factors[i].Key;
+                }
                 used *= 2;
             }
             var basis = new int[factors.Length + 1];

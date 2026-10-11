@@ -8,6 +8,8 @@ namespace EllipticCurves
 {
     /// <summary>An immutable finite-field element in a specified polynomial presentation.
     /// A default-initialized value is invalid, not the zero of an unspecified field.</summary>
+    /// <remarks>Operators have no cancellation token; use the corresponding FiniteField methods for cancellable multiplication or division.
+    /// Different normalized presentations cannot be mixed, even when their cardinalities agree.</remarks>
     public readonly struct FiniteFieldElement : IEquatable<FiniteFieldElement>
     {
         private readonly BigInteger[] coefficients;
@@ -23,9 +25,13 @@ namespace EllipticCurves
         internal FiniteFieldElement(FiniteField field, BigInteger[] ownedCoefficients)
         { Field = field; coefficients = ownedCoefficients; }
         private FiniteField RequireField() => Field ?? throw new InvalidOperationException("A default field element is invalid.");
-        /// <summary>Multiplicative inverse of a nonzero element.</summary>
+        /// <summary>Multiplicative inverse of a nonzero element, with cooperative cancellation.</summary>
+        /// <exception cref="InvalidOperationException">This is an invalid default element.</exception>
+        /// <exception cref="DivideByZeroException">This element is zero.</exception>
         public FiniteFieldElement Inverse(CancellationToken cancellationToken = default) => RequireField().Inverse(this, cancellationToken);
-        /// <summary>Signed integer power; a^0 is one, including 0^0.</summary>
+        /// <summary>Signed integer power with cooperative cancellation; a^0 is one, including 0^0.</summary>
+        /// <exception cref="InvalidOperationException">This is an invalid default element.</exception>
+        /// <exception cref="DivideByZeroException">This element is zero and the exponent is negative.</exception>
         public FiniteFieldElement Pow(BigInteger exponent, CancellationToken cancellationToken = default) => RequireField().Pow(this, exponent, cancellationToken);
         /// <summary>Add elements in the same field presentation.</summary>
         public static FiniteFieldElement operator +(FiniteFieldElement a, FiniteFieldElement b) => a.RequireField().Add(a, b);

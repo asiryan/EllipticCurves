@@ -70,10 +70,23 @@ namespace EllipticCurves
 
         /// <summary>Maps the stored free generators to an exactly Q-isomorphic model; null if generators are absent.</summary>
         public IReadOnlyList<EllipticCurvePoint> GetGeneratorsOnModel(EllipticCurveQ model)
+            => GetGeneratorsOnModel(model, default);
+
+        /// <summary>Map stored generators with cancellation during exact isomorphism preparation and point mapping.</summary>
+        public IReadOnlyList<EllipticCurvePoint> GetGeneratorsOnModel(EllipticCurveQ model, CancellationToken cancellationToken)
         {
             if (model == null) throw new ArgumentNullException(nameof(model));
-            if (!GlobalMinimalModel.TryGetIsomorphism(model, out var map)) throw new ArgumentException("Models are not Q-isomorphic.", nameof(model));
-            return MordellWeilGenerators == null ? null : Array.AsReadOnly(MordellWeilGenerators.Select(map.Map).ToArray());
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!GlobalMinimalModel.TryGetIsomorphism(model, out var map, cancellationToken)) throw new ArgumentException("Models are not Q-isomorphic.", nameof(model));
+            if (MordellWeilGenerators == null) return null;
+            var points = new EllipticCurvePoint[MordellWeilGenerators.Count];
+            for (int i = 0; i < points.Length; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                points[i] = map.Map(MordellWeilGenerators[i]);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return Array.AsReadOnly(points);
         }
 
         private LmfdbEllipticCurve(JsonElement root)
@@ -221,7 +234,7 @@ namespace EllipticCurves
                 foreach (var candidate in candidates.EnumerateArray())
                 {
                     token.ThrowIfCancellationRequested();
-                    if (curve.TryGetIsomorphism(Model(candidate.GetProperty("ainvs")), out _))
+                    if (curve.TryGetIsomorphism(Model(candidate.GetProperty("ainvs")), out _, token))
                     { label = candidate.GetProperty("lmfdb_label").GetString(); break; }
                 }
                 if (label != null) break;
@@ -230,7 +243,7 @@ namespace EllipticCurves
             }
             var snapshot = await ReadJsonAsync(client, Origin + "/EllipticCurve/Q/data/" + Uri.EscapeDataString(label) + "?_format=json&_limit=10000", token).ConfigureAwait(false);
             var parsed = new LmfdbEllipticCurve(snapshot);
-            if (parsed.Label != label || !curve.TryGetIsomorphism(parsed.GlobalMinimalModel, out _)) throw new FormatException("LMFDB: fetched curve does not match the request.");
+            if (parsed.Label != label || !curve.TryGetIsomorphism(parsed.GlobalMinimalModel, out _, token)) throw new FormatException("LMFDB: fetched curve does not match the request.");
             return snapshot;
         }
         private static async Task<JsonElement> ReadJsonAsync(HttpClient client, string url, CancellationToken token)

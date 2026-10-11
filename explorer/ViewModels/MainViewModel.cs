@@ -302,7 +302,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             var points = await Task.Run(() =>
             {
                 var result = new List<EllipticCurvePoint>();
-                foreach (var point in curve.RationalPoints(12, 4))
+                foreach (var point in curve.RationalPoints(12, 4, token))
                 {
                     token.ThrowIfCancellationRequested();
                     if (!point.IsInfinity) result.Add(point);

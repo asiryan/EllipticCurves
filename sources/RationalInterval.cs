@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -35,13 +36,14 @@ namespace EllipticCurves
             var l = Lower * Lower; var u = Upper * Upper;
             return new RationalInterval(Lower <= 0 && Upper >= 0 ? BigRational.Zero : (l < u ? l : u), l > u ? l : u);
         }
-        internal RationalInterval Sqrt()
+        internal RationalInterval Sqrt(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (Upper < 0) throw new InvalidOperationException("Negative radical in quartic reduction bounds.");
             var scale = BigInteger.One << 96;
             BigRational lower = Lower > 0 ? Lower : BigRational.Zero;
-            var a = InternalMath.IntegerSqrt(lower.Num * scale * scale / lower.Den);
-            var b = InternalMath.IntegerSqrt(Upper.Num * scale * scale / Upper.Den);
+            var a = InternalMath.IntegerSqrt(lower.Num * scale * scale / lower.Den, cancellationToken);
+            var b = InternalMath.IntegerSqrt(Upper.Num * scale * scale / Upper.Den, cancellationToken);
             // Widening even an exact root is harmless for enumeration completeness.
             return new RationalInterval(new BigRational(a, scale), new BigRational(b + 1, scale));
         }

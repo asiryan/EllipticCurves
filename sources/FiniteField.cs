@@ -8,6 +8,9 @@ namespace EllipticCurves
 {
     /// <summary>The finite field F_p[t]/(f), with proved prime p and proved irreducible f.
     /// Elements in different polynomial presentations are not implicitly identified.</summary>
+    /// <remarks>Arithmetic methods require valid elements of this presentation; invalid or incompatible inputs throw ArgumentException.
+    /// Multiplication, division, inversion and powers accept a cancellation token. Cancellation is cooperative between arithmetic steps;
+    /// individual BigInteger operations are not interruptible.</remarks>
     public sealed class FiniteField : IEquatable<FiniteField>
     {
         private readonly BigInteger[] modulus;
@@ -30,6 +33,9 @@ namespace EllipticCurves
         /// <summary>Create a field from a polynomial in ascending coefficient order.
         /// Coefficients are reduced modulo p and the polynomial is made monic before the exact Rabin test.
         /// Primality and irreducibility computations are cancellable; there is no fixed time bound.</summary>
+        /// <exception cref="ArgumentNullException">The defining polynomial is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">The characteristic is not prime.</exception>
+        /// <exception cref="ArgumentException">The normalized polynomial is constant, zero or reducible.</exception>
         public FiniteField(BigInteger prime, IReadOnlyList<BigInteger> definingPolynomial, CancellationToken cancellationToken = default)
         {
             if (definingPolynomial == null) throw new ArgumentNullException(nameof(definingPolynomial));
@@ -94,8 +100,11 @@ namespace EllipticCurves
             return new FiniteFieldElement(this, FiniteFieldPolynomial.Power(a.Coordinates, exponent, modulus, Characteristic, cancellationToken));
         }
 
-        /// <summary>Enumerate every element in increasing base-p coefficient encoding, starting at zero.
-        /// Throws before enumeration if the cardinality exceeds maxElements.</summary>
+        /// <summary>Lazily enumerate every element in increasing base-p coefficient encoding, starting at zero.
+        /// Cancellation and limits are checked when enumeration begins, before the first element is yielded,
+        /// and cancellation is checked before each subsequent element. maxElements must be nonnegative.</summary>
+        /// <exception cref="ArgumentOutOfRangeException">maxElements is negative, checked on the first MoveNext.</exception>
+        /// <exception cref="ArithmeticException">The field order exceeds maxElements, checked on the first MoveNext.</exception>
         public IEnumerable<FiniteFieldElement> Elements(long maxElements = 1000000, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();

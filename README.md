@@ -61,6 +61,37 @@ using EllipticCurves;
 See the [Console application](console/README.md) for command-line arguments, run instructions
 and sample output.
 
+## Exact rational input and checked points
+
+`BigRational.Parse` and `TryParse` accept exact integers, fractions, decimals
+with a dot and scientific notation, independently of the current culture:
+
+```csharp
+var x = BigRational.Parse("1/4");
+var y = BigRational.Parse("-0.625");                    // exactly -5/8
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);
+var p = e.CreatePoint(x, y);
+var twice = e.DoubleChecked(p);
+var multiple = e.MultiplyChecked(p, 7);
+bool valid = e.TryCreatePoint(0, 1, out var candidate); // false
+```
+
+`CreatePoint` rejects invalid coordinates or a singular model. `TryCreatePoint`
+returns false for either condition, with an unused infinity output. `AddChecked`,
+`DoubleChecked`, `NegateChecked`, `SubtractChecked` and `MultiplyChecked` verify
+their inputs before any identity or zero-scalar shortcuts. The existing point
+constructor and group operations remain available with their original preconditions.
+
+Parsing uses configurable `RationalParsingOptions` to bound input length,
+decimal exponents, intermediate integers and the final normalized value.
+`TryParse` returns false and zero for malformed, excessive or zero-denominator input.
+The Explorer and console use the same exact numeric parser. See
+[the input and point contracts](docs/rational-input-and-points.md).
+
+Rational arithmetic cancels common factors before constructing large products;
+addition and subtraction use the shared denominator factors. Exact results and
+canonical fraction representation are preserved.
+
 ## Rank bounds and conductor
 
 `EllipticCurveQ` computes minimal models, conductors and rank bounds in C# using
@@ -73,11 +104,11 @@ using EllipticCurves;
 
 var e = new EllipticCurveQ(0, -17, 0, 72, 0);
 var minimal = e.GlobalMinimalModel;
-BigInteger conductor = e.Conductor;       // 48
+BigInteger conductor = e.Conductor;           // 48
 RankBounds bounds = e.GetRankBounds();
-Console.WriteLine(bounds.LowerBound);     // 0
-Console.WriteLine(bounds.UpperBound);     // 0
-Console.WriteLine(bounds.ExactRank);      // 0 (null unless proved)
+Console.WriteLine(bounds.LowerBound);         // 0
+Console.WriteLine(bounds.UpperBound);         // 0
+Console.WriteLine(bounds.ExactRank);          // 0 (null unless proved)
 ```
 
 The conductor is computed on a global minimal model, with Tate's algorithm handling
@@ -104,9 +135,11 @@ proved lower bound is retained. `ExactRank` is populated only when both bounds a
 
 `GetRankBounds(searchBound: 64)` increases the point search. `maxSquareClasses` defaults
 to 65,536. In 2-isogeny descent it bounds signed square classes per isogeny;
-exceeding it throws `NotSupportedException`. In general 2-descent it bounds covering
-classes, including the identity; exceeding it returns `UpperBound = null` with the
-proved lower bound and an explanation in `Reason`.
+in general 2-descent it bounds covering classes, including the identity.
+Exceeding it returns `UpperBound = null` with the proved lower bound and an
+explanation in `Reason` in both methods. Callers that previously caught
+`NotSupportedException` for the 2-isogeny class limit should inspect the returned
+bounds instead. Point-search exhaustion can still preserve a completed upper bound.
 Factorization and searches can be expensive. Use the cancellable methods when needed:
 
 ```csharp
@@ -154,8 +187,8 @@ var certificate = e.GetRankLowerBound(new[]
     new EllipticCurvePoint(1, 0),
     new EllipticCurvePoint(2, 0)
 });
-Console.WriteLine(certificate.LowerBound);              // 3
-Console.WriteLine(certificate.IndependenceCertified);   // True
+Console.WriteLine(certificate.LowerBound);            // 3
+Console.WriteLine(certificate.IndependenceCertified); // True
 Console.WriteLine(certificate.Reason);
 ```
 
@@ -172,11 +205,11 @@ for the certificate construction and a larger example.
 ```csharp
 var e = new EllipticCurveQ(0, 0, 1, -1, 0);
 var result = e.EstimateAnalyticRank();
-Console.WriteLine(result.EstimatedRank);  // 1
-Console.WriteLine(result.Status);         // Certified
-Console.WriteLine(result.ProvenRank);     // 1; null for an unproved numerical estimate
-Console.WriteLine(result.Derivatives[1]); // L'(E,1), approximately 0.3059997738340523
-Console.WriteLine(e.RootNumber);          // -1 (exact)
+Console.WriteLine(result.EstimatedRank);    // 1
+Console.WriteLine(result.Status);           // Certified
+Console.WriteLine(result.ProvenRank);       // 1; null for an unproved numerical estimate
+Console.WriteLine(result.Derivatives[1]);   // L'(E,1), approximately 0.3059997738340523
+Console.WriteLine(e.RootNumber);            // -1 (exact)
 ```
 
 `EstimateAnalyticRank` computes Fourier coefficients and central L-function derivatives
@@ -212,16 +245,17 @@ var analytic = e.EstimateAnalyticRank(new AnalyticRankOptions
 ## Local data, heights, periods and saturation
 
 ```csharp
-var e = new EllipticCurveQ(0, 0, 1, -1, 0); // 37.a1
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);       // 37.a1
 var generator = new EllipticCurvePoint(0, 0);
 var modelMap = e.GetMinimalModelIsomorphism();
-var local = e.GetLocalData(37); // I1, nonsplit multiplicative, c_37 = 1
-var height = e.CanonicalHeight(generator); // approximately 0.05111140824
+var local = e.GetLocalData(37);                   // I1, nonsplit multiplicative, c_37 = 1
+var height = e.CanonicalHeight(generator);        // approximately 0.05111140824
 var regulator = e.Regulator(new[] { generator });
-var periods = e.GetPeriods(); // RealPeriod approximately 5.98691729246
+var periods = e.GetPeriods();                     // RealPeriod approximately 5.98691729246
 
 var saturation = e.Saturate(
-    new[] { e.Multiply(generator, 6) }, new[] { 2, 3 });
+    new[] { e.Multiply(generator, 6) },
+    new[] { 2, 3 });
 // On completion: IndexGain = 6, CertifiedPrimes = [2, 3].
 // IsComplete certifies only the requested primes, not a full Mordell-Weil basis.
 ```
@@ -253,19 +287,21 @@ and [rank algorithm notes](docs/native-arithmetic.md) for conventions and limits
 ## Coefficients, CM, division points and isogenies
 
 ```csharp
-var e = new EllipticCurveQ(0, 0, 1, -1, 0);  // 37.a1
+var e = new EllipticCurveQ(0, 0, 1, -1, 0);             // 37.a1
 var p = new EllipticCurvePoint(0, 0);
-var ap = e.GetFrobeniusTrace(5);             // -2
-var coefficients = e.GetFourierCoefficients(100); // a[n], with a[0]=0
-var count = e.CountPoints(5);                // 8, including infinity
+var ap = e.GetFrobeniusTrace(5);                        // -2
+var coefficients = e.GetFourierCoefficients(100);       // a[n], with a[0]=0
+var count = e.CountPoints(5);                           // 8, including infinity
 var divided = e.GetDivisionPoints(e.Multiply(p, 6), 2); // exactly {3P}
-var logarithm = e.RealEllipticLogarithm(p);  // numerical, on the minimal model
+var logarithm = e.RealEllipticLogarithm(p);             // numerical, on the minimal model
 
 var cm = new EllipticCurveQ(0, 0, 0, 0, 1);
-Console.WriteLine(cm.CmDiscriminant);        // -3; zero denotes non-CM
-var threeIsogeny = cm.CreateIsogeny(new[] { new EllipticCurvePoint(0, 1) });
-Console.WriteLine(threeIsogeny.Degree);      // 3
-var two = cm.CreateTwoIsogeny(new EllipticCurvePoint(-1, 0));
+Console.WriteLine(cm.CmDiscriminant);                   // -3; zero denotes non-CM
+var threeIsogeny = cm.CreateIsogeny(
+    new[] { new EllipticCurvePoint(0, 1) });
+Console.WriteLine(threeIsogeny.Degree);                 // 3
+var two = cm.CreateTwoIsogeny(
+    new EllipticCurvePoint(-1, 0));
 // two.Dual.Map(two.Forward.Map(Q)).Equals(cm.Double(Q)) is true.
 
 var finite = e.ReduceModuloPrime(5);

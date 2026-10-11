@@ -10,6 +10,11 @@ namespace EllipticCurves
         /// <summary>Construct a Velu isogeny from generators of a finite subgroup of E(Q).
         /// All kernel points must be rational; this does not discover nonrational Galois-stable kernels.
         /// The target is a short model and is not necessarily minimal.</summary>
+        /// <remarks>The token cancels construction, including validation and enumeration of the finite kernel.
+        /// Later calls to the returned isogeny's Map method do not use this token.</remarks>
+        /// <exception cref="ArgumentException">A kernel generator is outside the curve or has infinite order.</exception>
+        /// <exception cref="InvalidOperationException">The curve is singular.</exception>
+        /// <exception cref="OperationCanceledException">Cancellation was requested during construction.</exception>
         public RationalIsogeny CreateIsogeny(IReadOnlyList<EllipticCurvePoint> kernelGenerators, CancellationToken cancellationToken = default)
         {
             if (kernelGenerators == null) throw new ArgumentNullException(nameof(kernelGenerators));
@@ -17,7 +22,10 @@ namespace EllipticCurves
             if (IsSingular) throw new InvalidOperationException("Isogenies require a nonsingular curve.");
             var generators = kernelGenerators.ToArray();
             foreach (var generator in generators)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!IsOnCurve(generator)) throw new ArgumentException("Kernel generator is not on the curve.", nameof(kernelGenerators));
+            }
             var kernel = new HashSet<EllipticCurvePoint> { EllipticCurvePoint.Infinity };
             foreach (var generator in generators)
             {
@@ -32,13 +40,18 @@ namespace EllipticCurves
                     if (multiples.Count == 12 && !p.IsInfinity) throw new ArgumentException("Kernel generator has infinite order.", nameof(kernelGenerators));
                 } while (!p.IsInfinity);
                 var previous = kernel.ToArray();
-                foreach (var q in previous) foreach (var t in multiples) kernel.Add(Add(q, t));
+                foreach (var q in previous) foreach (var t in multiples)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    kernel.Add(Add(q, t));
+                }
             }
             return VeluFromKernel(kernel, cancellationToken);
         }
 
         private RationalIsogeny VeluFromKernel(IEnumerable<EllipticCurvePoint> kernel, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             var sourceKernel = kernel.Distinct().OrderBy(p => p.IsInfinity ? 0 : 1).ThenBy(p => p.X).ThenBy(p => p.Y).ToArray();
             var change = GetShortModelIsomorphism(); var shortModel = change.Target;
             var shortKernel = sourceKernel.Where(p => !p.IsInfinity).Select(change.Map).ToArray();
@@ -81,12 +94,13 @@ namespace EllipticCurves
         }
 
         /// <summary>All 2-isogenies over Q, one for each nonzero rational 2-torsion point, with duals.</summary>
+        /// <remarks>Cancellation includes full rational torsion preparation when it is not already cached.</remarks>
         public IReadOnlyList<TwoIsogenyPair> GetTwoIsogenies(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("Isogenies require a nonsingular curve.");
             var result = new List<TwoIsogenyPair>();
-            foreach (var p in TorsionPoints)
+            foreach (var p in GetTorsionPoints(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!p.IsInfinity && Double(p).IsInfinity) result.Add(CreateTwoIsogeny(p, cancellationToken));

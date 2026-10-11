@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Numerics;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -34,7 +35,7 @@ namespace EllipticCurves
 
         /// <summary>
         /// Create from a numerator/denominator pair and normalize:
-        ///  • throw if den == 0
+        ///  • throw DivideByZeroException if den == 0, including for 0/0
         ///  • move the sign into the numerator
         ///  • divide by gcd(|num|, den)
         ///  • normalize zero to 0/1
@@ -56,6 +57,18 @@ namespace EllipticCurves
             var g = BigInteger.GreatestCommonDivisor(BigInteger.Abs(num), den);
             Num = num / g; denominator = den / g;
         }
+
+        // Only exact arithmetic with a proved reduced numerator and positive denominator
+        // uses this constructor. Public construction always performs normalization.
+        private BigRational(BigInteger num, BigInteger den, bool alreadyReduced)
+        {
+            System.Diagnostics.Debug.Assert(alreadyReduced && !num.IsZero && den.Sign > 0);
+            Num = num;
+            denominator = den;
+        }
+
+        private static BigRational CreateReduced(BigInteger num, BigInteger positiveDenominator)
+            => num.IsZero ? Zero : new BigRational(num, positiveDenominator, alreadyReduced: true);
 
         /// <summary>Create from an integer (n/1).</summary>
         public static BigRational FromInt(long n) => new BigRational(n);
@@ -84,29 +97,95 @@ namespace EllipticCurves
 
         /// <summary>Exact addition with normalization.</summary>
         public static BigRational operator +(BigRational a, BigRational b)
-            => new BigRational(a.Num * b.Den + b.Num * a.Den, a.Den * b.Den);
+            => AddOrSubtract(a, b, subtract: false);
 
         /// <summary>Exact subtraction with normalization.</summary>
         public static BigRational operator -(BigRational a, BigRational b)
-            => new BigRational(a.Num * b.Den - b.Num * a.Den, a.Den * b.Den);
+            => AddOrSubtract(a, b, subtract: true);
+
+        private static BigRational AddOrSubtract(BigRational a, BigRational b, bool subtract)
+        {
+            if (b.IsZero) return a;
+            if (a.IsZero) return subtract ? CreateReduced(-b.Num, b.Den) : b;
+            var rightNumerator = subtract ? -b.Num : b.Num;
+            var leftDenominator = a.Den;
+            var rightDenominator = b.Den;
+            if (leftDenominator.IsOne)
+                return CreateReduced(a.Num * rightDenominator + rightNumerator, rightDenominator);
+            if (rightDenominator.IsOne)
+                return CreateReduced(a.Num + rightNumerator * leftDenominator, leftDenominator);
+            if (leftDenominator == rightDenominator)
+            {
+                var sum = a.Num + rightNumerator;
+                if (sum.IsZero) return Zero;
+                var divisor = BigInteger.GreatestCommonDivisor(BigInteger.Abs(sum), leftDenominator);
+                return CreateReduced(sum / divisor, leftDenominator / divisor);
+            }
+
+            var common = BigInteger.GreatestCommonDivisor(leftDenominator, rightDenominator);
+            if (common.IsOne)
+                return CreateReduced(a.Num * rightDenominator + rightNumerator * leftDenominator,
+                    leftDenominator * rightDenominator);
+            var leftPart = leftDenominator / common;
+            var rightPart = rightDenominator / common;
+            var numerator = a.Num * rightPart + rightNumerator * leftPart;
+            if (numerator.IsZero) return Zero;
+            // The numerator is coprime to both denominator parts. Any remaining
+            // common factor therefore divides the shared denominator gcd.
+            var remaining = BigInteger.GreatestCommonDivisor(BigInteger.Abs(numerator), common);
+            return remaining.IsOne ? CreateReduced(numerator, leftPart * rightDenominator) :
+                CreateReduced(numerator / remaining, leftPart * (rightDenominator / remaining));
+        }
 
         /// <summary>Exact multiplication with normalization.</summary>
         public static BigRational operator *(BigRational a, BigRational b)
-            => new BigRational(a.Num * b.Num, a.Den * b.Den);
+        {
+            if (a.IsZero || b.IsZero) return Zero;
+            var leftDenominator = a.Den;
+            var rightDenominator = b.Den;
+            if (leftDenominator.IsOne && rightDenominator.IsOne)
+                return CreateReduced(a.Num * b.Num, BigInteger.One);
+            var leftNumerator = a.Num;
+            var rightNumerator = b.Num;
+            if (!rightDenominator.IsOne)
+            {
+                var divisor = BigInteger.GreatestCommonDivisor(BigInteger.Abs(leftNumerator), rightDenominator);
+                if (!divisor.IsOne) { leftNumerator /= divisor; rightDenominator /= divisor; }
+            }
+            if (!leftDenominator.IsOne)
+            {
+                var divisor = BigInteger.GreatestCommonDivisor(BigInteger.Abs(rightNumerator), leftDenominator);
+                if (!divisor.IsOne) { rightNumerator /= divisor; leftDenominator /= divisor; }
+            }
+            return CreateReduced(leftNumerator * rightNumerator, leftDenominator * rightDenominator);
+        }
 
         /// <summary>Exact division with normalization. Throws if divisor is zero.</summary>
         public static BigRational operator /(BigRational a, BigRational b)
         {
             if (b.IsZero) throw new DivideByZeroException();
-            return new BigRational(a.Num * b.Den, a.Den * b.Num);
+            if (a.IsZero) return Zero;
+            var leftNumerator = a.Num;
+            var rightNumerator = b.Num;
+            var leftDenominator = a.Den;
+            var rightDenominator = b.Den;
+            var commonNumerator = BigInteger.GreatestCommonDivisor(BigInteger.Abs(leftNumerator), BigInteger.Abs(rightNumerator));
+            if (!commonNumerator.IsOne) { leftNumerator /= commonNumerator; rightNumerator /= commonNumerator; }
+            if (!leftDenominator.IsOne && !rightDenominator.IsOne)
+            {
+                var divisor = BigInteger.GreatestCommonDivisor(leftDenominator, rightDenominator);
+                if (!divisor.IsOne) { leftDenominator /= divisor; rightDenominator /= divisor; }
+            }
+            if (rightNumerator.Sign < 0) { leftNumerator = -leftNumerator; rightNumerator = -rightNumerator; }
+            return CreateReduced(leftNumerator * rightDenominator, leftDenominator * rightNumerator);
         }
 
         /// <summary>Unary negation.</summary>
         public static BigRational operator -(BigRational a) => a.Negate();
 
         /// <summary>
-        /// r^k for integer k ≥ 0. For k == 0 returns 1 by convention.
-        /// Note: if you need negative powers, use Reciprocal with a positive exponent.
+        /// r^k for integer k ≥ 0. For k == 0 returns 1, including 0^0.
+        /// Negative k throws ArgumentOutOfRangeException; use Reciprocal with a positive exponent instead.
         /// </summary>
         public static BigRational Pow(BigRational r, int k)
         {
@@ -119,11 +198,17 @@ namespace EllipticCurves
 
         /// <summary>
         /// Exact test for a rational square: returns true iff r = s^2 for some s ∈ Q
-        /// and outputs s in canonical form. Works by requiring both numerator and
-        /// denominator to be perfect squares in Z.
+        /// and outputs the nonnegative root s in canonical form. Returns false with s = Zero
+        /// for a negative value or a nonsquare. Requires both numerator and denominator to be perfect squares in Z.
         /// </summary>
         public static bool IsSquare(BigRational r, out BigRational s)
+            => IsSquare(r, out s, default);
+
+        /// <summary>Exact rational-square test returning the nonnegative root, or false with s = Zero.
+        /// Checks cancellation on entry and during integer square-root iterations; individual BigInteger operations are not interruptible.</summary>
+        public static bool IsSquare(BigRational r, out BigRational s, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             s = default;
             if (r.Sign < 0) return false; // no real square roots for negative rationals
 
@@ -131,33 +216,43 @@ namespace EllipticCurves
             var an = BigInteger.Abs(r.Num);
             var ad = r.Den;
 
-            if (!TryIntegerSquareRoot(an, out var sn)) return false;
-            if (!TryIntegerSquareRoot(ad, out var sd)) return false;
+            if (!TryIntegerSquareRoot(an, out var sn, cancellationToken)) return false;
+            if (!TryIntegerSquareRoot(ad, out var sd, cancellationToken)) return false;
 
             s = new BigRational(sn, sd);
             // Safety: verify s^2 == r exactly (guards against any corner cases).
-            return (s * s) == r;
+            bool exact = (s * s) == r;
+            cancellationToken.ThrowIfCancellationRequested();
+            return exact;
         }
 
         /// <summary>
         /// Try exact integer square root: returns true iff n is a perfect square and
         /// outputs rt = sqrt(n). Otherwise returns false and sets rt = floor(sqrt(n)).
         /// </summary>
-        private static bool TryIntegerSquareRoot(BigInteger n, out BigInteger rt)
+        private static bool TryIntegerSquareRoot(BigInteger n, out BigInteger rt, CancellationToken cancellationToken)
         {
-            rt = IntegerSquareRoot(n);
-            return rt * rt == n;
+            rt = IntegerSquareRoot(n, cancellationToken);
+            bool exact = rt * rt == n;
+            cancellationToken.ThrowIfCancellationRequested();
+            return exact;
         }
 
         /// <summary>
         /// floor(sqrt(n)) for n ≥ 0 using a monotone Newton iteration.
         /// For n ∈ {0,1} returns n; otherwise converges from above.
         /// </summary>
-        private static BigInteger IntegerSquareRoot(BigInteger n)
+        private static BigInteger IntegerSquareRoot(BigInteger n, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (n <= 1) return n;
             BigInteger x0 = n, x1 = (n >> 1) + 1;
-            while (x1 < x0) { x0 = x1; x1 = (x1 + n / x1) >> 1; }
+            while (x1 < x0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                x0 = x1; x1 = (x1 + n / x1) >> 1;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
             return x0;
         }
 

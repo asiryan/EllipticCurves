@@ -17,7 +17,11 @@ namespace EllipticCurves
                 if (primes[p] != 0) continue;
                 work += p;
                 if (work > maxWork) return null;
-                for (int n = p; n <= count; n += p) if (primes[n] == 0) primes[n] = p;
+                for (int n = p; n <= count; n += p)
+                {
+                    if ((n & 1023) == 0) token.ThrowIfCancellationRequested();
+                    if (primes[n] == 0) primes[n] = p;
+                }
             }
             var a = new long[count + 1]; a[1] = 1;
             var delta = e.Discriminant.Num;
@@ -46,7 +50,11 @@ namespace EllipticCurves
             }
             // A quadratic-residue sieve avoids a modular exponentiation for each x.
             var squares = new bool[p];
-            for (long y = 1; y <= p / 2; y++) squares[y * y % p] = true;
+            for (long y = 1; y <= p / 2; y++)
+            {
+                if ((y & 1023) == 0) token.ThrowIfCancellationRequested();
+                squares[y * y % p] = true;
+            }
             long sum = 0;
             for (long x = 0; x < p; x++)
             {

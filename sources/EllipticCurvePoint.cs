@@ -3,7 +3,7 @@
 namespace EllipticCurves
 {
     /// <summary>
-    /// Immutable affine point on an elliptic curve over <c>ℚ</c> (the rationals).
+    /// Immutable rational point coordinates, or the point at infinity.
     /// 
     /// <para>
     /// Representation:
@@ -18,6 +18,8 @@ namespace EllipticCurves
     /// two finite points are equal iff both coordinates are equal as rationals; the
     /// infinity point is only equal to itself.
     /// </para>
+    /// <para>Coordinates carry no curve identity and need not satisfy a curve equation.
+    /// default(EllipticCurvePoint) is the finite point (0,0); its membership depends on the receiving curve.</para>
     /// </summary>
     public readonly partial struct EllipticCurvePoint : IEquatable<EllipticCurvePoint>
     {
@@ -38,6 +40,9 @@ namespace EllipticCurves
 
         /// <summary>
         /// Create a finite point with given affine coordinates <paramref name="x"/>, <paramref name="y"/>.
+        /// This constructor stores coordinates without checking any curve equation.
+        /// Use <see cref="EllipticCurveQ.CreatePoint"/> or <see cref="EllipticCurveQ.TryCreatePoint"/>
+        /// to validate coordinates against a nonsingular rational curve.
         /// </summary>
         public EllipticCurvePoint(BigRational x, BigRational y) { X = x; Y = y; IsInfinity = false; }
 

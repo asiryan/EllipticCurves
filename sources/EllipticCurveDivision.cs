@@ -9,6 +9,10 @@ namespace EllipticCurves
     {
         /// <summary>All rational Q satisfying [n]Q = point, on the input model. Rejects n = 0 and int.MinValue.
         /// An empty list proves nondivisibility; a work or degree limit throws instead.</summary>
+        /// <remarks>The degree/work limits apply to polynomial searches for a finite target.
+        /// Infinity uses the full rational torsion set, and n = +/-1 needs no polynomial search. Torsion preparation is outside MaxWork.</remarks>
+        /// <exception cref="ArithmeticException">A degree or work limit prevents a complete division search.</exception>
+        /// <exception cref="OperationCanceledException">Cancellation was requested; no partial list is returned.</exception>
         public IReadOnlyList<EllipticCurvePoint> GetDivisionPoints(EllipticCurvePoint point, int n,
             PointDivisionOptions options = null, CancellationToken cancellationToken = default)
         {
@@ -21,9 +25,8 @@ namespace EllipticCurves
             if (order == 1) return Array.AsReadOnly(new[] { n > 0 ? point : Negate(point) });
             if (point.IsInfinity)
             {
-                var torsion = TorsionPoints.ToArray();
-                cancellationToken.ThrowIfCancellationRequested();
-                return Array.AsReadOnly(torsion.Where(p => Multiply(p, order).IsInfinity).ToArray());
+                var torsion = GetTorsionPoints(cancellationToken);
+                return Array.AsReadOnly(torsion.Where(p => Multiply(p, order, cancellationToken).IsInfinity).ToArray());
             }
             if ((long)order * order > limits.MaxDivisionDegree) throw new ArithmeticException("Division degree limit reached.");
             var map = GetShortModelIsomorphism(); var e = map.Target;
@@ -38,9 +41,9 @@ namespace EllipticCurves
                 foreach (var x in arithmetic.RationalRoots(equation))
                 {
                     budget.Step();
-                    if (!BigRational.IsSquare(x * x * x + e.A4 * x + e.A6, out var y)) continue;
+                    if (!BigRational.IsSquare(x * x * x + e.A4 * x + e.A6, out var y, cancellationToken)) continue;
                     foreach (var candidate in new[] { new EllipticCurvePoint(x, y), new EllipticCurvePoint(x, -y) })
-                        if (e.Multiply(candidate, order).Equals(target)) result.Add(map.MapBack(candidate));
+                        if (e.Multiply(candidate, order, cancellationToken).Equals(target)) result.Add(map.MapBack(candidate));
                 }
                 return Array.AsReadOnly(result.OrderBy(p => p.X).ThenBy(p => p.Y).ToArray());
             }

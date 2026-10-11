@@ -8,12 +8,13 @@ namespace EllipticCurves
         /// <summary>Coordinate bound for rational points and quartic points. Zero disables point searches.</summary>
         public int SearchBound { get; set; } = 32;
         /// <summary>Maximum square classes per 2-isogeny descent, or covering classes including the identity in general descent.
-        /// Exceeding this limit throws NotSupportedException in 2-isogeny descent;
-        /// general descent returns a null upper bound and retains the proved lower bound.</summary>
+        /// Exceeding this limit returns a null upper bound and retains the proved lower bound in either descent.</summary>
         public int MaxSquareClasses { get; set; } = 65536;
-        /// <summary>Maximum counted enumeration, polynomial and local-lifting steps. An incomplete descent gives no upper bound.</summary>
+        /// <summary>Maximum counted enumeration, polynomial and local-lifting steps. An incomplete descent gives no upper bound.
+        /// Excludes initial minimalization, factorization, torsion detection and good-prime character preparation.</summary>
         public long MaxDescentWork { get; set; } = 5000000;
-        /// <summary>Maximum total point-search steps, on the curve and its coverings. Exhaustion preserves proved lower bounds.</summary>
+        /// <summary>Maximum total point-search steps, on the minimal-model curve and its coverings.
+        /// Exhaustion preserves proved lower bounds and an upper bound from a completed descent.</summary>
         public long MaxPointSearchWork { get; set; } = 1000000;
         /// <summary>Good odd primes up to this bound are used to certify lower bounds by reduction.</summary>
         public int ReductionPrimeBound { get; set; } = 101;

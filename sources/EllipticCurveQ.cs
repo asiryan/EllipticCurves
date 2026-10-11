@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 
 namespace EllipticCurves
 {
@@ -131,6 +132,7 @@ namespace EllipticCurves
         /// <summary>
         /// Group law (general Weierstrass). Handles P, Q, doubling, and the vertical-tangent case.
         /// Assumes a nonsingular curve and points on this curve; these preconditions are not checked.
+        /// Use AddChecked to validate both inputs before applying the group law.
         /// Slope:
         ///  • If x1 ≠ x2: λ = (y2 − y1)/(x2 − x1).
         ///  • If P = Q:   λ = (3x1^2 + 2a2 x1 + a4 − a1 y1) / (2y1 + a1 x1 + a3).
@@ -178,20 +180,32 @@ namespace EllipticCurves
         /// <summary>
         /// Scalar multiplication nP using right-to-left double-and-add.
         /// Supports n &lt; 0 (via negation) and n = 0 (returns O).
+        /// The curve and input point are assumed valid; use MultiplyChecked to verify these preconditions.
         /// </summary>
         public EllipticCurvePoint Multiply(EllipticCurvePoint P, BigInteger n)
+            => Multiply(P, n, default);
+
+        /// <summary>Scalar multiplication nP with cooperative cancellation between group operations.</summary>
+        public EllipticCurvePoint Multiply(EllipticCurvePoint P, BigInteger n, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (n.Sign == 0) return EllipticCurvePoint.Infinity;
-            if (n.Sign < 0) return Multiply(Negate(P), BigInteger.Negate(n));
+            if (n.Sign < 0) { P = Negate(P); n = BigInteger.Negate(n); }
             EllipticCurvePoint acc = EllipticCurvePoint.Infinity;
             EllipticCurvePoint basePt = P;
             var k = n;
             while (k > BigInteger.Zero)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!k.IsEven) acc = Add(acc, basePt);
-                basePt = Double(basePt);
                 k >>= 1;
+                if (k > BigInteger.Zero)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    basePt = Double(basePt);
+                }
             }
+            cancellationToken.ThrowIfCancellationRequested();
             return acc;
         }
 
@@ -237,7 +251,12 @@ namespace EllipticCurves
         /// Requires numMax >= 0 and denMax >= 1; bounds are checked when enumeration begins.
         /// </summary>
         public IEnumerable<EllipticCurvePoint> RationalPoints(int numMax, int denMax)
+            => RationalPoints(numMax, denMax, default);
+
+        /// <summary>Enumerate rational points in the bounded x-coordinate box, with cancellation checked during enumeration.</summary>
+        public IEnumerable<EllipticCurvePoint> RationalPoints(int numMax, int denMax, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (numMax < 0) throw new ArgumentOutOfRangeException(nameof(numMax));
             if (denMax < 1) throw new ArgumentOutOfRangeException(nameof(denMax));
             yield return EllipticCurvePoint.Infinity;
@@ -248,6 +267,7 @@ namespace EllipticCurves
             {
                 for (BigInteger m = -numMax; m <= numMax; m++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (BigInteger.GreatestCommonDivisor(BigInteger.Abs(m), n) != BigInteger.One) continue;
 
                     var x = new BigRational(m, n);
@@ -256,22 +276,25 @@ namespace EllipticCurves
                     var t = A1 * x + A3;
                     var rhs = x * x * x + A2 * x * x + A4 * x + A6 + t * t / BigRational.FromInt(4);
 
-                    if (BigRational.IsSquare(rhs, out var yp))
+                    if (BigRational.IsSquare(rhs, out var yp, cancellationToken))
                     {
                         var y1 = yp - t / two;
                         var y2 = (-yp) - t / two;
 
                         var P1 = new EllipticCurvePoint(x, y1);
+                        cancellationToken.ThrowIfCancellationRequested();
                         if (IsOnCurve(P1)) yield return P1;
 
                         if (y2 != y1)
                         {
                             var P2 = new EllipticCurvePoint(x, y2);
+                            cancellationToken.ThrowIfCancellationRequested();
                             if (IsOnCurve(P2)) yield return P2;
                         }
                     }
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         /// <summary>
@@ -279,8 +302,12 @@ namespace EllipticCurves
         /// Returns O first, then affine integral points.
         /// </summary>
         public IEnumerable<EllipticCurvePoint> IntegralPoints(int xmax)
+            => IntegralPoints(xmax, default);
+
+        /// <summary>Enumerate integral points with |x| at most xmax, with cancellation checked during enumeration.</summary>
+        public IEnumerable<EllipticCurvePoint> IntegralPoints(int xmax, CancellationToken cancellationToken)
         {
-            return RationalPoints(xmax, 1).Where(p => p.IsInfinity || p.Y.Den.IsOne);
+            return RationalPoints(xmax, 1, cancellationToken).Where(p => p.IsInfinity || p.Y.Den.IsOne);
         }
 
         /// <summary>
@@ -320,8 +347,9 @@ namespace EllipticCurves
 
         #region Torsion structure
 
-        // Cached torsion set in ORIGINAL coordinates (including Infinity).
-        private IReadOnlyCollection<EllipticCurvePoint> torsionPoints;
+        // Cache only completed torsion sets in ORIGINAL coordinates (including Infinity).
+        private readonly CachedComputation<IReadOnlyList<EllipticCurvePoint>> torsionPointsCache
+            = new CachedComputation<IReadOnlyList<EllipticCurvePoint>>();
 
         /// <summary>
         /// Compute (and cache) the full set of rational torsion points of E(ℚ).
@@ -332,123 +360,131 @@ namespace EllipticCurves
         ///  3) Map the points back to the ORIGINAL model (inverse of the short/scale transform).
         /// Set contains Infinity and all affine torsion points; subsequent calls reuse the cache.
         /// </summary>
-        public IEnumerable<EllipticCurvePoint> TorsionPoints
+        public IEnumerable<EllipticCurvePoint> TorsionPoints => GetTorsionPoints();
+
+        /// <summary>Compute and cache all rational torsion points on the input model.
+        /// Cancellation covers factorization, reductions, divisor enumeration and root searches.
+        /// Only completed results are cached; a cancelled attempt can be retried.</summary>
+        /// <remarks>Concurrent callers wait with their own cancellation tokens. A cancelled token is checked even for a cached result.
+        /// A single BigInteger operation completes before the next cancellation check.</remarks>
+        public IReadOnlyList<EllipticCurvePoint> GetTorsionPoints(CancellationToken cancellationToken = default)
+            => torsionPointsCache.Get(() => ComputeTorsionPoints(cancellationToken), cancellationToken);
+
+        private IReadOnlyList<EllipticCurvePoint> ComputeTorsionPoints(CancellationToken cancellationToken)
         {
-            get
+            cancellationToken.ThrowIfCancellationRequested();
+            // ---- 0) Short → integral short model ----
+            var Es = ShortWeierstrass; // y^2 = x^3 + A x + B
+            var A = Es.A4; var B = Es.A6;
+
+            // Only clear the denominators with the powers needed by
+            // A*d^4 and B*d^6; using their LCM as d inflates the search.
+            BigInteger d = BigInteger.One;
+            foreach (var p in InternalMath.FactorAbs(InternalMath.Lcm(A.Den, B.Den), cancellationToken).Keys)
             {
-                if (torsionPoints == null)
+                cancellationToken.ThrowIfCancellationRequested();
+                int exponent = Math.Max((Valuation(A.Den, p, cancellationToken) + 3) / 4, (Valuation(B.Den, p, cancellationToken) + 5) / 6);
+                d *= BigInteger.Pow(p, exponent);
+            }
+            var Aint = A * BigRational.FromFraction(BigInteger.Pow(d, 4), BigInteger.One);
+            var Bint = B * BigRational.FromFraction(BigInteger.Pow(d, 6), BigInteger.One);
+            if (Aint.Den != BigInteger.One || Bint.Den != BigInteger.One)
+                throw new InvalidOperationException("Failed to obtain integral short model.");
+
+            var Ashort = Aint.Num;                  // integer A'
+            var Bshort = Bint.Num;                  // integer B'
+            var Eint = new EllipticCurveQ(
+                BigRational.Zero, BigRational.Zero, BigRational.Zero,
+                new BigRational(Ashort), new BigRational(Bshort));
+
+            // Δ' = −16(4A'^3 + 27B'^2). Nonsingular iff Δ' ≠ 0.
+            BigInteger Delta = -16 * (4 * BigInteger.Pow(Ashort, 3) + 27 * BigInteger.Pow(Bshort, 2));
+            if (Delta.IsZero) throw new InvalidOperationException("Singular curve.");
+
+            // ---- 1) Candidate orders via gcd of #E(F_p) for several good primes ----
+            int[] primes = [5, 7, 11, 13, 17, 19, 23, 29];
+            BigInteger gcdOrders = BigInteger.Zero;
+            for (int i = 0; i < primes.Length; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int p = primes[i];
+                if (Delta % p == 0) continue; // only good reduction
+                var np = InternalMath.CountPointsFpShort(Ashort, Bshort, p, cancellationToken);
+                gcdOrders = gcdOrders.IsZero ? new BigInteger(np) : BigInteger.GreatestCommonDivisor(gcdOrders, np);
+                if (gcdOrders.IsOne) break;
+            }
+            int[] mazur = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12];
+            var possibleOrders = new List<int>();
+            for (int i = 0; i < mazur.Length; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int n = mazur[i];
+                if (gcdOrders.IsZero || (gcdOrders % n) == 0) possibleOrders.Add(n);
+            }
+
+            if (gcdOrders.IsOne)
+                return Array.AsReadOnly(new[] { EllipticCurvePoint.Infinity });
+
+            // ---- 2) Lutz–Nagell search on integral short model ----
+            var T = new HashSet<EllipticCurvePoint> { EllipticCurvePoint.Infinity };
+
+            // 2a) 2-torsion: the integral roots of X^3 + A'X + B'.
+            foreach (var x in InternalMath.IntegralShortCubicRoots(Ashort, Bshort, cancellationToken))
+                T.Add(new EllipticCurvePoint(new BigRational(x), BigRational.Zero));
+
+            // The reduction bound counts the whole group, including O.
+            // Reaching it proves completeness without factoring Delta.
+            if (gcdOrders.IsZero || T.Count < gcdOrders)
+            {
+                // 2b) Torsion with Y != 0: Y^2 divides |Delta|.
+                var factDelta = InternalMath.FactorAbs(Delta, cancellationToken);
+                foreach (var y2 in InternalMath.EnumerateSquareDivisors(factDelta, cancellationToken))
                 {
-                    // ---- 0) Short → integral short model ----
-                    var Es = ShortWeierstrass; // y^2 = x^3 + A x + B
-                    var A = Es.A4; var B = Es.A6;
-
-                    // Only clear the denominators with the powers needed by
-                    // A*d^4 and B*d^6; using their LCM as d inflates the search.
-                    BigInteger d = BigInteger.One;
-                    foreach (var p in InternalMath.FactorAbs(InternalMath.Lcm(A.Den, B.Den)).Keys)
+                    var y = InternalMath.IntegerSqrt(y2, cancellationToken);
+                    foreach (var x in InternalMath.IntegralShortCubicRoots(Ashort, Bshort - y2, cancellationToken))
                     {
-                        int exponent = Math.Max((Valuation(A.Den, p) + 3) / 4, (Valuation(B.Den, p) + 5) / 6);
-                        d *= BigInteger.Pow(p, exponent);
-                    }
-                    var Aint = A * BigRational.FromFraction(BigInteger.Pow(d, 4), BigInteger.One);
-                    var Bint = B * BigRational.FromFraction(BigInteger.Pow(d, 6), BigInteger.One);
-                    if (Aint.Den != BigInteger.One || Bint.Den != BigInteger.One)
-                        throw new InvalidOperationException("Failed to obtain integral short model.");
-
-                    var Ashort = Aint.Num;                  // integer A'
-                    var Bshort = Bint.Num;                  // integer B'
-                    var Eint = new EllipticCurveQ(
-                        BigRational.Zero, BigRational.Zero, BigRational.Zero,
-                        new BigRational(Ashort), new BigRational(Bshort));
-
-                    // Δ' = −16(4A'^3 + 27B'^2). Nonsingular iff Δ' ≠ 0.
-                    BigInteger Delta = -16 * (4 * BigInteger.Pow(Ashort, 3) + 27 * BigInteger.Pow(Bshort, 2));
-                    if (Delta.IsZero) throw new InvalidOperationException("Singular curve.");
-
-                    // ---- 1) Candidate orders via gcd of #E(F_p) for several good primes ----
-                    int[] primes = [5, 7, 11, 13, 17, 19, 23, 29];
-                    BigInteger gcdOrders = BigInteger.Zero;
-                    for (int i = 0; i < primes.Length; i++)
-                    {
-                        int p = primes[i];
-                        if (Delta % p == 0) continue; // only good reduction
-                        var np = InternalMath.CountPointsFpShort(Ashort, Bshort, p);
-                        gcdOrders = gcdOrders.IsZero ? new BigInteger(np) : BigInteger.GreatestCommonDivisor(gcdOrders, np);
-                        if (gcdOrders.IsOne) break;
-                    }
-                    int[] mazur = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12];
-                    var possibleOrders = new List<int>();
-                    for (int i = 0; i < mazur.Length; i++)
-                    {
-                        int n = mazur[i];
-                        if (gcdOrders.IsZero || (gcdOrders % n) == 0) possibleOrders.Add(n);
-                    }
-
-                    if (gcdOrders.IsOne)
-                        return torsionPoints = Array.AsReadOnly(new[] { EllipticCurvePoint.Infinity });
-
-                    // ---- 2) Lutz–Nagell search on integral short model ----
-                    var T = new HashSet<EllipticCurvePoint> { EllipticCurvePoint.Infinity };
-
-                    // 2a) 2-torsion: the integral roots of X^3 + A'X + B'.
-                    foreach (var x in InternalMath.IntegralShortCubicRoots(Ashort, Bshort))
-                        T.Add(new EllipticCurvePoint(new BigRational(x), BigRational.Zero));
-
-                    // The reduction bound counts the whole group, including O.
-                    // Reaching it proves completeness without factoring Delta.
-                    if (gcdOrders.IsZero || T.Count < gcdOrders)
-                    {
-                        // 2b) Torsion with Y != 0: Y^2 divides |Delta|.
-                        var factDelta = InternalMath.FactorAbs(Delta);
-                        foreach (var y2 in InternalMath.EnumerateSquareDivisors(factDelta))
+                        var point = new EllipticCurvePoint(new BigRational(x), new BigRational(y));
+                        if (InternalMath.IsTorsionWithCandidates(Eint, point, possibleOrders, cancellationToken))
                         {
-                            var y = InternalMath.IntegerSqrt(y2);
-                            foreach (var x in InternalMath.IntegralShortCubicRoots(Ashort, Bshort - y2))
-                            {
-                                var point = new EllipticCurvePoint(new BigRational(x), new BigRational(y));
-                                if (InternalMath.IsTorsionWithCandidates(Eint, point, possibleOrders))
-                                {
-                                    T.Add(point);
-                                    T.Add(Eint.Negate(point));
-                                }
-                            }
-                            if (T.Count == gcdOrders) break;
+                            T.Add(point);
+                            T.Add(Eint.Negate(point));
                         }
                     }
-
-                    // ---- 3) Map SHORT-INTEGRAL torsion back to ORIGINAL coordinates ----
-                    var mapped = new HashSet<EllipticCurvePoint> { EllipticCurvePoint.Infinity };
-
-                    var d2 = BigInteger.Pow(d, 2);
-                    var d3 = BigInteger.Pow(d, 3);
-
-                    // Inverse transform:
-                    // short rational (X,Y) = (X_int/d^2, Y_int/d^3)
-                    // a2' = A2 + (A1/2)^2
-                    // original: x = X − a2'/3,   y = Y − (A1*x + A3)/2
-                    var s1 = A1 / BigRational.FromInt(2);      // ORIGINAL A1
-                    var a2p = A2 + s1 * s1;                     // a2'
-                    var shift = a2p / BigRational.FromInt(3);   // a2'/3
-
-                    foreach (var P in T)
-                    {
-                        if (P.IsInfinity) continue;
-
-                        var X = P.X / new BigRational(d2);
-                        var Y = P.Y / new BigRational(d3);
-
-                        var x = X - shift;
-                        var y = Y - (A1 * x + A3) / BigRational.FromInt(2);
-
-                        var Porig = new EllipticCurvePoint(x, y);
-                        if (IsOnCurve(Porig)) mapped.Add(Porig);
-                    }
-
-                    torsionPoints = Array.AsReadOnly(mapped.ToArray());
+                    if (T.Count == gcdOrders) break;
                 }
-
-                return torsionPoints;
             }
+
+            // ---- 3) Map SHORT-INTEGRAL torsion back to ORIGINAL coordinates ----
+            var mapped = new HashSet<EllipticCurvePoint> { EllipticCurvePoint.Infinity };
+
+            var d2 = BigInteger.Pow(d, 2);
+            var d3 = BigInteger.Pow(d, 3);
+
+            // Inverse transform:
+            // short rational (X,Y) = (X_int/d^2, Y_int/d^3)
+            // a2' = A2 + (A1/2)^2
+            // original: x = X − a2'/3,   y = Y − (A1*x + A3)/2
+            var s1 = A1 / BigRational.FromInt(2);      // ORIGINAL A1
+            var a2p = A2 + s1 * s1;                     // a2'
+            var shift = a2p / BigRational.FromInt(3);   // a2'/3
+
+            foreach (var P in T)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (P.IsInfinity) continue;
+
+                var X = P.X / new BigRational(d2);
+                var Y = P.Y / new BigRational(d3);
+
+                var x = X - shift;
+                var y = Y - (A1 * x + A3) / BigRational.FromInt(2);
+
+                var Porig = new EllipticCurvePoint(x, y);
+                if (IsOnCurve(Porig)) mapped.Add(Porig);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return Array.AsReadOnly(mapped.ToArray());
         }
 
         /// <summary>
@@ -456,9 +492,14 @@ namespace EllipticCurves
         /// Throws ArgumentException if the point does not lie on the curve.
         /// </summary>
         public bool IsTorsionPoint(EllipticCurvePoint P)
+            => IsTorsionPoint(P, default);
+
+        /// <summary>Test rational torsion membership with cancellation during torsion preparation.</summary>
+        public bool IsTorsionPoint(EllipticCurvePoint P, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!IsOnCurve(P)) throw new ArgumentException("Point is not on this curve.", nameof(P));
-            return TorsionPoints.Contains(P);
+            return GetTorsionPoints(cancellationToken).Contains(P);
         }
 
         /// <summary>
@@ -466,15 +507,22 @@ namespace EllipticCurves
         /// The point must lie on the curve; Infinity is treated as order 1.
         /// </summary>
         public int? TorsionOrder(EllipticCurvePoint P)
+            => TorsionOrder(P, default);
+
+        /// <summary>Return the exact rational torsion order, or null for infinite order, with cooperative cancellation.</summary>
+        public int? TorsionOrder(EllipticCurvePoint P, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!IsOnCurve(P)) throw new ArgumentException("Point is not on this curve.", nameof(P));
             if (P.IsInfinity) return 1;
 
-            if (!TorsionPoints.Contains(P)) return null;
+            var torsion = GetTorsionPoints(cancellationToken);
+            if (!torsion.Contains(P)) return null;
 
             var multiple = P;
-            for (int n = 1; n <= TorsionPoints.Count(); n++)
+            for (int n = 1; n <= torsion.Count; n++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (multiple.IsInfinity) return n;
                 multiple = Add(multiple, P);
             }
@@ -486,35 +534,37 @@ namespace EllipticCurves
         /// Group structure of the rational torsion subgroup E(ℚ)_tors inferred from TorsionPoints.
         /// Returns a label like "Z/1Z", "Z/4Z", or "Z/2Z x Z/4Z".
         /// </summary>
-        public string TorsionStructure
+        public string TorsionStructure => GetTorsionStructure();
+
+        /// <summary>Return the rational torsion group label, with cancellation during torsion preparation.</summary>
+        public string GetTorsionStructure(CancellationToken cancellationToken = default)
         {
-            get
+            var torsion = GetTorsionPoints(cancellationToken);
+            // size includes Infinity and equals |E(ℚ)_tors|
+            int size = torsion.Count;
+            if (size == 1) return "Z/1Z";
+
+            int twoTors = 0;
+            var two = BigRational.FromInt(2);
+            foreach (var P in torsion)
             {
-                // size includes Infinity and equals |E(ℚ)_tors|
-                int size = TorsionPoints.Count();
-                if (size == 1) return "Z/1Z";
+                cancellationToken.ThrowIfCancellationRequested();
+                if (P.IsInfinity) continue;
 
-                int twoTors = 0;
-                var two = BigRational.FromInt(2);
-                foreach (var P in TorsionPoints)
-                {
-                    if (P.IsInfinity) continue;
+                var doublingCondition = two * P.Y + A1 * P.X + A3;
+                if (doublingCondition.IsZero) twoTors++;
+            }
 
-                    var doublingCondition = two * P.Y + A1 * P.X + A3;
-                    if (doublingCondition.IsZero) twoTors++;
-                }
-
-                if (twoTors == 3)
-                {
-                    // Only non-cyclic case over ℚ: Z/2 × Z/2m (m=1..4), with |tors| = 4m.
-                    int m = size / 4;
-                    return $"Z/2Z x Z/{2 * m}Z";
-                }
-                else
-                {
-                    // Otherwise cyclic of order 'size'
-                    return $"Z/{size}Z";
-                }
+            if (twoTors == 3)
+            {
+                // Only non-cyclic case over ℚ: Z/2 × Z/2m (m=1..4), with |tors| = 4m.
+                int m = size / 4;
+                return $"Z/2Z x Z/{2 * m}Z";
+            }
+            else
+            {
+                // Otherwise cyclic of order 'size'
+                return $"Z/{size}Z";
             }
         }
 

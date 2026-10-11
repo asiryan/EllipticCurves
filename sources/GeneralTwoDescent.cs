@@ -62,7 +62,7 @@ namespace EllipticCurves
             {
                 var small = roots[0]; var middle = roots[1]; var large = roots[2];
                 var k = (4 * ii - large.Square()) / 3;
-                var sqrtK = k.Sqrt();
+                var sqrtK = k.Sqrt(budget.Token);
                 var typeOneBound = (k + sqrtK * large) / (3 * sqrtK + large + 2 * middle);
                 Region(1, DescentPolynomial.Floor(typeOneBound.Upper),
                     (a, b) => (middle / 2 + RationalInterval.Exact(new BigRational(3 * b * b, 8 * a)),
@@ -80,7 +80,7 @@ namespace EllipticCurves
             else if (roots.Count == 1)
             {
                 var phi = roots[0];
-                var radius = (4 * (phi.Square() - ii) / 27).Sqrt();
+                var radius = (4 * (phi.Square() - ii) / 27).Sqrt(budget.Token);
                 Region(DescentPolynomial.Ceiling((phi / 3 - radius).Lower), DescentPolynomial.Floor((phi / 3 + radius).Upper), (a, b) =>
                 {
                     var low = ((RationalInterval)(9 * a * a + 3 * b * b) - 2 * a * phi + (4 * ii - phi.Square()) / 3) / (8 * BigInteger.Abs(a));
@@ -118,7 +118,7 @@ namespace EllipticCurves
                         var syzygy = p * p * p - 48 * i * a * a * p - 64 * j * a * a * a;
                         if (syzygy < 0 || syzygy % 27 != 0) continue;
                         var square = syzygy / 27;
-                        var r = InternalMath.IntegerSqrt(square);
+                        var r = InternalMath.IntegerSqrt(square, rowBudget.Token);
                         if (r * r != square) continue;
                         // Enumerate both signs; this makes reflection boundary cases explicit.
                         Candidate(r);

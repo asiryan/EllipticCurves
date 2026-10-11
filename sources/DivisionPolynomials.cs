@@ -20,9 +20,26 @@ namespace EllipticCurves
             psi[4] = Scale(new BigRational[] { -a * a * a - 8 * b * b, -4 * a * b, -5 * a * a, 20 * b, 5 * a, 0, 1 }, 2);
         }
         private static BigRational[] Trim(BigRational[] a) { int n = a.Length; while (n > 1 && a[n - 1].IsZero) n--; return a.Take(n).ToArray(); }
-        internal BigRational[] Scale(BigRational[] a, BigRational s) => a.Select(x => x * s).ToArray();
+        internal BigRational[] Scale(BigRational[] a, BigRational s)
+        {
+            var c = new BigRational[a.Length];
+            for (int i = 0; i < c.Length; i++)
+            {
+                budget.Token.ThrowIfCancellationRequested();
+                c[i] = a[i] * s;
+            }
+            return c;
+        }
         internal BigRational[] Sub(BigRational[] a, BigRational[] b)
-        { var c = new BigRational[Math.Max(a.Length, b.Length)]; for (int i = 0; i < c.Length; i++) c[i] = (i < a.Length ? a[i] : 0) - (i < b.Length ? b[i] : 0); return Trim(c); }
+        {
+            var c = new BigRational[Math.Max(a.Length, b.Length)];
+            for (int i = 0; i < c.Length; i++)
+            {
+                budget.Token.ThrowIfCancellationRequested();
+                c[i] = (i < a.Length ? a[i] : 0) - (i < b.Length ? b[i] : 0);
+            }
+            return Trim(c);
+        }
         private BigRational[] Mul(BigRational[] a, BigRational[] b)
         {
             var c = new BigRational[a.Length + b.Length - 1];
@@ -54,13 +71,23 @@ namespace EllipticCurves
         internal IEnumerable<BigRational> RationalRoots(BigRational[] f)
         {
             f = Trim(f); if (f.Length <= 1) yield break;
-            BigInteger denominator = 1; foreach (var a in f) denominator = InternalMath.Lcm(denominator, a.Den);
-            var coefficients = f.Select(a => a.Num * (denominator / a.Den)).ToArray(); BigInteger gcd = 0;
-            foreach (var a in coefficients) gcd = BigInteger.GreatestCommonDivisor(gcd, a);
-            var leading = BigInteger.Abs(coefficients[coefficients.Length - 1] / gcd);
+            BigInteger denominator = 1;
+            foreach (var a in f)
+            {
+                budget.Token.ThrowIfCancellationRequested();
+                denominator = InternalMath.Lcm(denominator, a.Den);
+            }
+            BigInteger gcd = 0, leadingCoefficient = 0;
+            foreach (var a in f)
+            {
+                budget.Token.ThrowIfCancellationRequested();
+                leadingCoefficient = a.Num * (denominator / a.Den);
+                gcd = BigInteger.GreatestCommonDivisor(gcd, leadingCoefficient);
+            }
+            var leading = BigInteger.Abs(leadingCoefficient / gcd);
             foreach (var interval in DescentPolynomial.RealRoots(f, new BigRational(1, 4 * leading), budget))
                 for (var n = DescentPolynomial.Ceiling(interval.Lower * new BigRational(leading)); n <= DescentPolynomial.Floor(interval.Upper * new BigRational(leading)); n++)
-                { budget.Step(); var x = new BigRational(n, leading); if (DescentPolynomial.Evaluate(f, x).IsZero) yield return x; }
+                { budget.Step(); var x = new BigRational(n, leading); if (DescentPolynomial.Evaluate(f, x, budget.Token).IsZero) yield return x; }
         }
     }
 }

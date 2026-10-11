@@ -27,14 +27,15 @@ namespace EllipticCurves
         {
             if (!IsPrime(prime, cancellationToken)) throw new ArgumentOutOfRangeException(nameof(prime), "A prime is required.");
             var e = GetGlobalMinimalModel(cancellationToken);
-            return ComputeLocalData(e, prime, Valuation(e.Discriminant.Num, prime), cancellationToken);
+            return ComputeLocalData(e, prime, Valuation(e.Discriminant.Num, prime, cancellationToken), cancellationToken);
         }
 
         // Tate's algorithm, using a globally minimal model. Arithmetic criteria:
         // Cremona, Algorithms for Modular Elliptic Curves, III.2; no foreign source code.
         internal static LocalReductionData ComputeLocalData(EllipticCurveQ model, BigInteger p, int n, CancellationToken token)
         {
-            int j = Valuation(model.JInvariant.Den, p), root = LocalRootNumber(model, p);
+            token.ThrowIfCancellationRequested();
+            int j = Valuation(model.JInvariant.Den, p, token), root = LocalRootNumber(model, p, token);
             LocalReductionData Result(string symbol, int f, int cp, ReductionType type = ReductionType.Additive)
                 => new LocalReductionData(p, n, f, j, symbol, type, cp, root);
             if (n == 0) return Result("I0", 0, 1, ReductionType.Good);

@@ -38,7 +38,8 @@ uses the Cremona/LMFDB normalization lim 4^(-n) h_x(2^n P). Infinity has height 
 The canonical value is invariant under the supplied rational model changes.
 
 `LocalHeight(P,p)` and `ArchimedeanHeight(P)` refer to the reduced global minimal
-model and are undefined at infinity. Their sum is the canonical height. For integral
+model and are undefined at infinity. The archimedean term plus the sum of finite
+local terms over all primes is the canonical height. For integral
 minimal coefficients, finite contributions outside the bad primes and x-denominator
 primes vanish. Local contributions can be negative.
 
@@ -65,8 +66,9 @@ geometric tail bounds, square roots use integer bounds, and pi uses alternating
 arctangent series with explicit tails.
 
 `RealComputationOptions` defaults to 256 fractional binary bits, four extra decimal
-places for height truncation, 512 height/AGM iterations and 100000 root-isolation
-steps. Logarithm and pi series lengths depend on `PrecisionBits`. `GuardDigits`
+places for height truncation, 512 iterations per height series or AGM, and 100000
+steps per root-isolation calculation. Logarithm and pi series lengths depend on
+`PrecisionBits`. `GuardDigits`
 can tighten the height-series tail for large regulators; increase `PrecisionBits`
 alongside it, since longer iterations also amplify rounding uncertainty.
 For example, `DecimalDigits=30, PrecisionBits=512` and
@@ -130,13 +132,16 @@ library does not yet prove a global bound on all primes dividing the saturation
 index. LMFDB generator data can be used for comparison, but is not such a proof.
 
 Defaults are 2000000 counted operations, division degree at most 1024, and 128
-enlargements. The independence calculation defaults to 16 digits at 384 bits.
+enlargements. The default `HeightOptions` uses 16 digits at 384 bits; explicitly
+setting it to null selects the `RealComputationOptions` defaults instead.
 Preparation (minimalization, torsion, heights) is outside the work counter.
 Polynomial coefficient sizes and exact root-isolation costs can grow rapidly;
 the method is intended for modest rank and small saturation primes. Counters are
-not wall-clock or memory limits. Cancellation is cooperative; the existing torsion
-enumeration is not interruptible internally, and cancellation is observed when
-that preparation completes.
+not wall-clock or memory limits. Cancellation is cooperative throughout preparation
+and saturation, including torsion factorization/enumeration, exact root extraction,
+point multiplication and polynomial searches. An individual `BigInteger` operation
+finishes before the next cancellation check. Cancellation throws
+`OperationCanceledException`; it is not a work-limit or incomplete-proof result.
 
 ## LMFDB adapter
 
@@ -165,7 +170,9 @@ records are reported explicitly.
 `MordellWeilGenerators` and `TorsionGenerators` are on `GlobalMinimalModel`.
 Stored triples [a,b,c] use weighted coordinates x=a/c², y=b/c³; each parsed point
 is checked against the model. `GetGeneratorsOnModel(curve)` performs the exact
-coordinate change. Missing optional fields are null; present empty lists remain
+coordinate change. `GetGeneratorsOnModel(curve, token)` also cancels exact
+isomorphism preparation and generator mapping; `FetchAsync` passes its token into
+candidate isomorphism checks. Missing optional fields are null; present empty lists remain
 empty, which matters for rank-zero curves. `FromStoredDataJson(json)` supports
 offline aggregate snapshots such as
 [the 37.a1 data page](https://www.lmfdb.org/EllipticCurve/Q/data/37.a1).

@@ -18,20 +18,21 @@ namespace EllipticCurves
             foreach (var p in e.GetMinimalDiscriminantFactorization(cancellationToken).Keys)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                sign *= LocalRootNumber(e, p);
+                sign *= LocalRootNumber(e, p, cancellationToken);
             }
             return sign;
         }
 
-        internal static int LocalRootNumber(EllipticCurveQ e, BigInteger p)
+        internal static int LocalRootNumber(EllipticCurveQ e, BigInteger p, CancellationToken token = default)
         {
+            token.ThrowIfCancellationRequested();
             if (e.Discriminant.Num % p != 0) return 1;
-            if (p == 2) return RootAtTwo(e);
-            if (p == 3) return RootAtThree(e);
+            if (p == 2) return RootAtTwo(e, token);
+            if (p == 3) return RootAtThree(e, token);
             var c4 = e.C4.Num;
             var c6 = e.C6.Num;
             if (c4 % p != 0) return -QuadraticCharacter(-c6, p);
-            int d = Valuation(e.Discriminant.Num, p), a = Valuation(c4, p);
+            int d = Valuation(e.Discriminant.Num, p, token), a = Valuation(c4, p, token);
             if (3L * a < d) return QuadraticCharacter(-1, p); // Potentially multiplicative.
             return QuadraticCharacter(d == 3 || d == 9 ? -2 : d == 4 || d == 8 ? -3 : -1, p);
         }
@@ -43,11 +44,12 @@ namespace EllipticCurves
         }
 
         // Infinity must remain larger than all finite valuations after normalization.
-        internal static int Valuation(BigInteger value, BigInteger p)
+        internal static int Valuation(BigInteger value, BigInteger p, CancellationToken token = default)
         {
+            token.ThrowIfCancellationRequested();
             if (value.IsZero) return int.MaxValue / 4;
             int v = 0;
-            while (value % p == 0) { value /= p; v++; }
+            while (value % p == 0) { token.ThrowIfCancellationRequested(); value /= p; v++; }
             return v;
         }
 
@@ -61,9 +63,9 @@ namespace EllipticCurves
 
         // Cowland Kellock--Dokchitser, Root numbers and parity phenomena (2023), Appendix A.
         // Columns are (v(Delta),v(c6),v(c4)); one original Rizzo row is retained below.
-        private static int RootAtTwo(EllipticCurveQ e)
+        private static int RootAtTwo(EllipticCurveQ e, CancellationToken token)
         {
-            var v = new RootNumberInvariants(e, 2);
+            var v = new RootNumberInvariants(e, 2, token);
             int a = v.A, b = v.B, d = v.D;
             var u = v.U4; var w = v.U6;
             if (a == 0 && b == 0)
@@ -112,9 +114,9 @@ namespace EllipticCurves
         }
 
         // Rizzo, Average Root Numbers for a Nonconstant Family of Elliptic Curves (2003), Table II.
-        private static int RootAtThree(EllipticCurveQ e)
+        private static int RootAtThree(EllipticCurveQ e, CancellationToken token)
         {
-            var v = new RootNumberInvariants(e, 3);
+            var v = new RootNumberInvariants(e, 3, token);
             int a = v.A, b = v.B, d = v.D;
             var u = v.U4; var w = v.U6;
             if (a == 0 && b == 0) return d == 0 ? 1 : SignIf(Residue(w, 3, 1));

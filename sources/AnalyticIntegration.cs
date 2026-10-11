@@ -33,7 +33,10 @@ namespace EllipticCurves
             values = Integrate(end, tolerance * 1e-3, 24, out errors);
             double absoluteSum = 0;
             for (int n = 1; n < coefficients.Length; n++)
+            {
+                if ((n & 1023) == 0) token.ThrowIfCancellationRequested();
                 absoluteSum += Math.Abs(coefficients[n]) * Math.Exp(-alpha * n) / n * (1 + 1 / (alpha * n));
+            }
             for (int k = 0; k <= order; k++)
             {
                 if ((k % 2 == 0 ? 1 : -1) != sign) { values[k] = 0; errors[k] = 0; continue; }

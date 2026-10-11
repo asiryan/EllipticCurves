@@ -37,8 +37,9 @@ sorted by prime, without a second factorization. The token is optional; scalar
 overloads and `Conductor` still return only the integer.
 For `y^2 = x^3 - x`, the conductor is `2^5`, while the discriminant is `2^6`.
 
-Each curve instance retains its successfully computed minimal model and the
-complete factorization of the absolute minimal discriminant. Conductor, canonical
+Each curve instance retains its successfully computed minimal model, the
+complete factorization of the absolute minimal discriminant, and its full rational
+torsion set in the input model's coordinates. Conductor, canonical
 heights and height matrices, global root number, all-prime local data and general
 2-descent reuse that factorization. The returned minimal model and targets from
 `GetMinimalModelIsomorphism` share it with the input curve. Preparing just a minimal
@@ -80,8 +81,9 @@ The two image dimensions satisfy
 
 The implementation obtains a lower bound for each image dimension by exact
 quartic point searches and Gaussian elimination on square classes. It starts with
-the known class of (0,0). The searches use 0 <= U,V <= searchBound and gcd(U,V)=1;
-signs of U,V are immaterial because only even powers occur.
+the known class of (0,0). The searches include (U,V)=(1,0), then
+|U| <= searchBound, 1 <= V <= searchBound and gcd(U,V)=1. The two signs of U
+give the same value in these isogeny quartics because only even powers occur.
 
 The upper bound uses the complete isogeny Selmer groups. Local solubility is
 decided over the reals and at 2 and the prime divisors of b(a^2-4b). An iterative
@@ -106,12 +108,16 @@ local tests, lower bounds and independent reference data.
 
 `searchBound = 0` disables point searches. Increasing it can improve the lower
 bound, but cannot guarantee equality of the bounds. `maxSquareClasses` bounds the
-number of candidates per isogeny and throws `NotSupportedException` if exceeded.
+number of candidates per isogeny; exceeding it returns an unknown upper bound
+and retains all lower-bound proofs, including those from a completed first isogeny
+descent when the second cannot fit the limit.
 In general descent it bounds the number of covering classes, including the identity.
 `RankComputationOptions` additionally limits counted descent and point-search work.
-Reaching the general covering-class limit or `MaxDescentWork` returns no upper
+Exceeding either class limit or reaching `MaxDescentWork` returns no upper
 bound or Selmer dimension; `Reason` records the limit. Exhausting point search
-preserves already proved bounds. Factorization and the initial search for rational
+preserves already proved bounds and allows a completed Selmer upper bound to be
+returned. A zero lower bound is not a proof of rank zero. Invalid arguments and
+cancellation still throw. Factorization and the initial search for rational
 2-torsion remain cancellable but are not capped by these work counters.
 Higher descents and Cassels-Tate pairings are not implemented.
 
@@ -130,11 +136,16 @@ weighted by the fourth and sixth powers. Lutz–Nagell candidates are found by
 exact cubic bisection, without factoring each candidate's constant term; the
 search stops once its good-reduction upper bound is attained. Factoring the
 model's discriminant may still be expensive when that bound is not attained.
-The torsion API does not currently accept a cancellation token.
+`GetTorsionPoints(cancellationToken)` supports cancellation throughout this
+preparation and returns the cached complete set when available.
+`GetTorsionStructure(token)`, `IsTorsionPoint(P,token)` and `TorsionOrder(P,token)`
+use the same computation.
+Cancelled or failed torsion preparations are not cached. The `TorsionPoints` and
+`TorsionStructure` properties use the same cache without a cancellation token.
 
-The minimal model and its discriminant factorization are reused across calls.
-Other results, including rank bounds and real enclosures, are recomputed with the
-requested search limits and precision.
+The minimal model, its discriminant factorization and the input model's torsion
+set are reused across calls. Rank bounds and real enclosures are recomputed with
+the requested search limits and precision.
 
 `GetConductor(FactorizationOptions, CancellationToken)` accepts a per-call
 `MaxDegreeOfParallelism` limit. The limit follows every factorization needed for
@@ -286,7 +297,8 @@ silently modifies the unconditional descent bounds.
 
 Defaults: derivative order 4 (supported range 0–8), `ZeroTolerance=1e-9`,
 `MaxTerms=20000`, `MaxPointCountingWork=20000000` (sum of primes),
-`MaxIntegrationEvaluations=100000`, and `MaxCertificationTerms=1024`.
+`MaxIntegrationEvaluations=100000`, `CertifyLowRanks=true`, and
+`MaxCertificationTerms=1024` (zero disables certification).
 The numerical stage uses double precision. Certification uses at most the already
 computed number of coefficients; increasing its limit cannot change a numerical
 estimate into a proof unless the resulting interval excludes zero.

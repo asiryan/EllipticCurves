@@ -38,6 +38,7 @@ from a terminal to keep the output visible. Use `Ctrl+C` to stop a calculation.
 Both `--curve="equation"` and `--lmfdb=true` are accepted. Use `--lmfdb false`
 or `--lmfdb=false` to explicitly disable lookup. Options may appear in either
 order; unknown options, repeated options and invalid values are rejected.
+`--help` or `-h` takes precedence and skips validation of the other arguments.
 
 Quote the entire equation. Parsing is shared with Explorer: `x` and `y` are
 case-insensitive, powers use `^`, multiplication may use `*` or be implicit,

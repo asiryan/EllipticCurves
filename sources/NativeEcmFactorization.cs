@@ -21,7 +21,7 @@ namespace EllipticCurves
             if (n <= 1 || curves < 0 || firstBound < 2 || secondBound < firstBound)
                 throw new ArgumentOutOfRangeException();
             if (n.IsEven) return n > 2 ? 2 : BigInteger.One;
-            var primes = NativeNumberTheory.SievePrimes(secondBound);
+            var primes = NativeNumberTheory.SievePrimes(secondBound, token);
             for (int curve = 0; curve < curves; curve++)
             {
                 token.ThrowIfCancellationRequested();
@@ -34,7 +34,7 @@ namespace EllipticCurves
                 if (divisor > 1 && divisor < n) return divisor;
                 if (divisor == n) continue;
                 var a24 = NativeNumberTheory.Mod(BigInteger.Pow(v - u, 3) * (3 * u + v)
-                    * Inverse(denominator, n), n);
+                    * Inverse(denominator, n, token), n);
                 // Exclude curves singular modulo a factor; a nontrivial gcd is
                 // already a factorization success.
                 divisor = BigInteger.GreatestCommonDivisor(a24 * (a24 - 1), n);
@@ -48,7 +48,7 @@ namespace EllipticCurves
                     token.ThrowIfCancellationRequested();
                     int power = prime;
                     while (power <= firstBound / prime) power *= prime;
-                    point = Multiply(point, power, a24, n);
+                    point = Multiply(point, power, a24, n, token);
                     divisor = BigInteger.GreatestCommonDivisor(point.Z, n);
                     if (divisor > 1 && divisor < n) return divisor;
                     if (divisor == n) { degenerate = true; break; }
@@ -57,12 +57,14 @@ namespace EllipticCurves
                 divisor = SecondStage(point, a24, n, primes, firstBound, token);
                 if (divisor > 1) return divisor;
             }
+            token.ThrowIfCancellationRequested();
             return BigInteger.One;
         }
 
         private static BigInteger SecondStage(Point point, BigInteger a24, BigInteger n,
             int[] primes, int firstBound, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             // p = m*210 +/- r. Equality of x-coordinates for [m*210]Q and
             // [r]Q detects either sign, using projective cross-products only.
             const int stride = 210;
@@ -71,8 +73,11 @@ namespace EllipticCurves
             babies[1] = point;
             babies[3] = Add(twice, point, point, n);
             for (int r = 5; r < babies.Length; r += 2)
+            {
+                token.ThrowIfCancellationRequested();
                 babies[r] = Add(babies[r - 2], twice, babies[r - 4], n);
-            var step = Multiply(point, stride, a24, n);
+            }
+            var step = Multiply(point, stride, a24, n, token);
             int giantIndex = -1;
             Point giant = default, previous = default;
             var terms = new BigInteger[64];
@@ -85,7 +90,7 @@ namespace EllipticCurves
                 // The small primes dividing the wheel use direct multiplication.
                 if (prime <= 7)
                 {
-                    var smallDivisor = BigInteger.GreatestCommonDivisor(Multiply(point, prime, a24, n).Z, n);
+                    var smallDivisor = BigInteger.GreatestCommonDivisor(Multiply(point, prime, a24, n, token).Z, n);
                     if (smallDivisor > 1 && smallDivisor < n) return smallDivisor;
                     continue;
                 }
@@ -94,11 +99,12 @@ namespace EllipticCurves
                 if (giantIndex < 0)
                 {
                     giantIndex = m;
-                    giant = Multiply(step, m, a24, n);
-                    previous = Multiply(step, Math.Max(0, m - 1), a24, n);
+                    giant = Multiply(step, m, a24, n, token);
+                    previous = Multiply(step, Math.Max(0, m - 1), a24, n, token);
                 }
                 while (giantIndex < m)
                 {
+                    token.ThrowIfCancellationRequested();
                     var next = giantIndex == 0 ? step : giantIndex == 1
                         ? Double(step, a24, n) : Add(giant, step, previous, n);
                     previous = giant; giant = next; giantIndex++;
@@ -108,30 +114,36 @@ namespace EllipticCurves
                 product = product * terms[count++] % n;
                 if (count == terms.Length)
                 {
-                    var divisor = BatchDivisor(product, terms, count, n);
+                    var divisor = BatchDivisor(product, terms, count, n, token);
                     if (divisor > 1 && divisor < n) return divisor;
                     if (divisor == n) return BigInteger.One;
                     product = 1; count = 0;
                 }
             }
-            var final = BatchDivisor(product, terms, count, n);
+            var final = BatchDivisor(product, terms, count, n, token);
+            token.ThrowIfCancellationRequested();
             return final > 1 && final < n ? final : BigInteger.One;
         }
 
-        private static BigInteger BatchDivisor(BigInteger product, BigInteger[] terms, int count, BigInteger n)
+        private static BigInteger BatchDivisor(BigInteger product, BigInteger[] terms, int count, BigInteger n, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             var divisor = BigInteger.GreatestCommonDivisor(product, n);
+            token.ThrowIfCancellationRequested();
             if (divisor != n) return divisor;
             for (int i = 0; i < count; i++)
             {
+                token.ThrowIfCancellationRequested();
                 divisor = BigInteger.GreatestCommonDivisor(terms[i], n);
+                token.ThrowIfCancellationRequested();
                 if (divisor > 1 && divisor < n) return divisor;
             }
             return n;
         }
 
-        private static Point Multiply(Point point, int scalar, BigInteger a24, BigInteger n)
+        private static Point Multiply(Point point, int scalar, BigInteger a24, BigInteger n, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             if (scalar == 0) return new Point(1, 0);
             if (scalar == 1) return point;
             var lo = point;
@@ -140,10 +152,12 @@ namespace EllipticCurves
             while (bit <= scalar / 2) bit <<= 1;
             for (bit >>= 1; bit != 0; bit >>= 1)
             {
+                token.ThrowIfCancellationRequested();
                 var sum = Add(lo, hi, point, n);
                 if ((scalar & bit) == 0) { lo = Double(lo, a24, n); hi = sum; }
                 else { hi = Double(hi, a24, n); lo = sum; }
             }
+            token.ThrowIfCancellationRequested();
             return lo;
         }
 
@@ -166,16 +180,19 @@ namespace EllipticCurves
             return new Point(difference.Z * (sum * sum % n) % n, difference.X * (delta * delta % n) % n);
         }
 
-        private static BigInteger Inverse(BigInteger value, BigInteger modulus)
+        private static BigInteger Inverse(BigInteger value, BigInteger modulus, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             BigInteger r = modulus, next = value, t = 0, coefficient = 1;
             while (!next.IsZero)
             {
+                token.ThrowIfCancellationRequested();
                 var quotient = BigInteger.DivRem(r, next, out var remainder);
                 r = next; next = remainder;
                 var previous = t;
                 t = coefficient; coefficient = previous - quotient * coefficient;
             }
+            token.ThrowIfCancellationRequested();
             return NativeNumberTheory.Mod(t, modulus);
         }
     }

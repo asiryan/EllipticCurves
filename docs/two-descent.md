@@ -105,15 +105,28 @@ the numerator/denominator box for x on the minimal curve and primitive quartic
 coordinates. Zero disables all point searches.
 
 `MaxSquareClasses` bounds signed square classes per isogeny in 2-isogeny descent;
-exceeding it throws `NotSupportedException`. In general descent it bounds covering
-classes, including the identity; exhaustion returns no upper bound and preserves
-the proved lower bound, with an explanation in `Reason`.
+in general descent it bounds covering classes, including the identity. Exceeding
+either limit returns `UpperBound = null` and preserves the proved lower bound,
+with an explanation containing `MaxSquareClasses` in `Reason`. A bound equal to
+the required class count is allowed. If the first isogeny descent completes and
+the second exceeds the limit, the lower-bound proofs from the first are retained.
+An incomplete descent does not claim an exact rank or a 2-Selmer dimension.
+Invalid options still throw, and cancellation throws `OperationCanceledException`.
+
+`MaxDescentWork` also returns an unknown upper bound when enumeration is incomplete.
+`MaxPointSearchWork` can stop point searches without preventing completion of the
+Selmer calculation; in that case the proved upper bound is retained. A lower bound
+of zero alone never proves rank zero.
 
 Descent work counts region enumeration, root-isolation/equivalence work and local
-lifting steps. Point work is shared by the original curve and covering searches.
+lifting steps. Point work is shared by the minimal-model curve and covering searches.
 Neither counter measures wall time or bounds a single arbitrary-precision operation.
 Initial minimization, factorization and rational 2-torsion detection are cancellable
-but outside these counters. Very large invariants can require impractical work.
+but outside these counters. Good-prime character preparation and the exact
+first-12-multiples infinite-order test are also outside them. Very large invariants
+can require impractical work. Cancellation is cooperative in preparation and
+descent; it throws instead of returning partial bounds. A single `BigInteger`
+operation finishes before the next cancellation check.
 
 `TwoSelmerDimension` is populated only after complete general descent.
 `UsedGeneralTwoDescent` and `UsedTwoIsogenyDescent` describe the selected method,
