@@ -16,12 +16,12 @@ public sealed class CancellationRegressionTests
         if (warmCache) Assert.Equal(6, curve.GetTorsionPoints().Count);
         var token = new CancellationToken(true);
 
-        Cancelled(token, () => curve.GetTorsionPoints(token));
-        Cancelled(token, () => curve.GetTorsionStructure(token));
-        Cancelled(token, () => curve.IsTorsionPoint(point, token));
-        Cancelled(token, () => curve.TorsionOrder(point, token));
-        Cancelled(token, () => curve.IsTorsionPoint(EllipticCurvePoint.Infinity, token));
-        Cancelled(token, () => curve.TorsionOrder(EllipticCurvePoint.Infinity, token));
+        Cancelled(() => curve.GetTorsionPoints(token), token);
+        Cancelled(() => curve.GetTorsionStructure(token), token);
+        Cancelled(() => curve.IsTorsionPoint(point, token), token);
+        Cancelled(() => curve.TorsionOrder(point, token), token);
+        Cancelled(() => curve.IsTorsionPoint(EllipticCurvePoint.Infinity, token), token);
+        Cancelled(() => curve.TorsionOrder(EllipticCurvePoint.Infinity, token), token);
 
         // Cancellation must not publish an empty/partial set or poison the cache.
         var torsion = curve.GetTorsionPoints();
@@ -44,8 +44,8 @@ public sealed class CancellationRegressionTests
     {
         var curve = new EllipticCurveQ(0, 0, 1, -1, 0);
         var token = new CancellationToken(true);
-        Cancelled(token, () => curve.Multiply(new EllipticCurvePoint(0, 0), scalar, token));
-        Cancelled(token, () => curve.Multiply(EllipticCurvePoint.Infinity, scalar, token));
+        Cancelled(() => curve.Multiply(new EllipticCurvePoint(0, 0), scalar, token), token);
+        Cancelled(() => curve.Multiply(EllipticCurvePoint.Infinity, scalar, token), token);
     }
 
     [Theory]
@@ -57,7 +57,7 @@ public sealed class CancellationRegressionTests
     public void ExactSquareTestingHonorsPreCancellationBeforeItsFastPaths(int value)
     {
         var token = new CancellationToken(true);
-        Cancelled(token, () => BigRational.IsSquare(value, out _, token));
+        Cancelled(() => BigRational.IsSquare(value, out _, token), token);
     }
 
     [Fact]
@@ -65,23 +65,23 @@ public sealed class CancellationRegressionTests
     {
         var token = new CancellationToken(true);
         var curve = new EllipticCurveQ(0, 0, 0, 0, 1);
-        Cancelled(token, () => InternalMath.FactorAbs(0, token));
-        Cancelled(token, () => InternalMath.FactorAbs(1, token));
-        Cancelled(token, () => InternalMath.FactorAbs(36, token));
-        Cancelled(token, () => InternalMath.IntegerSqrt(0, token));
-        Cancelled(token, () => InternalMath.IntegerSqrt(1, token));
-        Cancelled(token, () => InternalMath.IntegerSqrt(36, token));
-        Cancelled(token, () => InternalMath.IntegerKthRoot(0, 3, token));
-        Cancelled(token, () => InternalMath.TryIntegerKthRoot(1, 3, out _, token));
-        Cancelled(token, () => InternalMath.TryRationalKthRoot(-1, 2, out _, token));
-        Cancelled(token, () => InternalMath.ModPow(1, 0, 5, token));
-        Cancelled(token, () => InternalMath.Legendre(0, 5, token));
-        Cancelled(token, () => InternalMath.CountPointsFpShort(0, 1, 5, token));
-        Cancelled(token, () => InternalMath.OrderDivides(curve, EllipticCurvePoint.Infinity, 0, token));
-        Cancelled(token, () => InternalMath.IsTorsionWithCandidates(curve, EllipticCurvePoint.Infinity, new(), token));
-        Cancelled(token, () => InternalMath.IntegralShortCubicRoots(0, 0, token).ToArray());
-        Cancelled(token, () => InternalMath.EnumerateSquareDivisors(new(), token).ToArray());
-        Cancelled(token, () => InternalMath.EnumerateDivisorsAbs(0, token).ToArray());
+        Cancelled(() => InternalMath.FactorAbs(0, token), token);
+        Cancelled(() => InternalMath.FactorAbs(1, token), token);
+        Cancelled(() => InternalMath.FactorAbs(36, token), token);
+        Cancelled(() => InternalMath.IntegerSqrt(0, token), token);
+        Cancelled(() => InternalMath.IntegerSqrt(1, token), token);
+        Cancelled(() => InternalMath.IntegerSqrt(36, token), token);
+        Cancelled(() => InternalMath.IntegerKthRoot(0, 3, token), token);
+        Cancelled(() => InternalMath.TryIntegerKthRoot(1, 3, out _, token), token);
+        Cancelled(() => InternalMath.TryRationalKthRoot(-1, 2, out _, token), token);
+        Cancelled(() => InternalMath.ModPow(1, 0, 5, token), token);
+        Cancelled(() => InternalMath.Legendre(0, 5, token), token);
+        Cancelled(() => InternalMath.CountPointsFpShort(0, 1, 5, token), token);
+        Cancelled(() => InternalMath.OrderDivides(curve, EllipticCurvePoint.Infinity, 0, token), token);
+        Cancelled(() => InternalMath.IsTorsionWithCandidates(curve, EllipticCurvePoint.Infinity, new(), token), token);
+        Cancelled(() => InternalMath.IntegralShortCubicRoots(0, 0, token).ToArray(), token);
+        Cancelled(() => InternalMath.EnumerateSquareDivisors(new(), token).ToArray(), token);
+        Cancelled(() => InternalMath.EnumerateDivisorsAbs(0, token).ToArray(), token);
     }
 
     [Theory]
@@ -97,7 +97,7 @@ public sealed class CancellationRegressionTests
         Assert.True(divisors.MoveNext());
         Assert.Equal(BigInteger.One, divisors.Current);
         cancellation.Cancel();
-        Cancelled(cancellation.Token, () => divisors.MoveNext());
+        Cancelled(() => divisors.MoveNext(), cancellation.Token);
 
         var expected = squareOnly ? new[] { 1, 4, 9, 36 } : new[] { 1, 2, 3, 4, 6, 9, 12, 18, 36 };
         Assert.Equal(expected.Select(n => new BigInteger(n)), Divisors(default).OrderBy(n => n));
@@ -139,7 +139,7 @@ public sealed class CancellationRegressionTests
         Assert.True(divisors.MoveNext());
         Assert.Equal(BigInteger.One, divisors.Current);
         cancellation.Cancel();
-        Cancelled(cancellation.Token, () => divisors.MoveNext());
+        Cancelled(() => divisors.MoveNext(), cancellation.Token);
     }
 
     [Theory]
@@ -154,7 +154,7 @@ public sealed class CancellationRegressionTests
         Assert.Equal(new BigInteger(yielded == 4 ? 729 : 11664), divisors.Current);
 
         cancellation.Cancel();
-        Cancelled(cancellation.Token, () => divisors.MoveNext());
+        Cancelled(() => divisors.MoveNext(), cancellation.Token);
         Assert.Equal(12, InternalMath.EnumerateSquareDivisors(factors).Count());
     }
 
@@ -187,7 +187,7 @@ public sealed class CancellationRegressionTests
         Assert.True(divisors.MoveNext());
         Assert.Equal(BigInteger.Zero, divisors.Current);
         cancellation.Cancel();
-        Cancelled(cancellation.Token, () => divisors.MoveNext());
+        Cancelled(() => divisors.MoveNext(), cancellation.Token);
         Assert.Equal(new[] { BigInteger.Zero }, InternalMath.EnumerateDivisorsAbs(0).ToArray());
     }
 
@@ -195,10 +195,10 @@ public sealed class CancellationRegressionTests
     public void IntervalHelpersHonorPreCancellationOnExactAndTrivialInputs()
     {
         var token = new CancellationToken(true);
-        Cancelled(token, () => DyadicInterval.SqrtInteger(0, token));
-        Cancelled(token, () => DyadicInterval.ExpNegative(DyadicInterval.Integer(0), token));
-        Cancelled(token, () => DyadicInterval.Pi(token));
-        Cancelled(token, () => RationalInterval.Exact(0).Sqrt(token));
+        Cancelled(() => DyadicInterval.SqrtInteger(0, token), token);
+        Cancelled(() => DyadicInterval.ExpNegative(DyadicInterval.Integer(0), token), token);
+        Cancelled(() => DyadicInterval.Pi(token), token);
+        Cancelled(() => RationalInterval.Exact(0).Sqrt(token), token);
     }
 
     [Theory]
@@ -208,7 +208,7 @@ public sealed class CancellationRegressionTests
     {
         var curve = new EllipticCurveQ(0, 0, 1, -1, 0);
         var token = new CancellationToken(true);
-        Cancelled(token, () => Search(curve, integral, token).ToArray());
+        Cancelled(() => Search(curve, integral, token).ToArray(), token);
     }
 
     [Theory]
@@ -226,7 +226,7 @@ public sealed class CancellationRegressionTests
         Assert.True(curve.IsOnCurve(points.Current));
 
         cancellation.Cancel();
-        Cancelled(cancellation.Token, () => points.MoveNext());
+        Cancelled(() => points.MoveNext(), cancellation.Token);
 
         var retry = Search(curve, integral, default).ToArray();
         Assert.Contains(new EllipticCurvePoint(0, 0), retry);
@@ -330,12 +330,12 @@ public sealed class CancellationRegressionTests
     {
         var field = new FiniteField(5, new BigInteger[] { 2, 0, 1 });
         var token = new CancellationToken(true);
-        Cancelled(token, () => CalculationInput.Element(field, text, token));
-        Cancelled(token, () => CalculationInput.Read(typeof(FiniteFieldElement), "a",
-            new Dictionary<string, string> { ["a"] = text }, field, token));
+        Cancelled(() => CalculationInput.Element(field, text, token), token);
+        Cancelled(() => CalculationInput.Read(typeof(FiniteFieldElement), "a",
+            new Dictionary<string, string> { ["a"] = text }, field, token), token);
         var curve = new EllipticCurveFq(field, 0, 0, 0, 1, 0);
-        Cancelled(token, () => CalculationInput.Read(typeof(EllipticCurvePointFq), "P",
-            new Dictionary<string, string> { ["P.infinity"] = "False", ["P.x"] = text, ["P.y"] = "0" }, curve, token));
+        Cancelled(() => CalculationInput.Read(typeof(EllipticCurvePointFq), "P",
+            new Dictionary<string, string> { ["P.infinity"] = "False", ["P.x"] = text, ["P.y"] = "0" }, curve, token), token);
     }
 
     [Fact]
@@ -353,7 +353,7 @@ public sealed class CancellationRegressionTests
     private static IEnumerable<EllipticCurvePoint> Search(EllipticCurveQ curve, bool integral, CancellationToken token)
         => integral ? curve.IntegralPoints(10, token) : curve.RationalPoints(10, 10, token);
 
-    private static void Cancelled(CancellationToken token, Action operation)
+    private static void Cancelled(Action operation, CancellationToken token)
     {
         var error = Assert.ThrowsAny<OperationCanceledException>(operation);
         Assert.Equal(token, error.CancellationToken);

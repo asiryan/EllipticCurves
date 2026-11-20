@@ -82,7 +82,7 @@ public class PointSearchAuditTests
             var value = field.CreateElement(a, b);
             bool expected = IsSquareByNorm(value, prime);
             Assert.Equal(expected, solver.IsSquare(value, default));
-            Assert.Equal(expected, solver.TrySquareRoot(value, default, out var root));
+            Assert.Equal(expected, solver.TrySquareRoot(value, out var root, default));
             if (expected) { squares++; Assert.Equal(value, root * root); }
             else nonsquares++;
         }

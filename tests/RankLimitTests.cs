@@ -16,7 +16,7 @@ public class RankLimitTests
             int bound = 1 + Math.Max(Math.Abs(a), Math.Max(Math.Abs(b), Math.Abs(c)));
             var expected = Enumerable.Range(-bound, 2 * bound + 1)
                 .Where(x => ((x + a) * x + b) * x + c == 0).Select(x => new BigInteger(x)).ToArray();
-            bool found = EllipticCurveQ.TryCubicRoot(a, b, c, default, out var root);
+            bool found = EllipticCurveQ.TryCubicRoot(a, b, c, out var root, default);
             Assert.Equal(expected.Length != 0, found);
             if (found) Assert.Contains(root, expected);
             if (c == 0) Assert.Equal(BigInteger.Zero, root);
@@ -32,13 +32,13 @@ public class RankLimitTests
         Assert.Equal(40, primes.Length);
         var constant = primes.Aggregate(BigInteger.One, (value, p) => value * p);
         // x^3+x+constant is nonzero at both residues modulo two.
-        Assert.False(EllipticCurveQ.TryCubicRoot(0, 1, constant, default, out _));
+        Assert.False(EllipticCurveQ.TryCubicRoot(0, 1, constant, out _, default));
         // (x-1)*(x^2+constant) has exactly the one real root x=1.
-        Assert.True(EllipticCurveQ.TryCubicRoot(-1, constant, -constant, default, out var root));
+        Assert.True(EllipticCurveQ.TryCubicRoot(-1, constant, -constant, out var root, default));
         Assert.Equal(BigInteger.One, root);
         var cancelled = new CancellationToken(true);
-        Assert.Throws<OperationCanceledException>(() => EllipticCurveQ.TryCubicRoot(0, 0, 0, cancelled, out _));
-        Assert.Throws<OperationCanceledException>(() => EllipticCurveQ.TryCubicRoot(-1, constant, -constant, cancelled, out _));
+        Assert.Throws<OperationCanceledException>(() => EllipticCurveQ.TryCubicRoot(0, 0, 0, out _, cancelled));
+        Assert.Throws<OperationCanceledException>(() => EllipticCurveQ.TryCubicRoot(-1, constant, -constant, out _, cancelled));
     }
 
     [Theory]

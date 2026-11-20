@@ -62,7 +62,7 @@ namespace EllipticCurves
             internal ulong[] Parity, Combination;
         }
 
-        internal static BigInteger FindDivisor(BigInteger n, CancellationToken token, int maxWorkers = 0)
+        internal static BigInteger FindDivisor(BigInteger n, int maxWorkers, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             if (maxWorkers < 0) throw new ArgumentOutOfRangeException(nameof(maxWorkers));
@@ -77,10 +77,10 @@ namespace EllipticCurves
             }
             int multiplier = ChooseMultiplier(n, primes, token);
             int workers = WorkerCount(digits, maxWorkers, Environment.ProcessorCount);
-            if (workers == 1) return new NativeQuadraticSieve(n, multiplier, primes, token).Run();
+            if (workers == 1) return new NativeQuadraticSieve(n, multiplier, primes, null, token).Run();
             using (var stop = CancellationTokenSource.CreateLinkedTokenSource(token))
             {
-                var owner = new NativeQuadraticSieve(n, multiplier, primes, stop.Token);
+                var owner = new NativeQuadraticSieve(n, multiplier, primes, null, stop.Token);
                 BigInteger result = 1;
                 try
                 {
@@ -89,7 +89,7 @@ namespace EllipticCurves
                     {
                         try
                         {
-                            var worker = index == 0 ? owner : new NativeQuadraticSieve(n, multiplier, primes, stop.Token, owner);
+                            var worker = index == 0 ? owner : new NativeQuadraticSieve(n, multiplier, primes, owner, stop.Token);
                             worker.randomState ^= unchecked((uint)index * 0x85ebca6bU);
                             var divisor = worker.Run();
                             lock (owner.relationLock) if (result.IsOne) result = divisor;
@@ -119,8 +119,8 @@ namespace EllipticCurves
             return Math.Min(available, requested == 0 ? (digits < 70 ? 4 : available) : requested);
         }
 
-        private NativeQuadraticSieve(BigInteger n, int multiplier, int[] primes, CancellationToken token,
-            NativeQuadraticSieve owner = null)
+        private NativeQuadraticSieve(BigInteger n, int multiplier, int[] primes,
+            NativeQuadraticSieve owner, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             this.n = n;

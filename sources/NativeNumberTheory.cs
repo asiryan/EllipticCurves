@@ -17,7 +17,10 @@ namespace EllipticCurves
             return q;
         }
 
-        internal static Dictionary<BigInteger, int> Factor(BigInteger n, CancellationToken token, int maxWorkers = 0)
+        internal static Dictionary<BigInteger, int> Factor(BigInteger n, CancellationToken token)
+            => Factor(n, 0, token);
+
+        internal static Dictionary<BigInteger, int> Factor(BigInteger n, int maxWorkers, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             if (maxWorkers < 0) throw new ArgumentOutOfRangeException(nameof(maxWorkers));
@@ -34,7 +37,7 @@ namespace EllipticCurves
                     n /= p;
                 }
             }
-            FactorRecursive(n, result, token, maxWorkers);
+            FactorRecursive(n, result, maxWorkers, token);
             return result;
         }
 
@@ -44,29 +47,32 @@ namespace EllipticCurves
             result[p] = count + 1;
         }
 
-        private static void FactorRecursive(BigInteger n, Dictionary<BigInteger, int> result, CancellationToken token, int maxWorkers)
+        private static void FactorRecursive(BigInteger n, Dictionary<BigInteger, int> result, int maxWorkers, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             if (n.IsOne) return;
-            if (TryPerfectPower(n, token, out var root, out int exponent))
+            if (TryPerfectPower(n, out var root, out int exponent, token))
             {
-                foreach (var factor in Factor(root, token, maxWorkers))
+                foreach (var factor in Factor(root, maxWorkers, token))
                 {
                     result.TryGetValue(factor.Key, out int count);
                     result[factor.Key] = count + exponent * factor.Value;
                 }
                 return;
             }
-            if (IsPrime(n, token, maxWorkers)) { AddFactor(result, n); return; }
-            var divisor = FindDivisor(n, token, maxWorkers);
+            if (IsPrime(n, maxWorkers, token)) { AddFactor(result, n); return; }
+            var divisor = FindDivisor(n, maxWorkers, token);
             // Search heuristics can only supply an exactly verified proper divisor.
             if (divisor <= 1 || divisor >= n || n % divisor != 0)
                 throw new InvalidOperationException("Invalid divisor in native factorization.");
-            FactorRecursive(divisor, result, token, maxWorkers);
-            FactorRecursive(n / divisor, result, token, maxWorkers);
+            FactorRecursive(divisor, result, maxWorkers, token);
+            FactorRecursive(n / divisor, result, maxWorkers, token);
         }
 
-        internal static bool IsPrime(BigInteger n, CancellationToken token, int maxWorkers = 0)
+        internal static bool IsPrime(BigInteger n, CancellationToken token)
+            => IsPrime(n, 0, token);
+
+        internal static bool IsPrime(BigInteger n, int maxWorkers, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             if (n < 2) return false;
@@ -97,7 +103,7 @@ namespace EllipticCurves
 
             // Above 64 bits, prove primality by the full n-1 (Lucas) criterion.
             // The factors are recursively proved; probable primality is never enough.
-            foreach (var q in Factor(n - 1, token, maxWorkers).Keys)
+            foreach (var q in Factor(n - 1, maxWorkers, token).Keys)
             {
                 bool proved = false;
                 for (int a = 2; a <= 128; a++)

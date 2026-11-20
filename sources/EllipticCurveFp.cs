@@ -213,7 +213,7 @@ namespace EllipticCurves
                         if (Mod(y * y + b * y - rhs).IsZero) yield return new EllipticCurvePointFp(Prime, x, y);
                     }
                 }
-                else if (TrySquareRoot(Mod(b * b + 4 * rhs), cancellationToken, out var root))
+                else if (TrySquareRoot(Mod(b * b + 4 * rhs), out var root, cancellationToken))
                 {
                     yield return new EllipticCurvePointFp(Prime, x, Mod((root - b) * half));
                     cancellationToken.ThrowIfCancellationRequested();
@@ -222,7 +222,7 @@ namespace EllipticCurves
             }
             cancellationToken.ThrowIfCancellationRequested();
         }
-        private bool TrySquareRoot(BigInteger value, CancellationToken token, out BigInteger root)
+        private bool TrySquareRoot(BigInteger value, out BigInteger root, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             root = 0; if (value.IsZero) return true;

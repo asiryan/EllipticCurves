@@ -54,7 +54,7 @@ namespace EllipticCurves
             var a = e.B2.Num;
             var b = 8 * e.B4.Num;
             var c = 16 * e.B6.Num;
-            bool hasTwoTorsion = TryCubicRoot(a, b, c, cancellationToken, out var root);
+            bool hasTwoTorsion = TryCubicRoot(a, b, c, out var root, cancellationToken);
             int torsionDimension = 0;
             if (hasTwoTorsion)
             {
@@ -110,7 +110,7 @@ namespace EllipticCurves
         }
 
         internal static bool TryCubicRoot(BigInteger a, BigInteger b, BigInteger c,
-            CancellationToken token, out BigInteger root)
+            out BigInteger root, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             root = 0;

@@ -40,10 +40,10 @@ public class FqPointSearchTests
         var value = field.CreateElement(coefficients);
         var square = value * value;
         Assert.Equal(field.One, square * solver.InverseSquare(value, default));
-        Assert.True(solver.TrySquareRoot(square, default, out var root));
+        Assert.True(solver.TrySquareRoot(square, out var root, default));
         Assert.Equal(square, root * root);
         var image = square + value;
-        Assert.True(solver.TryArtinSchreierRoot(image, default, out root));
+        Assert.True(solver.TryArtinSchreierRoot(image, out root, default));
         Assert.Equal(image, root * root + root);
     }
 
@@ -91,12 +91,12 @@ public class FqPointSearchTests
         foreach (var value in elements)
         {
             Assert.Equal(squares.Contains(value), solver.IsSquare(value, default));
-            bool exists = solver.TrySquareRoot(value, default, out var root);
+            bool exists = solver.TrySquareRoot(value, out var root, default);
             Assert.Equal(squares.Contains(value), exists);
             if (exists) Assert.Equal(value, root * root);
             if (prime != 2) continue;
             Assert.Equal(artinSchreier.Contains(value), solver.HasArtinSchreierRoot(value, default));
-            exists = solver.TryArtinSchreierRoot(value, default, out root);
+            exists = solver.TryArtinSchreierRoot(value, out root, default);
             Assert.Equal(artinSchreier.Contains(value), exists);
             if (exists) Assert.Equal(value, root * root + root);
         }
@@ -112,12 +112,12 @@ public class FqPointSearchTests
         foreach (int code in new[] { 0, 1, 2, 31, 197 })
         {
             var value = field.CreateElement(code); var square = value * value;
-            Assert.True(solver.TrySquareRoot(square, default, out var root));
+            Assert.True(solver.TrySquareRoot(square, out var root, default));
             Assert.Equal(square, root * root);
         }
         int nonSquare = 2;
         while (BigInteger.ModPow(nonSquare, (prime - 1) / 2, prime) == 1) nonSquare++;
-        Assert.False(solver.TrySquareRoot(field.CreateElement(nonSquare), default, out _));
+        Assert.False(solver.TrySquareRoot(field.CreateElement(nonSquare), out _, default));
     }
 
     [Theory]
@@ -134,7 +134,7 @@ public class FqPointSearchTests
         foreach (var value in new[] { field.One, field.Generator, field.Generator + 13 })
         {
             var square = value * value;
-            Assert.True(solver.TrySquareRoot(square, timeout.Token, out var root));
+            Assert.True(solver.TrySquareRoot(square, out var root, timeout.Token));
             Assert.Equal(square, root * root);
         }
     }

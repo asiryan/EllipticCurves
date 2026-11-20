@@ -16,12 +16,12 @@ namespace EllipticCurves
         internal long PointWork => Interlocked.Read(ref counters.PointWork);
         internal bool PointSearchExhausted => Volatile.Read(ref counters.PointSearchExhausted) != 0;
         internal DescentBudget(RankComputationOptions options, CancellationToken token)
-            : this(options, token, new Counters()) { }
-        private DescentBudget(RankComputationOptions options, CancellationToken token, Counters counters)
+            : this(options, new Counters(), token) { }
+        private DescentBudget(RankComputationOptions options, Counters counters, CancellationToken token)
         { Options = options; Token = token; this.counters = counters; }
 
         // A worker may use a linked stop token, but never receives a fresh work allowance.
-        internal DescentBudget WithToken(CancellationToken token) => new DescentBudget(Options, token, counters);
+        internal DescentBudget WithToken(CancellationToken token) => new DescentBudget(Options, counters, token);
 
         internal void Step()
         {

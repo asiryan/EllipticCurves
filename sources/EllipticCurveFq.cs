@@ -231,7 +231,7 @@ namespace EllipticCurves
                 if (!characteristicTwo)
                 {
                     var discriminant = Field.Multiply(b, b, cancellationToken) + Field.Multiply(four, rhs, cancellationToken);
-                    if (!solver.TrySquareRoot(discriminant, cancellationToken, out var root)) continue;
+                    if (!solver.TrySquareRoot(discriminant, out var root, cancellationToken)) continue;
                     y = Field.Multiply(root - b, half, cancellationToken);
                     yield return new EllipticCurvePointFq(x, y);
                     cancellationToken.ThrowIfCancellationRequested();
@@ -239,14 +239,14 @@ namespace EllipticCurves
                 }
                 else if (b.IsZero)
                 {
-                    if (!solver.TrySquareRoot(rhs, cancellationToken, out y))
+                    if (!solver.TrySquareRoot(rhs, out y, cancellationToken))
                         throw new ArithmeticException("Squaring must be invertible in characteristic two.");
                     yield return new EllipticCurvePointFq(x, y);
                 }
                 else
                 {
                     var scale = A1.IsZero ? constantScale : solver.InverseSquare(b, cancellationToken);
-                    if (!solver.TryArtinSchreierRoot(Field.Multiply(rhs, scale, cancellationToken), cancellationToken, out var root)) continue;
+                    if (!solver.TryArtinSchreierRoot(Field.Multiply(rhs, scale, cancellationToken), out var root, cancellationToken)) continue;
                     y = Field.Multiply(b, root, cancellationToken);
                     yield return new EllipticCurvePointFq(x, y);
                     cancellationToken.ThrowIfCancellationRequested();

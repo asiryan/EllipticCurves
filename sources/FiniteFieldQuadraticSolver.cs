@@ -50,10 +50,10 @@ namespace EllipticCurves
             token.ThrowIfCancellationRequested();
         }
 
-        internal bool TrySquareRoot(FiniteFieldElement value, CancellationToken token, out FiniteFieldElement root)
+        internal bool TrySquareRoot(FiniteFieldElement value, out FiniteFieldElement root, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
-            if (squaring != null) return squaring.TrySolve(value, token, out root);
+            if (squaring != null) return squaring.TrySolve(value, out root, token);
             if (squareRoots != null)
             {
                 int code = squareRoots[Encode(value)];
@@ -95,8 +95,8 @@ namespace EllipticCurves
             return true;
         }
 
-        internal bool TryArtinSchreierRoot(FiniteFieldElement value, CancellationToken token, out FiniteFieldElement root)
-            => artinSchreier.TrySolve(value, token, out root);
+        internal bool TryArtinSchreierRoot(FiniteFieldElement value, out FiniteFieldElement root, CancellationToken token)
+            => artinSchreier.TrySolve(value, out root, token);
 
         internal bool IsSquare(FiniteFieldElement value, CancellationToken token)
         {
@@ -241,7 +241,7 @@ namespace EllipticCurves
                 }
             }
 
-            internal bool TrySolve(FiniteFieldElement value, CancellationToken token, out FiniteFieldElement root)
+            internal bool TrySolve(FiniteFieldElement value, out FiniteFieldElement root, CancellationToken token)
             {
                 var image = Encode(value); BigInteger preimage = 0;
                 for (int bit = images.Length - 1; bit >= 0; bit--)
