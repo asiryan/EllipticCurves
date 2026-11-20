@@ -60,9 +60,9 @@ point constructor and group operations assume valid inputs; use CreatePoint and
 the Checked operations to validate them. Numerical estimates and stored LMFDB values are distinguished from
 proofs; the library does not compute the Tate-Shafarevich group order.
 
-Finite-field counting uses direct search, not SEA. Extension-field point counting
-visits q x-coordinates, with a default limit of 1000000. Point enumeration
-still checks q^2 coordinate pairs with the same default limit. General isogeny-class
+Finite-field counting uses exact direct search and prime-subfield trace lifting,
+not SEA. Extension-field counting and enumeration both have a default limit of
+1000000 x-coordinates; enumeration solves the quadratic in y. General isogeny-class
 discovery, higher descents and curves over general number fields are outside this release.
 
 See the [repository README](https://github.com/asiryan/EllipticCurves/blob/main/README.md)

@@ -49,7 +49,7 @@ public class ExtensionCurveTests
     [Theory]
     [InlineData(2, new int[] { 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1 })]
     [InlineData(47, new int[] { 1, 0, 1 })]
-    public void CountingSupportsFieldsBeyondTheDefaultEnumerationLimit(int prime, int[] polynomial)
+    public void CountingAndEnumerationSupportFieldsBeyondTheFormerPairLimit(int prime, int[] polynomial)
     {
         var field = FiniteFieldTests.Field(prime, polynomial);
         var e = new EllipticCurveFq(field, 0, 0, 1, -1, 0);
@@ -62,8 +62,13 @@ public class ExtensionCurveTests
             previous = trace; trace = next;
         }
         Assert.True(field.Order > 1000);
-        Assert.Throws<ArithmeticException>(() => e.Points().First());
-        Assert.Equal(field.Order + 1 - trace, e.CountPoints());
+        Assert.Throws<ArithmeticException>(() => e.Points((long)field.Order - 1).First());
+        var expected = field.Order + 1 - trace;
+        Assert.Equal(expected, e.CountPoints());
+        var points = e.Points((long)field.Order).ToArray();
+        Assert.Equal(expected, points.Length);
+        Assert.Equal(points.Length, points.Distinct().Count());
+        Assert.All(points, point => Assert.True(e.IsOnCurve(point)));
     }
 
     [Theory]
@@ -112,8 +117,8 @@ public class ExtensionCurveTests
         Assert.Throws<ArgumentException>(() => e.Add(e.CreatePoint(0, 0), f.CreatePoint(0, 0)));
         Assert.Throws<ArgumentException>(() => e.CreatePoint(field.Zero, other.Zero));
         Assert.Throws<ArithmeticException>(() => e.CountPoints(8));
-        Assert.Throws<ArithmeticException>(() => e.Points(80).First());
-        Assert.Equal(new BigInteger(e.Points(81).Count()), e.CountPoints(9));
+        Assert.Throws<ArithmeticException>(() => e.Points(8).First());
+        Assert.Equal(new BigInteger(e.Points(9).Count()), e.CountPoints(9));
         Assert.Throws<ArgumentOutOfRangeException>(() => e.CountPoints(-1));
         var cancelled = new CancellationToken(true);
         Assert.Throws<OperationCanceledException>(() => e.CountPoints(cancellationToken: cancelled));

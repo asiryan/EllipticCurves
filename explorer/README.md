@@ -315,8 +315,6 @@ respect the item limit; truncation is marked and the conductor remains visible.
 Repeat preserves the worker limit; older reports use the default when it is absent.
 Repeat an old scalar-only report to obtain the factorization.
 
-See [timings and benchmark commands](../docs/factorization-performance.md).
-
 ### Import a curve from LMFDB
 
 Choose **Tools → LMFDB · internet → Import curve from LMFDB**. Enter a conductor

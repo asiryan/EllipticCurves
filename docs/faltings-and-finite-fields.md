@@ -122,43 +122,75 @@ creation, negation, addition, subtraction, doubling and signed scalar multiplica
 Both coordinates of affine points must belong to the curve's field presentation.
 Group operations reject points outside the curve.
 
-`CountPoints(maxWork, token)` includes infinity and visits each x once, counting
-the solutions of y^2+b*y=rhs without constructing or enumerating them. In odd
-characteristic, the discriminant b^2+4*rhs gives one solution when zero, two when
-a nonzero square, and none otherwise. A power test determines whether it is a
-square. In characteristic two, b=0 gives one solution; otherwise there are two
-solutions precisely when the absolute trace of rhs/b^2 to F_2 is zero. The trace
-is computed by successive squaring; this works for both even and odd degrees.
+Point counting and enumeration use exact integer and finite-field arithmetic.
+`CountPoints(maxWork, token)` includes infinity and counts the solutions of
+y^2+b*y=rhs at each x without constructing the points. In odd characteristic,
+the discriminant b^2+4*rhs gives one solution when zero, two when a nonzero square,
+and none otherwise. Odd fields of order q<=2^20 use a square-root table (at most
+4 MiB), with a cap independent of maxWork; larger fields use exact power tests.
+Nonresidues for Tonelli-Shanks are sought in the whole field presentation. In
+even degree, all nonzero prime-subfield elements are squares, so the search starts
+at the generator without constructing or testing the p constants.
+
+In characteristic two, b=0 gives one solution because squaring is bijective;
+otherwise z=y/b satisfies z^2+z=rhs/b^2. The latter map has kernel {0,1}, so a
+soluble equation gives exactly the two ordinates bz and bz+b. Squaring and
+z->z^2+z are F_2-linear maps. Their exact echelon forms use O(k^2) bits for degree k
+and solve the equations in both even and odd extension degrees. Solubility of the
+Artin-Schreier equation is equivalent to vanishing absolute trace. Normalization
+by the inverse square of b uses exact binary polynomial extended Euclid, followed
+by squaring and reduction, avoiding a dense-polynomial exponentiation for every x.
+For constant nonzero b, its inverse square is reused.
 See the discussion of trace and quadratic equations in
 [Fong et al., Field inversion and point halving revisited, section 4.2](https://cacr.uwaterloo.ca/techreports/2003/corr2003-18.pdf).
 
-Counting checks q<=maxWork before starting. The default limit is 1000000
-x-coordinates. This takes O(q log q) field operations with the current power and
-trace routines, without a table of all field elements or points.
+When all five coefficients belong to the prime subfield, counting first counts
+over F_p and then uses the exact Frobenius trace recurrence to obtain the count
+over F_(p^k). Writing t=p+1-#E(F_p), the recurrence is
 
-`Points(maxWork, token)` still visits every affine pair (x,y), with infinity
-yielded first. Its limit counts q^2 coordinate pairs, so the default 1000000
-supports q<=1000. Both limits are checked using BigInteger to avoid overflow.
+    t_0=2, t_1=t, t_n=t*t_(n-1)-p*t_(n-2),
+    #E(F_(p^k))=p^k+1-t_k.
+
+This shortcut checks the coefficients, not just the j-invariant. Only completed
+counts are cached on the curve instance; failed or cancelled attempts can be
+retried. Pre-cancelled tokens throw even for cached results, and concurrent
+waiters observe their own tokens.
+
+The abscissa-based approach is described by PARI's
+[`Flxq_ellcard_naive` in FlxqE.c](https://pari.math.u-bordeaux.fr/lcov-report/basemath/FlxqE.c.gcov.html).
+PARI's `elltrace_extension` and `Fp_ffellcard` in
+[FpE.c](https://pari.math.u-bordeaux.fr/lcov-report/basemath/FpE.c.gcov.html) use the
+extension trace identity above. These are algorithmic references; the library
+uses independently written C# and requires no PARI installation.
+
+Both methods check q<=maxWork before starting, including before returning a
+cached or prime-subfield count. The default limit is 1000000 x-coordinates.
+`Points(maxWork, token)` visits each x and solves the quadratic in y, with
+infinity yielded first. Odd fields beyond the square-table cap use exact
+Tonelli-Shanks roots with bounded storage. The order of the two ordinates at a
+fixed x is unspecified.
+Both limits are checked using BigInteger to avoid overflow.
 A work-limit exception does not report a partial count. Stopping lazy point
 enumeration early does not establish completeness.
 Both methods reject negative limits with `ArgumentOutOfRangeException` and
 insufficient limits with `ArithmeticException`; `Points` checks its limit on the
 first `MoveNext`, before yielding infinity.
 
-Work limits count x-coordinates or pairs, not field operations or seconds.
+Work limits count potential x-coordinates, not field operations or seconds.
 One field operation can itself be expensive for large degree or characteristic.
 Construction and basic arithmetic have no work counter. The `FiniteField`
 constructor and `Multiply`, `Divide`, `Inverse` and `Pow` methods accept tokens.
 `CreateElement`, field addition/subtraction/negation, the element operators and
 `EllipticCurveFq` construction have no cancellation parameter. Curve `Multiply`,
 `CountPoints` and `Points` propagate tokens into field multiplication, inversion
-and powers. Cancellation is checked in those polynomial loops, trace squarings,
-between point group operations, and at every enumerated x or pair; a single
+and powers. Cancellation is checked in those polynomial loops, table preparation,
+linear solving, between point group operations, and at every enumerated x; a single
 BigInteger operation or field addition is not internally interruptible. Large
 fields remain usable for arithmetic even when counting or enumeration is disallowed. The existing
-`EllipticCurveFp` API retains its specialized direct counting for prime fields.
+[`EllipticCurveFp` API](basic-extensions.md#curves-over-prime-fields) uses specialized
+residue tables and cubic finite differences.
 
-This addition does not implement SEA, discrete logarithms, field embeddings,
+These APIs do not implement SEA, discrete logarithms, field embeddings,
 extension-field isogenies, or curves over number fields.
 
 ## Verification
@@ -175,6 +207,14 @@ invalid inputs and limits. PARI fixtures contain 90 field-arithmetic rows and 35
 curves over fields of orders 4,8,9,16,25,27,49,125, with genuine extension-field
 coefficients, invariants, point counts and point operations. Base-change counts
 are also checked against the Frobenius trace recurrence; degree-one group laws
-are compared with the existing prime-field implementation.
+are compared with the existing prime-field implementation, including nonzero
+generators in degree-one presentations. All 768 nonsingular general models over
+F_4 are checked against full coordinate-pair searches. Over F_(1031^2), with
+t^2=-1, an independent prime-field Legendre test of Norm(a+b*t)=a^2+b^2 checks
+both squares and nonsquares in the large-field fallback. Further cases cover
+enumeration over F_(101^2), binary solving and inversion through degree 128,
+cancellation and work limits. A curve over F_9 with j=0 and a nonconstant
+coefficient guards against incorrectly treating a prime-subfield j-invariant
+as proof that all coefficients lie in the prime subfield.
 
 See [fixture regeneration instructions](../tests/Fixtures/README.md).

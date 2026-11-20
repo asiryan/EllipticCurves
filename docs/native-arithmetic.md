@@ -50,8 +50,7 @@ their own cancellation tokens. A failed or cancelled preparation is not cached;
 later callers can retry. Cancellation is checked even when the result is cached.
 Factorization worker options apply when new work is needed. The cache belongs to
 the curve objects, is not persisted, and is not shared between independently
-constructed curves. Factorization benchmarks use a fresh curve for each sample
-so they continue to measure the complete computation.
+constructed curves.
 
 The mathematical reference is [Cremona, Algorithms for Modular Elliptic Curves,
 Chapter III, sections 3.1–3.2](https://johncremona.github.io/book/fulltext/chapter3.pdf).
@@ -209,7 +208,7 @@ also tested directly, alongside unrelated semiprimes, repeated factors, perfect
 powers, pseudoprime rejection and cancellation.
 The independent 38–66 digit semiprime fixtures, sequential/parallel sieve tests,
 both ECM stages and an actual Explorer worker calculation cover the extended
-factorizer. See [performance measurements and reproduction commands](factorization-performance.md).
+factorizer.
 
 ## Native analytic rank
 

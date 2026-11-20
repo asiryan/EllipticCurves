@@ -137,9 +137,8 @@ proved lower bound is retained. `ExactRank` is populated only when both bounds a
 to 65,536. In 2-isogeny descent it bounds signed square classes per isogeny;
 in general 2-descent it bounds covering classes, including the identity.
 Exceeding it returns `UpperBound = null` with the proved lower bound and an
-explanation in `Reason` in both methods. Callers that previously caught
-`NotSupportedException` for the 2-isogeny class limit should inspect the returned
-bounds instead. Point-search exhaustion can still preserve a completed upper bound.
+explanation in `Reason` in both methods. Point-search exhaustion can still
+preserve a completed upper bound.
 Factorization and searches can be expensive. Use the cancellable methods when needed:
 
 ```csharp
@@ -350,11 +349,11 @@ var points = e.Points();
 ```
 
 `EllipticCurveFq` supports general equations, including characteristics 2 and 3.
-`CountPoints` visits each of the q x-coordinates and counts the corresponding y
-solutions. `Points` enumerates all q^2 affine coordinate pairs. Each method has a
-default work limit of 1000000, measured in x-coordinates or pairs respectively.
-Field presentations must agree before their elements can be mixed.
-See [Faltings-height conventions and finite-extension limits](docs/faltings-and-finite-fields.md).
+`CountPoints` and `Points` solve the quadratic in y at each x. Both have a
+default work limit of 1000000 x-coordinates. Curves defined over the prime
+subfield use an exact Frobenius trace recurrence for counting; completed counts
+are cached. Field presentations must agree before their elements can be mixed. See
+[Faltings-height conventions, finite-field algorithms and limits](docs/faltings-and-finite-fields.md).
 
 ## Tests
 

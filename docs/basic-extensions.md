@@ -143,12 +143,40 @@ field modulus; points from a different field are rejected. The universal infinit
 is `EllipticCurvePointFp.Infinity`; a default-initialized struct is not a valid point.
 
 Counting and enumeration visit every x-coordinate; the default limit is 1000000
-x-coordinate steps. Odd-characteristic enumeration uses Tonelli-Shanks square
-roots. `GetPointOrder` first counts the group, then factors its order and removes
-prime factors by exact scalar multiplication. The counter is not a bound on
-individual modular operations, elapsed time or factorization. These prime-field
-algorithms do not implement SEA. For extension fields, use the separate
-[`EllipticCurveFq` API](faltings-and-finite-fields.md).
+x-coordinate steps. For odd p, completing the square gives
+
+    (2y+a1*x+a3)^2 = D(x),
+    D(x) = 4*x^3 + (a1^2+4*a2)*x^2 + (2*a1*a3+4*a4)*x + a3^2+4*a6.
+
+Zero D gives one ordinate, a nonzero square gives two, and a nonsquare gives none.
+Counting uses a quadratic-residue bitset for p<=2^24 (at most 2 MiB). Three modular
+additions advance D and its finite differences; the third difference is 24.
+Coefficients are reduced before multiplication. Above this cap, BigInteger
+differences and exact Jacobi symbols give a count with storage independent of p.
+Enumeration uses a square-root table for p<=2^20 (at most 4 MiB), and exact
+Tonelli-Shanks roots with bounded storage for larger primes. Table caps are
+independent of maxWork. Characteristic two checks its four affine coordinate pairs.
+The Fourier-coefficient APIs share the counting implementation, including the
+singular-cubic counts at bad primes.
+
+`GetPointOrder` first counts the group, then factors its order and removes prime
+factors by exact scalar multiplication. Completed group counts and proven
+factorizations are cached on the curve instance. Failed or cancelled attempts
+do not populate the caches; concurrent waiters use their own cancellation tokens.
+Later calls still check their own limits and tokens before returning cached data.
+Negative limits throw `ArgumentOutOfRangeException`, and insufficient limits
+throw `ArithmeticException`. `Points` validates on the first `MoveNext` and yields
+infinity before preparing a table. Cancellation is cooperative; individual
+BigInteger operations are not interruptible. Work limits do not bound modular
+operations, elapsed time or factorization.
+
+The table and finite-difference strategy is an independent C# implementation of
+the mathematics used by PARI's
+[`Fl_elltrace_naive` in FpE.c](https://pari.math.u-bordeaux.fr/lcov-report/basemath/FpE.c.gcov.html).
+PARI is [GPLv2 or later](https://pari.math.u-bordeaux.fr/faq.html); its C source is
+not copied or translated into this MIT project. These prime-field algorithms do
+not implement SEA. For extension fields, use the separate
+[`EllipticCurveFq` API](faltings-and-finite-fields.md#curves-and-points-over-f_pk).
 
 On `EllipticCurveQ`, `ReduceModuloPrime(p)` reduces the global minimal model at a
 good prime. `ReducePointModuloPrime(P,p)` first maps P onto that model, then reduces
@@ -213,4 +241,8 @@ group laws, and check every division point by exact multiplication. Isogeny test
 include cyclic/noncyclic kernels, both dual compositions and rational model changes.
 Additional PARI fixtures contain 99 real logarithms and five isogeny quotients;
 logarithm tests also check addition modulo periods and both real components.
+Point-search tests exhaust all five coefficients over F_2, F_3 and F_5, including
+singular reductions used by Fourier coefficients. Further regressions check
+both sides of the table caps, long Tonelli-Shanks chains, coefficients exceeding
+4000 bits, exact point orders, concurrent caches, cancellation and retry behavior.
 See [fixture generation instructions](../tests/Fixtures/README.md).
