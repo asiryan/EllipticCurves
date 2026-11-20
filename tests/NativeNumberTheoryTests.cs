@@ -5,6 +5,21 @@ namespace EllipticCurves.Tests;
 
 public class NativeNumberTheoryTests
 {
+    [Fact]
+    public void SmallPrimePowerStrippingPreservesLargeExponentsAndCancellation()
+    {
+        var value = (BigInteger.One << 4096) * BigInteger.Pow(3, 257) * BigInteger.Pow(37, 17);
+        var factors = NativeNumberTheory.Factor(value, default);
+        Assert.Equal(3, factors.Count);
+        Assert.Equal(4096, factors[2]);
+        Assert.Equal(257, factors[3]);
+        Assert.Equal(17, factors[37]);
+        var cancelled = new CancellationToken(true);
+        Assert.Throws<OperationCanceledException>(() => NativeNumberTheory.Factor(value, cancelled));
+        Assert.Throws<OperationCanceledException>(() => NativeNumberTheory.IsPrime(2, cancelled));
+        Assert.Throws<OperationCanceledException>(() => NativeNumberTheory.IsPrime(0, cancelled));
+    }
+
     public static IEnumerable<object[]> LargeFactorizations() => File.ReadLines(
         Path.Combine(AppContext.BaseDirectory, "Fixtures", "factorization.csv"))
         .Skip(1).Where(line => !string.IsNullOrWhiteSpace(line))

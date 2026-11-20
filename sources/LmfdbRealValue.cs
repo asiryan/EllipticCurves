@@ -9,22 +9,24 @@ namespace EllipticCurves
     public sealed class LmfdbRealValue
     {
         private static readonly Regex DecimalPattern = new Regex(@"\A[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\z", RegexOptions.CultureInvariant);
+        private readonly string normalizedDecimal;
 
         /// <summary>The decimal text as supplied by the database.</summary>
         public string DecimalValue { get; }
         /// <summary>Stored precision metadata, when supplied; this is not an error bound.</summary>
         public int? StoredPrecisionBits { get; }
         /// <summary>A double approximation for display.</summary>
-        public double Approximation => double.Parse(DecimalValue, CultureInfo.InvariantCulture);
+        public double Approximation => double.Parse(normalizedDecimal, CultureInfo.InvariantCulture);
         internal LmfdbRealValue(string value, int? precision)
         {
             DecimalValue = value; StoredPrecisionBits = precision;
+            normalizedDecimal = value?.Trim() ?? string.Empty;
             AsRational();
         }
         /// <summary>Converts the stored decimal to an exact rational, without asserting mathematical accuracy.</summary>
         public BigRational AsRational()
         {
-            var value = DecimalValue?.Trim() ?? string.Empty;
+            var value = normalizedDecimal;
             if (!DecimalPattern.IsMatch(value)) throw new FormatException("LMFDB: invalid decimal.");
             var parts = value.Split('e', 'E');
             int exponent = 0;

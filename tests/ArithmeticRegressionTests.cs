@@ -5,6 +5,18 @@ namespace EllipticCurves.Tests;
 
 public class ArithmeticRegressionTests
 {
+    [Theory]
+    [InlineData(2, 1, int.MaxValue)]
+    [InlineData(int.MaxValue - 1, 17, int.MaxValue)]
+    [InlineData(int.MinValue, 3, int.MaxValue)]
+    [InlineData(2, 0, 1)]
+    public void ModPowHandlesLargeModuliAndReturnsCanonicalResidues(int value, int exponent, int modulus)
+    {
+        var expected = BigInteger.ModPow(value, exponent, modulus);
+        if (expected.Sign < 0) expected += modulus;
+        Assert.Equal((int)expected, InternalMath.ModPow(value, exponent, modulus));
+    }
+
     [Fact]
     public void DefaultRationalIsUsableAsZero()
     {

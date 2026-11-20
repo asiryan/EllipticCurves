@@ -109,17 +109,28 @@ namespace EllipticCurves
             }
         }
 
-        private static bool TryCubicRoot(BigInteger a, BigInteger b, BigInteger c,
+        internal static bool TryCubicRoot(BigInteger a, BigInteger b, BigInteger c,
             CancellationToken token, out BigInteger root)
         {
+            token.ThrowIfCancellationRequested();
             root = 0;
             if (c.IsZero) return true;
-            // A rational root of a monic integral polynomial is an integral divisor of c.
-            foreach (var d in Divisors(Factor(c, token)))
+            // With z=3*x+a, 27*f(x)=z^3+(9*b-3*a^2)*z+2*a^3-9*a*b+27*c.
+            // Rational roots of the monic integral f are integral. Exact bisection
+            // on the depressed cubic therefore finds every candidate without
+            // factoring c or materializing its potentially enormous divisor set.
+            var a2 = a * a;
+            var shortA = 9 * b - 3 * a2;
+            var shortB = 2 * a2 * a - 9 * a * b + 27 * c;
+            foreach (var z in InternalMath.IntegralShortCubicRoots(shortA, shortB, token))
             {
                 token.ThrowIfCancellationRequested();
-                if (((d + a) * d + b) * d + c == 0) { root = d; return true; }
-                if (((-d + a) * d - b) * d + c == 0) { root = -d; return true; }
+                var candidate = BigInteger.DivRem(z - a, 3, out var remainder);
+                if (!remainder.IsZero) continue;
+                if (((candidate + a) * candidate + b) * candidate + c != 0)
+                    throw new InvalidOperationException("Monic cubic root reconstruction failed.");
+                root = candidate;
+                return true;
             }
             return false;
         }

@@ -494,12 +494,19 @@ namespace EllipticCurves
         public bool IsTorsionPoint(EllipticCurvePoint P)
             => IsTorsionPoint(P, default);
 
-        /// <summary>Test rational torsion membership with cancellation during torsion preparation.</summary>
+        /// <summary>Test rational torsion membership by exact point arithmetic, with cooperative cancellation.</summary>
         public bool IsTorsionPoint(EllipticCurvePoint P, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!IsOnCurve(P)) throw new ArgumentException("Point is not on this curve.", nameof(P));
-            return GetTorsionPoints(cancellationToken).Contains(P);
+            // This method has always rejected singular models, including at infinity.
+            if (P.IsInfinity)
+            {
+                bool singular = IsSingular;
+                cancellationToken.ThrowIfCancellationRequested();
+                if (singular) throw new InvalidOperationException("Singular curve.");
+                return true;
+            }
+            return TorsionOrder(P, cancellationToken).HasValue;
         }
 
         /// <summary>
@@ -509,25 +516,60 @@ namespace EllipticCurves
         public int? TorsionOrder(EllipticCurvePoint P)
             => TorsionOrder(P, default);
 
-        /// <summary>Return the exact rational torsion order, or null for infinite order, with cooperative cancellation.</summary>
+        /// <summary>Return the exact rational torsion order, or null for infinite order, with cooperative cancellation.
+        /// Uses Mazur's bound of 12 on a rational point's finite order, without preparing the full torsion subgroup.</summary>
         public int? TorsionOrder(EllipticCurvePoint P, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!IsOnCurve(P)) throw new ArgumentException("Point is not on this curve.", nameof(P));
             if (P.IsInfinity) return 1;
+            var delta = Discriminant;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (delta.IsZero) throw new InvalidOperationException("Singular curve.");
+            var vertical = P.Y + P.Y + A1 * P.X + A3;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (vertical.IsZero) return 2;
 
-            var torsion = GetTorsionPoints(cancellationToken);
-            if (!torsion.Contains(P)) return null;
-
+            // A nonzero [2520]P at any good reduction proves infinite order:
+            // 2520 is divisible by every point order allowed by Mazur. This avoids
+            // growing large rational coordinates when a small-field test suffices.
+            if (ReductionExcludesTorsion(P, delta, cancellationToken)) return null;
             var multiple = P;
-            for (int n = 1; n <= torsion.Count; n++)
+            for (int n = 2; n <= 12; n++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (multiple.IsInfinity) return n;
                 multiple = Add(multiple, P);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (multiple.IsInfinity) return n;
             }
+            return null;
+        }
 
-            throw new InvalidOperationException("Failed to determine torsion order for the given point.");
+        private bool ReductionExcludesTorsion(EllipticCurvePoint point, BigRational delta, CancellationToken token)
+        {
+            int[] primes = [7, 11, 13];
+            BigRational[] values = [A1, A2, A3, A4, A6, point.X, point.Y];
+            var reduced = new BigInteger[values.Length];
+            foreach (int prime in primes)
+            {
+                token.ThrowIfCancellationRequested();
+                if (delta.Num % prime == 0) continue;
+                bool available = true;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var denominator = values[i].Den % prime;
+                    if (denominator.IsZero) { available = false; break; }
+                    reduced[i] = NativeNumberTheory.Mod(values[i].Num, prime)
+                        * BigInteger.ModPow(denominator, prime - 2, prime) % prime;
+                }
+                if (!available) continue;
+                var curve = new EllipticCurveFp(prime, reduced[0], reduced[1], reduced[2], reduced[3], reduced[4], token);
+                var image = curve.CreatePoint(reduced[5], reduced[6]);
+                if (!curve.Multiply(image, 2520, token).IsInfinity) return true;
+            }
+            token.ThrowIfCancellationRequested();
+            return false;
         }
 
         /// <summary>

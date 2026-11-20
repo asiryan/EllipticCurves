@@ -35,9 +35,9 @@ public sealed class CalculationFormViewModel : ObservableObject, IDisposable
         }
     }
 
-    public string LimitError => !int.TryParse(Timeout, out var seconds) || seconds is < 0 or > 86400
+    public string LimitError => !int.TryParse(Timeout, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds) || seconds is < 0 or > 86400
         ? "Time limit: enter 0–86,400 seconds. 0 means unlimited."
-        : !int.TryParse(MaxItems, out var count) || count is < 1 or > 100_000 ? "Result limit: enter 1–100,000 items." : "";
+        : !int.TryParse(MaxItems, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) || count is < 1 or > 100_000 ? "Result limit: enter 1–100,000 items." : "";
     public bool CanRun => workbench.CanRun && LimitError.Length == 0 && Fields.All(f => f.Error.Length == 0);
     public string RunHint => !workbench.CanRun ? "A calculation is running. Stop it or wait for it to finish."
         : CanRun ? "The result will appear in the Results panel. You can keep editing the plot."
@@ -89,7 +89,7 @@ public sealed class CalculationFormViewModel : ObservableObject, IDisposable
     }
 
     public CalculationRequest CreateRequest() => new(Operation.Id, Equation, Fields.ToDictionary(f => f.Parameter.Key, f => f.Text),
-        int.Parse(Timeout, CultureInfo.InvariantCulture), int.Parse(MaxItems, CultureInfo.InvariantCulture));
+        int.Parse(Timeout, NumberStyles.Integer, CultureInfo.InvariantCulture), int.Parse(MaxItems, NumberStyles.Integer, CultureInfo.InvariantCulture));
 
     public void Dispose()
     {

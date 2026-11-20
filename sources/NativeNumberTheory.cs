@@ -29,6 +29,7 @@ namespace EllipticCurves
                 token.ThrowIfCancellationRequested();
                 while (n % p == 0)
                 {
+                    token.ThrowIfCancellationRequested();
                     AddFactor(result, p);
                     n /= p;
                 }
@@ -67,6 +68,7 @@ namespace EllipticCurves
 
         internal static bool IsPrime(BigInteger n, CancellationToken token, int maxWorkers = 0)
         {
+            token.ThrowIfCancellationRequested();
             if (n < 2) return false;
             foreach (int p in new[] { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37 })
                 if (n % p == 0) return n == p;
@@ -74,7 +76,7 @@ namespace EllipticCurves
             // Deterministic Miller-Rabin on the entire unsigned 64-bit range.
             BigInteger oddPart = n - 1;
             int twos = 0;
-            while (oddPart.IsEven) { oddPart >>= 1; twos++; }
+            while (oddPart.IsEven) { token.ThrowIfCancellationRequested(); oddPart >>= 1; twos++; }
             foreach (int basis in new[] { 2, 325, 9375, 28178, 450775, 9780504, 1795265022 })
             {
                 token.ThrowIfCancellationRequested();
@@ -85,6 +87,7 @@ namespace EllipticCurves
                 bool passed = false;
                 for (int j = 1; j < twos; j++)
                 {
+                    token.ThrowIfCancellationRequested();
                     x = x * x % n;
                     if (x == n - 1) { passed = true; break; }
                 }
@@ -116,22 +119,6 @@ namespace EllipticCurves
                 }
             }
             return true;
-        }
-
-        internal static IEnumerable<BigInteger> Divisors(Dictionary<BigInteger, int> factors)
-        {
-            var values = new List<BigInteger> { BigInteger.One };
-            foreach (var pair in factors)
-            {
-                int count = values.Count;
-                BigInteger power = 1;
-                for (int e = 1; e <= pair.Value; e++)
-                {
-                    power *= pair.Key;
-                    for (int i = 0; i < count; i++) values.Add(values[i] * power);
-                }
-            }
-            return values;
         }
     }
 }

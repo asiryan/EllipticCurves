@@ -60,8 +60,9 @@ types, minimal discriminant valuations, Tamagawa numbers and local root numbers.
 
 ## Rank bounds with rational 2-torsion
 
-Completing the square and finding an integral root of the resulting monic cubic
-gives an isomorphic integral equation
+After completing the square, exact integer bisection finds a root of the
+resulting monic cubic when one exists, without factoring its constant term.
+Translating that root to zero gives an isomorphic integral equation
 
     E:  y² = x³ + a x² + b x.
     E': y² = x³ - 2a x² + (a² - 4b) x.
@@ -137,8 +138,9 @@ search stops once its good-reduction upper bound is attained. Factoring the
 model's discriminant may still be expensive when that bound is not attained.
 `GetTorsionPoints(cancellationToken)` supports cancellation throughout this
 preparation and returns the cached complete set when available.
-`GetTorsionStructure(token)`, `IsTorsionPoint(P,token)` and `TorsionOrder(P,token)`
-use the same computation.
+`GetTorsionStructure(token)` uses the same computation. `IsTorsionPoint(P,token)`
+and `TorsionOrder(P,token)` can decide the order of the supplied point by exact
+group operations using Mazur's bound of 12 for rational torsion point orders.
 Cancelled or failed torsion preparations are not cached. The `TorsionPoints` and
 `TorsionStructure` properties use the same cache without a cancellation token.
 

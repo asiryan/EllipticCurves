@@ -17,6 +17,7 @@ public static class CurveEquationText
         error = "";
         if (string.IsNullOrWhiteSpace(text)) { error = "Enter an equation, such as y^2 = x^3 - x."; return false; }
         if (text.Length > MaxTextLength) { error = "Keep the equation within 100,000 characters."; return false; }
+        if (text.Contains('\0')) { error = "The equation contains an invalid null character."; return false; }
         if (text.Contains('²') || text.Contains('³')) { error = "Enter powers using ^, for example y^2 = x^3 - x."; return false; }
         try
         {
@@ -112,7 +113,8 @@ public static class CurveEquationText
         public Dictionary<(int X, int Y), BigRational> Parse()
         {
             var value = Sum();
-            if (Peek() != '\0') throw new FormatException($"Unexpected character '{Peek()}'. Use x, y, numbers and arithmetic operators.");
+            var remaining = Peek(); // Consume trailing whitespace before requiring the actual end of input.
+            if (position != input.Length) throw new FormatException($"Unexpected character '{remaining}'. Use x, y, numbers and arithmetic operators.");
             return value;
         }
 

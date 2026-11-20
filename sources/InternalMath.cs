@@ -365,12 +365,13 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Fast modular exponentiation (a^e mod m) with 32-bit ints.
+        /// Fast modular exponentiation (a^e mod m) with 32-bit ints, for e ≥ 0 and m > 0.
         /// </summary>
         public static int ModPow(int a, int e, int m, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            long res = 1, b = ((a % m) + m) % m;
+            long res = 1 % m, b = a % (long)m;
+            if (b < 0) b += m;
             while (e > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
