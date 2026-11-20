@@ -6,7 +6,7 @@ using System.Threading;
 namespace EllipticCurves
 {
     /// <summary>A nonsingular general Weierstrass curve over a specified finite field F_(p^k).
-    /// Supports characteristics two and three. Counting and point enumeration visit q x-coordinates.</summary>
+    /// Supports characteristics two and three. Counting and point enumeration have a q x-coordinate work limit.</summary>
     /// <remarks>Point operations validate membership and field presentations before identity shortcuts or a zero multiplier.
     /// Infinity is accepted; a default affine point is invalid. Group operations throw ArgumentException for invalid points.
     /// Construction and basic group operations have no cancellation token. Multiply, CountPoints and Points check cooperative cancellation;
@@ -151,9 +151,9 @@ namespace EllipticCurves
             if (Field.Order > maxWork)
                 throw new ArithmeticException("Point search requires q x-coordinates; the work limit is too small.");
         }
-        /// <summary>Count every point including infinity. maxWork must be nonnegative and bounds q x-coordinates,
+        /// <summary>Count every point including infinity. maxWork must be at least q and bounds x-coordinates,
         /// not field operations or elapsed time. Curves defined over the prime subfield use the exact Frobenius trace recurrence.
-        /// Only completed counts are cached; limits and cancellation are checked even for cached results.</summary>
+        /// Only completed counts are cached; limits and cancellation are checked even for cached or prime-subfield results.</summary>
         /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
         /// <exception cref="ArithmeticException">q exceeds maxWork.</exception>
         public BigInteger CountPoints(long maxWork = 1000000, CancellationToken cancellationToken = default)

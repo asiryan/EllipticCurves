@@ -30,10 +30,10 @@ case. The default work limit is 20000000. For a single coefficient,
 it bounds the sum of the distinct prime divisors of n; for a list with count > 1,
 it bounds both count and the sum of all primes through count. The cases n=1 and
 count <= 1 need no point-counting work. Exceeding the limit throws rather than
-returning a partial result. List storage grows with count; both methods also
-allocate a quadratic-residue table for each counted odd prime, so raising work
-limits permits larger allocations. Limits do not bound minimalization or
-factorization time.
+returning a partial result. List storage grows with count. Each odd-prime count
+uses a quadratic-residue bitset for p<=2^24 (at most 2 MiB); larger primes use exact
+Jacobi symbols without a residue table. Raising the work limit does not raise this
+table cap. Limits do not bound minimalization or factorization time.
 
 ## Complex multiplication over Q
 

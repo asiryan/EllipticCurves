@@ -115,9 +115,11 @@ The conductor is computed on a global minimal model, with Tate's algorithm handl
 wild reduction at 2 and 3. Rational coefficients and non-minimal input models are supported.
 
 Rank bounds use descent by 2-isogeny when a rational point of order 2 is available,
-and general binary-quartic 2-descent otherwise. Local checks decide solubility over
-the reals and the necessary p-adic fields. Rational points, distinct soluble covering
-classes and exact good-reduction characters prove lower bounds, including ranks above 1.
+and general binary-quartic 2-descent otherwise. Exact integer bisection detects
+rational 2-torsion without factoring the constant term of the cubic. Local checks
+decide solubility over the reals and the necessary p-adic fields. Rational points,
+distinct soluble covering classes and exact good-reduction characters prove lower
+bounds, including ranks above 1.
 These computations do not assume BSD, GRH, parity, or finiteness of Sha.
 
 ```csharp
@@ -171,6 +173,10 @@ the same work limits. Cancellation and work exhaustion stop and join the workers
 before returning. Parallel scheduling may change covering representatives, work
 counts and partial lower bounds; an upper bound still requires complete descent.
 See [the descent construction and proof conditions](docs/two-descent.md).
+
+`TorsionOrder(point, token)` and `IsTorsionPoint(point, token)` check a supplied
+point using exact group arithmetic and the bound of 12 for rational torsion point
+orders. `GetTorsionPoints(token)` computes and caches the full subgroup.
 
 ## Rank lower bounds from supplied points
 
@@ -349,10 +355,11 @@ var points = e.Points();
 ```
 
 `EllipticCurveFq` supports general equations, including characteristics 2 and 3.
-`CountPoints` and `Points` solve the quadratic in y at each x. Both have a
-default work limit of 1000000 x-coordinates. Curves defined over the prime
-subfield use an exact Frobenius trace recurrence for counting; completed counts
-are cached. Field presentations must agree before their elements can be mixed. See
+`Points` solves the quadratic in y at each x. `CountPoints` counts its solutions
+by x-coordinate, or uses the exact Frobenius trace recurrence when all coefficients
+lie in the prime subfield. Both methods require the field order to fit the work
+limit, which defaults to 1000000. Completed counts are cached. Field presentations
+must agree before their elements can be mixed. See
 [Faltings-height conventions, finite-field algorithms and limits](docs/faltings-and-finite-fields.md).
 
 ## Tests

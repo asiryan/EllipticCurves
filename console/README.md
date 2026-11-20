@@ -45,6 +45,7 @@ case-insensitive, powers use `^`, multiplication may use `*` or be implicit,
 and coefficients may be exact fractions, decimals or scientific notation.
 General equations such as `y^2 + xy + y = x^3 - x` are supported. Singular
 equations (zero discriminant) are rejected before calculations start.
+Equation size and coefficient limits match [Explorer's parser limits](../explorer/README.md#calculation-scope).
 
 The program writes results to standard output and errors to standard error.
 Exit codes are `0` for success/help, `1` for a calculation or LMFDB failure

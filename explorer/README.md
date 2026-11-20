@@ -233,18 +233,20 @@ visualization. Completing the square handles both branches and the linear y
 terms; sampling is split at real roots to preserve disconnected components.
 The point at infinity is not drawn in the affine plot.
 Inputs outside the numerical plot's representable range retain exact invariants
-and show a plot precision message. To bound input processing, text is limited to
-100,000 characters per equation and 20,000 per number, with scientific exponents
-limited to ±4096. Numeric input uses the library's exact `BigRational` parser,
+and show a plot precision message. To bound equation processing, text is limited to
+100,000 characters per equation and 20,000 per numeric literal, with scientific exponents
+limited to ±4096. Rational input uses the library's exact `BigRational` parser,
 with a separate 131072-bit budget for constructing components before fraction
-reduction. Accepted numbers, normalized coefficients and intermediate equation
+reduction. Accepted rational values, normalized coefficients and intermediate equation
 expressions are limited to 32768-bit numerators and denominators (roughly 9800
 decimal digits). Each side of an equation accepts up to 4096 terms; parser nesting
 is limited to 64 levels. See [numeric parsing and checked points](../docs/rational-input-and-points.md).
 These checks bound expression growth during input processing. Long terminating
 decimals may be formatted as fractions so generated equations remain readable by
-the editor, calculations and session files. Slider results that exceed the coefficient
-limit are reported as invalid input and cannot be saved until corrected.
+the editor, calculations and session files. Calculation fields have a separate
+100,000-character text limit; integer fields do not use the rational bit budget.
+Slider results that exceed the coefficient limit are reported as invalid input
+and cannot be saved until corrected.
 
 Gold markers are exact affine rational points found with `RationalPoints(12, 4, cancellationToken)`:
 their x-coordinates are `m/n`, with `|m| ≤ 12` and `1 ≤ n ≤ 4`. This is a bounded

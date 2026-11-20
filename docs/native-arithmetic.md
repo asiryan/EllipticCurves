@@ -136,11 +136,21 @@ weighted by the fourth and sixth powers. Lutz–Nagell candidates are found by
 exact cubic bisection, without factoring each candidate's constant term; the
 search stops once its good-reduction upper bound is attained. Factoring the
 model's discriminant may still be expensive when that bound is not attained.
+The square-divisor enumerator currently builds its full product list before
+yielding a candidate, so many prime factors with high valuations can exhaust
+memory even when the factorization itself is easy.
 `GetTorsionPoints(cancellationToken)` supports cancellation throughout this
 preparation and returns the cached complete set when available.
 `GetTorsionStructure(token)` uses the same computation. `IsTorsionPoint(P,token)`
 and `TorsionOrder(P,token)` can decide the order of the supplied point by exact
 group operations using Mazur's bound of 12 for rational torsion point orders.
+After handling infinity and points of order 2, they use good small-prime
+reductions when available: a nonzero `[2520]P` there proves infinite order,
+since 2520 is divisible by every permitted rational torsion point order.
+Otherwise they check exact rational multiples through 12.
+These single-point queries do not prepare the full torsion subgroup. Finite
+points must belong to a nonsingular model. `IsTorsionPoint` also rejects infinity
+on a singular model; `TorsionOrder` retains its legacy return value of 1 there.
 Cancelled or failed torsion preparations are not cached. The `TorsionPoints` and
 `TorsionStructure` properties use the same cache without a cancellation token.
 

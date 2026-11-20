@@ -491,10 +491,14 @@ namespace EllipticCurves
         /// True iff the given point lies on the curve and is torsion (order &lt; ∞).
         /// Throws ArgumentException if the point does not lie on the curve.
         /// </summary>
+        /// <exception cref="InvalidOperationException">The model is singular, including when P is infinity.</exception>
         public bool IsTorsionPoint(EllipticCurvePoint P)
             => IsTorsionPoint(P, default);
 
         /// <summary>Test rational torsion membership by exact point arithmetic, with cooperative cancellation.</summary>
+        /// <remarks>Singular models are rejected even at infinity.</remarks>
+        /// <exception cref="ArgumentException">The point does not lie on the curve.</exception>
+        /// <exception cref="InvalidOperationException">The model is singular.</exception>
         public bool IsTorsionPoint(EllipticCurvePoint P, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -513,11 +517,18 @@ namespace EllipticCurves
         /// Return the exact order of a torsion point or <c>null</c> if it has infinite order.
         /// The point must lie on the curve; Infinity is treated as order 1.
         /// </summary>
+        /// <remarks>Finite points require a nonsingular model. For compatibility, infinity returns 1 even on a singular model.</remarks>
+        /// <exception cref="ArgumentException">The point does not lie on the curve.</exception>
+        /// <exception cref="InvalidOperationException">A finite point is supplied on a singular model.</exception>
         public int? TorsionOrder(EllipticCurvePoint P)
             => TorsionOrder(P, default);
 
         /// <summary>Return the exact rational torsion order, or null for infinite order, with cooperative cancellation.
         /// Uses Mazur's bound of 12 on a rational point's finite order, without preparing the full torsion subgroup.</summary>
+        /// <remarks>A nonzero [2520]P at a good small-prime reduction proves infinite order; otherwise exact rational
+        /// multiples decide the order. Finite points require a nonsingular model; infinity returns 1 even on a singular model.</remarks>
+        /// <exception cref="ArgumentException">The point does not lie on the curve.</exception>
+        /// <exception cref="InvalidOperationException">A finite point is supplied on a singular model.</exception>
         public int? TorsionOrder(EllipticCurvePoint P, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
