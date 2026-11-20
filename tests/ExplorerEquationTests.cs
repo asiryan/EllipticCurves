@@ -24,6 +24,7 @@ public sealed class ExplorerEquationTests
     [InlineData("Y^2 = X^3 + 1E+3·X - 8.325", "0", "0", "0", "1000", "-333/40")]
     [InlineData("y^2 = x^3 + 2x - 3x + x + 1 - 1", "0", "0", "0", "0", "0")]
     [InlineData("(y+1)^2 = x^3", "0", "0", "2", "0", "-1")]
+    [InlineData(" \ty^2 = x^3 - x \r\n ", "0", "0", "0", "-1", "0")]
     public void ParsesExactWeierstrassEquations(string input, string a1, string a2, string a3, string a4, string a6)
     {
         Assert.True(CurveEquationText.TryParse(input, out var curve, out var error), error);
@@ -56,6 +57,11 @@ public sealed class ExplorerEquationTests
     [InlineData("y = x^3")]
     [InlineData("y^2 = x^3 + 1 2")]
     [InlineData("y^2 = x^3 + 1e5000")]
+    [InlineData("\0y^2 = x^3 - x")]
+    [InlineData("y^2\0 = x^3 - x")]
+    [InlineData("y^2 = x^3 - x\0 + 1")]
+    [InlineData("y^2 = x^3 - x\0")]
+    [InlineData("y^2 = x^3 - x \0 \r\n")]
     public void RejectsUnsupportedOrIncompleteExpressions(string input)
     {
         Assert.False(CurveEquationText.TryParse(input, out var curve, out var error));

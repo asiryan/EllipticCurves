@@ -50,8 +50,7 @@ their own cancellation tokens. A failed or cancelled preparation is not cached;
 later callers can retry. Cancellation is checked even when the result is cached.
 Factorization worker options apply when new work is needed. The cache belongs to
 the curve objects, is not persisted, and is not shared between independently
-constructed curves. Factorization benchmarks use a fresh curve for each sample
-so they continue to measure the complete computation.
+constructed curves.
 
 The mathematical reference is [Cremona, Algorithms for Modular Elliptic Curves,
 Chapter III, sections 3.1–3.2](https://johncremona.github.io/book/fulltext/chapter3.pdf).
@@ -61,8 +60,9 @@ types, minimal discriminant valuations, Tamagawa numbers and local root numbers.
 
 ## Rank bounds with rational 2-torsion
 
-Completing the square and finding an integral root of the resulting monic cubic
-gives an isomorphic integral equation
+After completing the square, exact integer bisection finds a root of the
+resulting monic cubic when one exists, without factoring its constant term.
+Translating that root to zero gives an isomorphic integral equation
 
     E:  y² = x³ + a x² + b x.
     E': y² = x³ - 2a x² + (a² - 4b) x.
@@ -136,10 +136,22 @@ weighted by the fourth and sixth powers. Lutz–Nagell candidates are found by
 exact cubic bisection, without factoring each candidate's constant term; the
 search stops once its good-reduction upper bound is attained. Factoring the
 model's discriminant may still be expensive when that bound is not attained.
+The square-divisor search generates one candidate at a time and keeps one
+partial product per relevant prime factor. It can stop as soon as the torsion
+bound is reached. A full search still takes time proportional to the number of
+candidates it checks.
 `GetTorsionPoints(cancellationToken)` supports cancellation throughout this
 preparation and returns the cached complete set when available.
-`GetTorsionStructure(token)`, `IsTorsionPoint(P,token)` and `TorsionOrder(P,token)`
-use the same computation.
+`GetTorsionStructure(token)` uses the same computation. `IsTorsionPoint(P,token)`
+and `TorsionOrder(P,token)` can decide the order of the supplied point by exact
+group operations using Mazur's bound of 12 for rational torsion point orders.
+After handling infinity and points of order 2, they use good small-prime
+reductions when available: a nonzero `[2520]P` there proves infinite order,
+since 2520 is divisible by every permitted rational torsion point order.
+Otherwise they check exact rational multiples through 12.
+These single-point queries do not prepare the full torsion subgroup. Finite
+points must belong to a nonsingular model. `IsTorsionPoint` also rejects infinity
+on a singular model; `TorsionOrder` retains its legacy return value of 1 there.
 Cancelled or failed torsion preparations are not cached. The `TorsionPoints` and
 `TorsionStructure` properties use the same cache without a cancellation token.
 
@@ -209,7 +221,7 @@ also tested directly, alongside unrelated semiprimes, repeated factors, perfect
 powers, pseudoprime rejection and cancellation.
 The independent 38–66 digit semiprime fixtures, sequential/parallel sieve tests,
 both ECM stages and an actual Explorer worker calculation cover the extended
-factorizer. See [performance measurements and reproduction commands](factorization-performance.md).
+factorizer.
 
 ## Native analytic rank
 

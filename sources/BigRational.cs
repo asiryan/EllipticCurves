@@ -216,44 +216,14 @@ namespace EllipticCurves
             var an = BigInteger.Abs(r.Num);
             var ad = r.Den;
 
-            if (!TryIntegerSquareRoot(an, out var sn, cancellationToken)) return false;
-            if (!TryIntegerSquareRoot(ad, out var sd, cancellationToken)) return false;
+            if (!InternalMath.TryIntegerSquareRoot(an, out var sn, cancellationToken)) return false;
+            if (!InternalMath.TryIntegerSquareRoot(ad, out var sd, cancellationToken)) return false;
 
             s = new BigRational(sn, sd);
             // Safety: verify s^2 == r exactly (guards against any corner cases).
             bool exact = (s * s) == r;
             cancellationToken.ThrowIfCancellationRequested();
             return exact;
-        }
-
-        /// <summary>
-        /// Try exact integer square root: returns true iff n is a perfect square and
-        /// outputs rt = sqrt(n). Otherwise returns false and sets rt = floor(sqrt(n)).
-        /// </summary>
-        private static bool TryIntegerSquareRoot(BigInteger n, out BigInteger rt, CancellationToken cancellationToken)
-        {
-            rt = IntegerSquareRoot(n, cancellationToken);
-            bool exact = rt * rt == n;
-            cancellationToken.ThrowIfCancellationRequested();
-            return exact;
-        }
-
-        /// <summary>
-        /// floor(sqrt(n)) for n ≥ 0 using a monotone Newton iteration.
-        /// For n ∈ {0,1} returns n; otherwise converges from above.
-        /// </summary>
-        private static BigInteger IntegerSquareRoot(BigInteger n, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (n <= 1) return n;
-            BigInteger x0 = n, x1 = (n >> 1) + 1;
-            while (x1 < x0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                x0 = x1; x1 = (x1 + n / x1) >> 1;
-            }
-            cancellationToken.ThrowIfCancellationRequested();
-            return x0;
         }
 
         /// <summary>Value equality (uses canonical representation, so structural equality works).</summary>

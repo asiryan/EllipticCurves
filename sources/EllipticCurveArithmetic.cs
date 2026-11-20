@@ -24,9 +24,9 @@ namespace EllipticCurves
         /// <remarks>Concurrent callers wait with their own cancellation tokens. Failed or cancelled preparation is not cached.
         /// Cancellation is checked before returning a cached value; its original worker settings do not force recomputation.</remarks>
         public EllipticCurveQ GetGlobalMinimalModel(CancellationToken cancellationToken = default)
-            => GetGlobalMinimalModelCore(cancellationToken, 0);
+            => GetGlobalMinimalModelCore(0, cancellationToken);
 
-        private EllipticCurveQ ComputeGlobalMinimalModel(CancellationToken cancellationToken, int maxWorkers)
+        private EllipticCurveQ ComputeGlobalMinimalModel(int maxWorkers, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (IsSingular) throw new InvalidOperationException("A singular curve has no elliptic minimal model.");
@@ -34,7 +34,7 @@ namespace EllipticCurves
             // A scaling at p requires p^4 | c4 and p^6 | c6, so only common
             // prime divisors can change the model. Avoid factoring the often
             // much larger discriminant just to discover irrelevant primes.
-            foreach (var p in Factor(BigInteger.GreatestCommonDivisor(c4, c6), cancellationToken, maxWorkers).Keys.OrderBy(p => p))
+            foreach (var p in Factor(BigInteger.GreatestCommonDivisor(c4, c6), maxWorkers, cancellationToken).Keys.OrderBy(p => p))
             {
                 var p4 = BigInteger.Pow(p, 4);
                 var p6 = BigInteger.Pow(p, 6);
@@ -58,7 +58,7 @@ namespace EllipticCurves
         /// This method performs no network access and does not require external mathematical software.
         /// </summary>
         public BigInteger GetConductor(CancellationToken cancellationToken = default)
-            => GetConductorCore(cancellationToken, 0);
+            => GetConductorCore(0, null, cancellationToken);
 
         /// <summary>Compute the exact conductor with a per-call limit on parallel sieve workers.
         /// The limit also applies to factorization during minimization and recursive primality proofs.
@@ -66,7 +66,7 @@ namespace EllipticCurves
         public BigInteger GetConductor(FactorizationOptions options, CancellationToken cancellationToken)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
-            return GetConductorCore(cancellationToken, options.WorkerLimit());
+            return GetConductorCore(options.WorkerLimit(), null, cancellationToken);
         }
 
         /// <summary>Compute the exact conductor and its prime factorization in one calculation.
@@ -76,17 +76,17 @@ namespace EllipticCurves
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
             var factors = new SortedDictionary<BigInteger, int>();
-            var conductor = GetConductorCore(cancellationToken, options.WorkerLimit(), factors);
+            var conductor = GetConductorCore(options.WorkerLimit(), factors, cancellationToken);
             factorization = new ReadOnlyDictionary<BigInteger, int>(factors);
             return conductor;
         }
 
-        private BigInteger GetConductorCore(CancellationToken cancellationToken, int maxWorkers,
-            IDictionary<BigInteger, int> conductorFactors = null)
+        private BigInteger GetConductorCore(int maxWorkers, IDictionary<BigInteger, int> conductorFactors,
+            CancellationToken cancellationToken)
         {
-            var model = GetGlobalMinimalModelCore(cancellationToken, maxWorkers);
+            var model = GetGlobalMinimalModelCore(maxWorkers, cancellationToken);
             BigInteger conductor = 1;
-            foreach (var pair in model.GetMinimalDiscriminantFactorization(cancellationToken, maxWorkers))
+            foreach (var pair in model.GetMinimalDiscriminantFactorization(maxWorkers, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var p = pair.Key;

@@ -12,6 +12,14 @@ namespace EllipticCurves
     /// Token-taking operations observe cooperative cancellation between arithmetic steps; individual BigInteger operations are not interruptible.</remarks>
     public sealed class EllipticCurveFp : IEquatable<EllipticCurveFp>
     {
+        private sealed class Cardinality
+        {
+            internal readonly BigInteger Value;
+            internal Cardinality(BigInteger value) { Value = value; }
+        }
+        private readonly CachedComputation<Cardinality> cardinalityCache = new CachedComputation<Cardinality>();
+        private readonly CachedComputation<IReadOnlyDictionary<BigInteger, int>> orderFactorsCache
+            = new CachedComputation<IReadOnlyDictionary<BigInteger, int>>();
         /// <summary>Prime defining the base field.</summary>
         public BigInteger Prime { get; }
         /// <summary>Coefficient of xy.</summary>
@@ -141,27 +149,15 @@ namespace EllipticCurves
             if (Prime > maxWork) throw new ArithmeticException("The direct search needs at least p x-coordinate steps.");
         }
         /// <summary>Count all points, including infinity. maxWork must be nonnegative and at least p;
-        /// it counts x-coordinates, not modular operations or elapsed time. A limit throws before counting starts.</summary>
+        /// it counts x-coordinates, not modular operations or elapsed time. A limit throws before counting starts.
+        /// Only completed counts are cached; limits and cancellation are checked even for cached results.</summary>
         /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
         /// <exception cref="ArithmeticException">p exceeds maxWork.</exception>
         public BigInteger CountPoints(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
-            CheckSearchLimit(maxWork, cancellationToken); BigInteger count = 1;
-            for (BigInteger x = 0; x < Prime; x++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var rhs = Rhs(x, cancellationToken); var b = Mod(A1 * x + A3);
-                if (Prime == 2)
-                { for (int y = 0; y < 2; y++) if (Mod(y * y + b * y - rhs).IsZero) count++; }
-                else
-                {
-                    var d = Mod(b * b + 4 * rhs);
-                    if (d.IsZero) count++;
-                    else if (ModPow(d, (Prime - 1) / 2, cancellationToken).IsOne) count += 2;
-                }
-            }
-            cancellationToken.ThrowIfCancellationRequested();
-            return count;
+            CheckSearchLimit(maxWork, cancellationToken);
+            return cardinalityCache.Get(() => new Cardinality(PrimeFieldPointSearch.Count(
+                Prime, A1, A2, A3, A4, A6, cancellationToken)), cancellationToken).Value;
         }
         /// <summary>Lazily enumerate all points, with infinity first. maxWork counts p x-coordinates.
         /// Limits and cancellation are checked on the first MoveNext, before yielding infinity.
@@ -171,6 +167,39 @@ namespace EllipticCurves
         public IEnumerable<EllipticCurvePointFp> Points(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
             CheckSearchLimit(maxWork, cancellationToken); yield return EllipticCurvePointFp.Infinity;
+            if (Prime != 2 && Prime <= PrimeFieldPointSearch.MaxRootTablePrime)
+            {
+                int prime = (int)Prime;
+                var roots = PrimeFieldPointSearch.RootTable(prime, cancellationToken);
+                var values = new PrimeFieldPointSearch.CubicDifferences(prime, A1, A2, A3, A4, A6);
+                long linear = (long)A3, a1 = (long)A1;
+                for (int x = 0; x < prime; x++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    int encodedRoot = roots[values.Value];
+                    if (encodedRoot != 0)
+                    {
+                        int root = encodedRoot - 1;
+                        long first = root - linear;
+                        if (first < 0) first += prime;
+                        var y = (first & 1) == 0 ? first / 2 : (first + prime) / 2;
+                        yield return new EllipticCurvePointFp(Prime, x, y);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (root != 0)
+                        {
+                            long second = prime - root - linear;
+                            if (second < 0) second += prime;
+                            y = (second & 1) == 0 ? second / 2 : (second + prime) / 2;
+                            yield return new EllipticCurvePointFp(Prime, x, y);
+                        }
+                    }
+                    values.Advance();
+                    linear += a1;
+                    if (linear >= prime) linear -= prime;
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                yield break;
+            }
             var half = Prime == 2 ? BigInteger.Zero : (Prime + 1) / 2;
             for (BigInteger x = 0; x < Prime; x++)
             {
@@ -184,7 +213,7 @@ namespace EllipticCurves
                         if (Mod(y * y + b * y - rhs).IsZero) yield return new EllipticCurvePointFp(Prime, x, y);
                     }
                 }
-                else if (TrySquareRoot(Mod(b * b + 4 * rhs), cancellationToken, out var root))
+                else if (TrySquareRoot(Mod(b * b + 4 * rhs), out var root, cancellationToken))
                 {
                     yield return new EllipticCurvePointFp(Prime, x, Mod((root - b) * half));
                     cancellationToken.ThrowIfCancellationRequested();
@@ -193,7 +222,7 @@ namespace EllipticCurves
             }
             cancellationToken.ThrowIfCancellationRequested();
         }
-        private bool TrySquareRoot(BigInteger value, CancellationToken token, out BigInteger root)
+        private bool TrySquareRoot(BigInteger value, out BigInteger root, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             root = 0; if (value.IsZero) return true;
@@ -224,8 +253,10 @@ namespace EllipticCurves
             cancellationToken.ThrowIfCancellationRequested(); Validate(point, cancellationToken);
             if (maxWork < 0) throw new ArgumentOutOfRangeException(nameof(maxWork));
             if (point.IsInfinity) return 1;
-            var order = CountPoints(maxWork, cancellationToken);
-            foreach (var prime in NativeNumberTheory.Factor(order, cancellationToken).Keys)
+            var cardinality = CountPoints(maxWork, cancellationToken);
+            var order = cardinality;
+            var factors = orderFactorsCache.Get(() => NativeNumberTheory.Factor(cardinality, cancellationToken), cancellationToken);
+            foreach (var prime in factors.Keys)
                 while (order % prime == 0 && Multiply(point, order / prime, cancellationToken).IsInfinity) order /= prime;
             cancellationToken.ThrowIfCancellationRequested();
             return order;

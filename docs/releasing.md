@@ -5,7 +5,8 @@ current checkout; they do not upload a NuGet package or publish a GitHub release
 Use the .NET 8 SDK. A newer SDK can also target these projects, but running the
 tests and framework-dependent applications still requires the .NET 8 runtime;
 WPF requires the Windows Desktop runtime. Explorer and its presentation check
-run on Windows.
+run on Windows. These projects still target .NET 8, whose Microsoft support
+[ended on November 10, 2026](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core#out-of-support-versions).
 
 ## Build script
 

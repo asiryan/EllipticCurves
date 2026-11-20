@@ -60,11 +60,9 @@ On 2026-09-13, with .NET 8.0.31 on the local Windows machine:
 | 503 | 31 | 31 |
 | 1009 | 31 | 31 |
 
-One run took approximately 19 ms for reading the data and all four verification
-passes, excluding test discovery and .NET startup. Each test passes a token
-cancelled after 30 seconds into the cooperative verification loops; this is not
-a hard time limit on file reading or a single integer operation. This is a
-recorded run, not a performance guarantee.
+Each test passes a token cancelled after 30 seconds into the cooperative
+verification loops; this is not a hard time limit on file reading or a single
+integer operation.
 
 Replacing the last point with either a duplicate or
 the sum of the first two points yields a bound of 30. Incrementing a supplied

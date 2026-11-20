@@ -1,4 +1,3 @@
-using System.Globalization;
 using EllipticCurves;
 using Xunit;
 
@@ -29,13 +28,14 @@ public class LmfdbRealValueTests
     [InlineData("-.5", -1, 2)]
     [InlineData("1.", 1, 1)]
     [InlineData("  +1.25e+2  ", 125, 1)]
+    [InlineData("\u00A01.25\u00A0", 5, 4)]
     [InlineData("-12.5E-2", -1, 8)]
     public void ValidDecimalFormsPreserveTheirExactValue(string text, int numerator, int denominator)
     {
         var stored = new LmfdbRealValue(text, 97);
         Assert.Equal(new BigRational(numerator, denominator), stored.AsRational());
         Assert.Equal(text, stored.DecimalValue);
-        Assert.Equal(double.Parse(text, CultureInfo.InvariantCulture), stored.Approximation);
+        Assert.Equal((double)numerator / denominator, stored.Approximation);
         Assert.Equal(97, stored.StoredPrecisionBits);
     }
 }

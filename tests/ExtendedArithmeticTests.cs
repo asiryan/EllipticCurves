@@ -10,15 +10,17 @@ public class ExtendedArithmeticTests
     public void ModelMapsPreserveGroupLawAndInvert()
     {
         var e = new EllipticCurveQ(0, 0, 1, -1, 0); var p = new EllipticCurvePoint(0, 0);
+        var multiples = Enumerable.Range(-5, 11).Select(n => (Scalar: n, Point: e.Multiply(p, n))).ToArray();
         foreach (var u in new BigRational[] { -2, new BigRational(2, 3), 1 })
         {
             var map = e.ChangeModel(u, 5, -3, 7);
-            for (int n = -5; n <= 5; n++)
+            var inverse = map.Inverse(); var mappedGenerator = map.Map(p);
+            foreach (var (n, q) in multiples)
             {
-                var q = e.Multiply(p, n); var mapped = map.Map(q);
+                var mapped = map.Map(q);
                 Assert.True(map.Target.IsOnCurve(mapped));
-                Assert.Equal(q, map.MapBack(mapped)); Assert.Equal(q, map.Inverse().Map(mapped));
-                Assert.Equal(mapped, map.Target.Multiply(map.Map(p), n));
+                Assert.Equal(q, map.MapBack(mapped)); Assert.Equal(q, inverse.Map(mapped));
+                Assert.Equal(mapped, map.Target.Multiply(mappedGenerator, n));
             }
             Assert.True(e.TryGetIsomorphism(map.Target, out var found));
             Assert.Equal(p, found.MapBack(found.Map(p)));
@@ -83,8 +85,9 @@ public class ExtendedArithmeticTests
     public void SaturationReportsUnprovedInputsAndLimits()
     {
         var e = new EllipticCurveQ(0, 0, 1, -1, 0); var p = new EllipticCurvePoint(0, 0);
-        Assert.False(e.Saturate(new[] { p, e.Multiply(p, 2) }, new[] { 2 }).IndependenceCertified);
-        var partial = e.Saturate(new[] { e.Multiply(p, 2) }, new[] { 2, 3 }, new SaturationOptions { MaxWork = 0 });
+        var twice = e.Multiply(p, 2);
+        Assert.False(e.Saturate(new[] { p, twice }, new[] { 2 }).IndependenceCertified);
+        var partial = e.Saturate(new[] { twice }, new[] { 2, 3 }, new SaturationOptions { MaxWork = 0 });
         Assert.False(partial.IsComplete); Assert.Equal(new[] { 2, 3 }, partial.UnresolvedPrimes);
         Assert.Equal(BigInteger.One, partial.IndexGain);
     }
@@ -97,7 +100,8 @@ public class ExtendedArithmeticTests
         Assert.True(atTwo.LowerBound > 0);
         Assert.True(infinity.LowerBound + atTwo.LowerBound + at37.LowerBound <= height.UpperBound);
         Assert.True(infinity.UpperBound + atTwo.UpperBound + at37.UpperBound >= height.LowerBound);
-        Assert.Equal(0, e.LocalHeight(p, 3).LowerBound); Assert.Equal(0, e.LocalHeight(p, 3).UpperBound);
+        var atThree = e.LocalHeight(p, 3);
+        Assert.Equal(0, atThree.LowerBound); Assert.Equal(0, atThree.UpperBound);
         AssertClose(e.NaiveHeight(p), Math.Log(4));
         Assert.Throws<ArgumentException>(() => e.LocalHeight(EllipticCurvePoint.Infinity, 2));
         var torsion = new EllipticCurveQ(0, 0, 0, -1, 0);

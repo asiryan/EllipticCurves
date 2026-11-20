@@ -1,3 +1,4 @@
+using System.Numerics;
 using EllipticCurves;
 using Xunit;
 
@@ -5,6 +6,55 @@ namespace EllipticCurves.Tests;
 
 public class RankLimitTests
 {
+    [Fact]
+    public void MonicCubicRootsAgreeWithIndependentBoundedIntegerSearch()
+    {
+        for (int a = -5; a <= 5; a++)
+        for (int b = -5; b <= 5; b++)
+        for (int c = -5; c <= 5; c++)
+        {
+            int bound = 1 + Math.Max(Math.Abs(a), Math.Max(Math.Abs(b), Math.Abs(c)));
+            var expected = Enumerable.Range(-bound, 2 * bound + 1)
+                .Where(x => ((x + a) * x + b) * x + c == 0).Select(x => new BigInteger(x)).ToArray();
+            bool found = EllipticCurveQ.TryCubicRoot(a, b, c, out var root, default);
+            Assert.Equal(expected.Length != 0, found);
+            if (found) Assert.Contains(root, expected);
+            if (c == 0) Assert.Equal(BigInteger.Zero, root);
+        }
+    }
+
+    [Fact]
+    public void MonicCubicRootSearchDoesNotEnumerateHighlyCompositeConstants()
+    {
+        // Forty distinct odd prime factors would require 2^40 materialized
+        // divisors in the old search, although isolating at most three roots is small.
+        var primes = NativeNumberTheory.SievePrimes(199).Where(p => p != 2).Take(40).ToArray();
+        Assert.Equal(40, primes.Length);
+        var constant = primes.Aggregate(BigInteger.One, (value, p) => value * p);
+        // x^3+x+constant is nonzero at both residues modulo two.
+        Assert.False(EllipticCurveQ.TryCubicRoot(0, 1, constant, out _, default));
+        // (x-1)*(x^2+constant) has exactly the one real root x=1.
+        Assert.True(EllipticCurveQ.TryCubicRoot(-1, constant, -constant, out var root, default));
+        Assert.Equal(BigInteger.One, root);
+        var cancelled = new CancellationToken(true);
+        Assert.Throws<OperationCanceledException>(() => EllipticCurveQ.TryCubicRoot(0, 0, 0, out _, cancelled));
+        Assert.Throws<OperationCanceledException>(() => EllipticCurveQ.TryCubicRoot(-1, constant, -constant, out _, cancelled));
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0, -1, true)]
+    [InlineData(0, 0, 1, 1, false)]
+    [InlineData(-2, 0, -1, 2, true)]
+    public void NonzeroConstantCubicRootsSelectTheCorrectDescent(int a2, int a3, int a4, int a6, bool twoTorsion)
+    {
+        var curve = new EllipticCurveQ(0, a2, a3, a4, a6);
+        var result = curve.GetRankBounds(new RankComputationOptions
+            { SearchBound = 0, MaxPointSearchWork = 0, MaxDescentWork = 0 });
+        Assert.Equal(twoTorsion, result.UsedTwoIsogenyDescent);
+        Assert.Equal(!twoTorsion, result.UsedGeneralTwoDescent);
+        Assert.Null(result.UpperBound);
+    }
+
     private static EllipticCurveQ RankOneCurve() => new(0, 0, 0, -25, 0);
 
     private static void AssertIncomplete(RankBounds result, int lower)

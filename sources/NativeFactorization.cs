@@ -7,7 +7,7 @@ namespace EllipticCurves
 {
     internal static partial class NativeNumberTheory
     {
-        private static BigInteger FindDivisor(BigInteger n, CancellationToken token, int maxWorkers)
+        private static BigInteger FindDivisor(BigInteger n, int maxWorkers, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             int bits = RealArithmetic.BitLength(n);
@@ -34,7 +34,7 @@ namespace EllipticCurves
                         divisor = NativeEcmFactorization.FindDivisor(n, 16, 2000, 20000, token);
                         if (divisor > 1) return divisor;
                     }
-                    return NativeQuadraticSieve.FindDivisor(n, token, maxWorkers);
+                    return NativeQuadraticSieve.FindDivisor(n, maxWorkers, token);
                 }
             }
         }
@@ -82,8 +82,8 @@ namespace EllipticCurves
             return divisor > 1 && divisor < n ? divisor : BigInteger.One;
         }
 
-        private static bool TryPerfectPower(BigInteger n, CancellationToken token,
-            out BigInteger root, out int exponent)
+        private static bool TryPerfectPower(BigInteger n, out BigInteger root, out int exponent,
+            CancellationToken token)
         {
             root = InternalMath.IntegerSqrt(n, token);
             exponent = 2;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using EllipticCurves.Explorer.Computations;
@@ -286,6 +287,39 @@ public sealed class ExplorerCalculationTests
         Assert.True(form.CanRun);
         form.MaxItems = "100001";
         Assert.False(form.CanRun);
+    }
+
+    [Theory]
+    [InlineData(" +120 ", " +1000 ", 120, 1000)]
+    [InlineData("-0", "1", 0, 1)]
+    [InlineData("86400", "100000", 86400, 100000)]
+    [InlineData("＋120", "1000", null, null)]
+    [InlineData("−0", "1000", null, null)]
+    [InlineData("120", "＋1000", null, null)]
+    public void FormLimitsUseTheSameInvariantGrammarForValidationAndRequests(string timeout, string maximum, int? seconds, int? items)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        var localized = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+        localized.NumberFormat.PositiveSign = "＋";
+        localized.NumberFormat.NegativeSign = "−";
+        CultureInfo.CurrentCulture = localized;
+        try
+        {
+            using var workbench = new WorkbenchViewModel();
+            using var form = new CalculationFormViewModel(CalculationCatalog.Get("curve.overview"), Classic, workbench);
+            form.Timeout = timeout;
+            form.MaxItems = maximum;
+            Assert.Equal(seconds.HasValue, form.CanRun);
+            if (seconds.HasValue)
+            {
+                Assert.Empty(form.LimitError);
+                var request = form.CreateRequest();
+                Assert.Equal(seconds.Value, request.TimeoutSeconds);
+                Assert.Equal(items, request.MaxItems);
+            }
+            else Assert.NotEmpty(form.LimitError);
+        }
+        finally { CultureInfo.CurrentCulture = previous; }
     }
 
     [Fact]

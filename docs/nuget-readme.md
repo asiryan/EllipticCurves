@@ -32,6 +32,7 @@ var finite = e.ReduceModuloPrime(5);
   fractions and scientific notation, with configurable input limits.
 - Checked rational-point factories and group operations, invariants, rational torsion,
   minimal models, isomorphisms and quadratic twists.
+- Exact order and torsion checks for a supplied rational point without computing the full subgroup.
 - Conductors with prime/exponent factorizations from the same calculation,
   configurable parallel factorization, root numbers, local reduction data and Tamagawa numbers.
 - General 2-descent and descent by 2-isogeny, with proved algebraic rank bounds.
@@ -45,7 +46,7 @@ var finite = e.ReduceModuloPrime(5);
 - Prime-field curves, arithmetic, direct point counting and enumeration,
   including characteristics 2 and 3.
 - Exact finite extensions F_(p^k) with proved irreducible defining polynomials,
-  curve arithmetic, counting by x-coordinate and bounded enumeration of points.
+  curve arithmetic, point counting with prime-subfield trace lifting and bounded enumeration.
 - Numerical elliptic logarithms of rational points on both real components.
 - Optional cached LMFDB data, including generators, heights, periods and
   isogeny-class metadata, with offline snapshot parsing.
@@ -60,9 +61,9 @@ point constructor and group operations assume valid inputs; use CreatePoint and
 the Checked operations to validate them. Numerical estimates and stored LMFDB values are distinguished from
 proofs; the library does not compute the Tate-Shafarevich group order.
 
-Finite-field counting uses direct search, not SEA. Extension-field point counting
-visits q x-coordinates, with a default limit of 1000000. Point enumeration
-still checks q^2 coordinate pairs with the same default limit. General isogeny-class
+Finite-field counting uses exact direct search and prime-subfield trace lifting,
+not SEA. Extension-field counting and enumeration both have a default limit of
+1000000 x-coordinates; enumeration solves the quadratic in y. General isogeny-class
 discovery, higher descents and curves over general number fields are outside this release.
 
 See the [repository README](https://github.com/asiryan/EllipticCurves/blob/main/README.md)

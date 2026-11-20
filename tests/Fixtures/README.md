@@ -28,14 +28,11 @@ these files; PARI/GP is not required to build or run the tests.
 `factorization.csv` contains eight independently generated prime pairs, whose
 products have 38–66 decimal digits. `generate-factorization.gp` uses seed
 20260916 and explicitly proves both primes with `isprime`; the native tests
-receive only the product to factor and certify. `benchmark-factorization.gp`
-uses `factor_proven=1`, one GP thread, wall-clock measurements, and fresh `ellinit`
-objects for each conductor run. The C# counterpart is
-`tests/FactorizationBenchmark/FactorizationBenchmark.csproj`; see
-[benchmark methodology](../../docs/factorization-performance.md).
+receive only the product to factor and certify.
 
 - `conductors.csv`: input a1,a2,a3,a4,a6; conductor; reduced minimal a1,a2,a3,a4,a6;
-  PARI Kodaira codes at 2 and 3. The last two columns record coverage metadata.
+  PARI Kodaira codes at 2 and 3. The conductor and minimal-model reference test
+  compares the first eleven columns. The local-data fixtures cover the Kodaira checks.
 - `ranks.csv`: a,b,proved rank for y²=x³+a*x²+b*x. Only cases where PARI's lower
   and upper rank bounds agree are included.
 - `torsion.csv`: a1,a2,a3,a4,a6; group structure; all rational torsion points
@@ -49,8 +46,10 @@ objects for each conductor run. The C# counterpart is
   rows are fixed examples (ranks 0 through 4 and nontrivial Sha); the remainder
   contains small curves generated with a fixed seed, plus families with full or
   partial rational 2-torsion to exercise reducible resolvents. Tests compare the
-  actual Selmer dimension on these small curves. Large fixed examples also document
-  cases where quartic enumeration can exceed practical work limits.
+  actual Selmer dimension on the 148 rows after the fixed examples, with worker
+  counts 1, 2 and 4. Separate tests exercise selected fixed curves. The fixed rows
+  also record reference bounds for larger curves where quartic enumeration can
+  exceed practical work limits.
 - `root-numbers.csv`: input a1,a2,a3,a4,a6; global sign; local signs at 2 and 3,
   for the 5,975 conductor inputs.
 - `local-roots.csv`: minimal a1,a2,a3,a4,a6; local signs at 2 and 3. The 1,472
@@ -69,6 +68,8 @@ Regenerate with a local GP executable (PowerShell, from the repository root):
 
 ```powershell
 $gpPath = 'C:/path/to/gp.exe'
+& $gpPath -q -f tests/Fixtures/generate-factorization.gp |
+    Set-Content -Encoding utf8 tests/Fixtures/factorization.csv
 & $gpPath -q -f tests/Fixtures/generate-conductors.gp |
     Select-Object -Unique | Set-Content -Encoding utf8 tests/Fixtures/conductors.csv
 & $gpPath -q -f tests/Fixtures/generate-ranks.gp |

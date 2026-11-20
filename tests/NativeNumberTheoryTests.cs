@@ -5,6 +5,21 @@ namespace EllipticCurves.Tests;
 
 public class NativeNumberTheoryTests
 {
+    [Fact]
+    public void SmallPrimePowerStrippingPreservesLargeExponentsAndCancellation()
+    {
+        var value = (BigInteger.One << 4096) * BigInteger.Pow(3, 257) * BigInteger.Pow(37, 17);
+        var factors = NativeNumberTheory.Factor(value, default);
+        Assert.Equal(3, factors.Count);
+        Assert.Equal(4096, factors[2]);
+        Assert.Equal(257, factors[3]);
+        Assert.Equal(17, factors[37]);
+        var cancelled = new CancellationToken(true);
+        Assert.Throws<OperationCanceledException>(() => NativeNumberTheory.Factor(value, cancelled));
+        Assert.Throws<OperationCanceledException>(() => NativeNumberTheory.IsPrime(2, cancelled));
+        Assert.Throws<OperationCanceledException>(() => NativeNumberTheory.IsPrime(0, cancelled));
+    }
+
     public static IEnumerable<object[]> LargeFactorizations() => File.ReadLines(
         Path.Combine(AppContext.BaseDirectory, "Fixtures", "factorization.csv"))
         .Skip(1).Where(line => !string.IsNullOrWhiteSpace(line))
@@ -68,7 +83,7 @@ public class NativeNumberTheoryTests
         var p = BigInteger.Parse(left);
         var q = BigInteger.Parse(right);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var divisor = NativeQuadraticSieve.FindDivisor(p * q, timeout.Token, workers);
+        var divisor = NativeQuadraticSieve.FindDivisor(p * q, workers, timeout.Token);
         Assert.True(divisor == p || divisor == q);
     }
 
@@ -84,7 +99,7 @@ public class NativeNumberTheoryTests
         Assert.Throws<OperationCanceledException>(() => NativeNumberTheory.Factor(1, new CancellationToken(true)));
         var n = BigInteger.Parse("128074800873422933261289680790071262754898704850689544041");
         using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
-        Assert.Throws<OperationCanceledException>(() => NativeQuadraticSieve.FindDivisor(n, timeout.Token, workers));
+        Assert.Throws<OperationCanceledException>(() => NativeQuadraticSieve.FindDivisor(n, workers, timeout.Token));
     }
 
     [Fact]
@@ -99,7 +114,7 @@ public class NativeNumberTheoryTests
         Assert.Equal(1, NativeQuadraticSieve.WorkerCount(75, 1, 24));
         Assert.Equal(1, NativeQuadraticSieve.WorkerCount(30, 24, 24));
         Assert.Throws<ArgumentOutOfRangeException>(() => NativeQuadraticSieve.WorkerCount(75, -1, 24));
-        Assert.Throws<ArgumentOutOfRangeException>(() => NativeNumberTheory.Factor(1, default, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => NativeNumberTheory.Factor(1, -1, default));
     }
 
     [Theory]
@@ -110,7 +125,7 @@ public class NativeNumberTheoryTests
         var p = BigInteger.Parse("1575838430456954508271967");
         var q = BigInteger.Parse("81274068710384465721193186106423");
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var factors = NativeNumberTheory.Factor(p * q, timeout.Token, workers);
+        var factors = NativeNumberTheory.Factor(p * q, workers, timeout.Token);
         Assert.Equal(2, factors.Count);
         Assert.Equal(1, factors[p]);
         Assert.Equal(1, factors[q]);

@@ -6,7 +6,7 @@ using System.Threading;
 namespace EllipticCurves
 {
     /// <summary>A nonsingular general Weierstrass curve over a specified finite field F_(p^k).
-    /// Supports characteristics two and three. Counting visits q x-coordinates; point enumeration visits q^2 pairs.</summary>
+    /// Supports characteristics two and three. Counting and point enumeration have a q x-coordinate work limit.</summary>
     /// <remarks>Point operations validate membership and field presentations before identity shortcuts or a zero multiplier.
     /// Infinity is accepted; a default affine point is invalid. Group operations throw ArgumentException for invalid points.
     /// Construction and basic group operations have no cancellation token. Multiply, CountPoints and Points check cooperative cancellation;
@@ -137,76 +137,122 @@ namespace EllipticCurves
             return result;
         }
 
+        private readonly CachedComputation<PointCountValue> pointCountCache = new CachedComputation<PointCountValue>();
+        private sealed class PointCountValue
+        {
+            internal BigInteger Value { get; }
+            internal PointCountValue(BigInteger value) { Value = value; }
+        }
+
         private void CheckSearchLimit(long maxWork, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             if (maxWork < 0) throw new ArgumentOutOfRangeException(nameof(maxWork));
-            if (Field.Order * Field.Order > maxWork)
-                throw new ArithmeticException("Direct point enumeration requires q^2 coordinate-pair checks; the work limit is too small.");
+            if (Field.Order > maxWork)
+                throw new ArithmeticException("Point search requires q x-coordinates; the work limit is too small.");
         }
-        /// <summary>Count every point including infinity by counting the solutions in y for each x. maxWork must be nonnegative
-        /// and bounds q x-coordinates, not field operations or elapsed time. A limit throws before counting starts.</summary>
+        /// <summary>Count every point including infinity. maxWork must be at least q and bounds x-coordinates,
+        /// not field operations or elapsed time. Curves defined over the prime subfield use the exact Frobenius trace recurrence.
+        /// Only completed counts are cached; limits and cancellation are checked even for cached or prime-subfield results.</summary>
         /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
         /// <exception cref="ArithmeticException">q exceeds maxWork.</exception>
         public BigInteger CountPoints(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (maxWork < 0) throw new ArgumentOutOfRangeException(nameof(maxWork));
-            if (Field.Order > maxWork)
-                throw new ArithmeticException("Direct point counting requires q x-coordinates; the work limit is too small.");
+            CheckSearchLimit(maxWork, cancellationToken);
+            return pointCountCache.Get(() => new PointCountValue(ComputePointCount(cancellationToken)), cancellationToken).Value;
+        }
+
+        private BigInteger ComputePointCount(CancellationToken token)
+        {
+            if (A1.Coordinates.Length <= 1 && A2.Coordinates.Length <= 1 && A3.Coordinates.Length <= 1 &&
+                A4.Coordinates.Length <= 1 && A6.Coordinates.Length <= 1)
+            {
+                BigInteger Constant(FiniteFieldElement value) => value.IsZero ? BigInteger.Zero : value.Coordinates[0];
+                var primeCurve = new EllipticCurveFp(Field.Characteristic, Constant(A1), Constant(A2), Constant(A3),
+                    Constant(A4), Constant(A6), token);
+                var primeTrace = Field.Characteristic + 1 - primeCurve.CountPoints((long)Field.Order, token);
+                BigInteger previous = 2, trace = primeTrace;
+                for (int i = 2; i <= Field.Degree; i++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var next = primeTrace * trace - Field.Characteristic * previous;
+                    previous = trace; trace = next;
+                }
+                token.ThrowIfCancellationRequested();
+                return Field.Order + 1 - trace;
+            }
+            var solver = new FiniteFieldQuadraticSolver(Field, token);
             bool characteristicTwo = Field.Characteristic == 2;
             var four = Field.CreateElement(4);
-            var squareExponent = (Field.Order - 1) / 2;
-            BigInteger count = 1; // Infinity.
-            foreach (var x in Field.Elements(maxWork, cancellationToken))
+            // Constant b needs only one inversion in characteristic two.
+            var constantScale = characteristicTwo && A1.IsZero && !A3.IsZero
+                ? solver.InverseSquare(A3, token) : Field.Zero;
+            BigInteger count = 1;
+            foreach (var x in Field.Elements((long)Field.Order, token))
             {
-                var rhs = Rhs(x, cancellationToken); var b = Field.Multiply(A1, x, cancellationToken) + A3;
+                var rhs = Rhs(x, token); var b = Field.Multiply(A1, x, token) + A3;
                 if (!characteristicTwo)
                 {
-                    var discriminant = Field.Multiply(b, b, cancellationToken) + Field.Multiply(four, rhs, cancellationToken);
+                    var discriminant = Field.Multiply(b, b, token) + Field.Multiply(four, rhs, token);
                     if (discriminant.IsZero) count++;
-                    else if (discriminant.Pow(squareExponent, cancellationToken).IsOne) count += 2;
+                    else if (solver.IsSquare(discriminant, token)) count += 2;
                 }
-                else if (b.IsZero)
-                {
-                    // Squaring is a bijection of F_(2^k): y^2=rhs has one solution.
-                    count++;
-                }
+                else if (b.IsZero) count++;
                 else
                 {
-                    // With z=y/b, z^2+z=rhs/b^2 has two solutions iff its
-                    // absolute trace to F_2 is zero, and no solutions otherwise.
-                    var value = Field.Divide(rhs, Field.Multiply(b, b, cancellationToken), cancellationToken);
-                    var trace = value;
-                    for (int i = 1; i < Field.Degree; i++)
-                    {
-                        value = Field.Multiply(value, value, cancellationToken);
-                        trace += value;
-                    }
-                    if (trace.IsZero) count += 2;
+                    var scale = A1.IsZero ? constantScale : solver.InverseSquare(b, token);
+                    if (solver.HasArtinSchreierRoot(Field.Multiply(rhs, scale, token), token)) count += 2;
                 }
             }
-            cancellationToken.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
             return count;
         }
-        /// <summary>Lazily enumerate all points, infinity first, with a q^2 coordinate-pair limit.
+
+        /// <summary>Lazily enumerate all points, infinity first, with a q x-coordinate limit.
+        /// The quadratic in y is solved exactly at each x; no q^2 coordinate-pair search is performed.
         /// Limits and cancellation are checked on the first MoveNext, before yielding infinity.
-        /// Enumeration must finish to establish completeness.</summary>
+        /// Enumeration must finish to establish completeness. The order of the two ordinates is unspecified.</summary>
         /// <exception cref="ArgumentOutOfRangeException">maxWork is negative.</exception>
-        /// <exception cref="ArithmeticException">q^2 exceeds maxWork.</exception>
+        /// <exception cref="ArithmeticException">q exceeds maxWork.</exception>
         public IEnumerable<EllipticCurvePointFq> Points(long maxWork = 1000000, CancellationToken cancellationToken = default)
         {
             CheckSearchLimit(maxWork, cancellationToken);
             yield return EllipticCurvePointFq.Infinity;
+            var solver = new FiniteFieldQuadraticSolver(Field, cancellationToken);
+            bool characteristicTwo = Field.Characteristic == 2;
+            var half = characteristicTwo ? Field.Zero : Field.CreateElement((Field.Characteristic + 1) / 2);
+            var four = Field.CreateElement(4);
+            var constantScale = characteristicTwo && A1.IsZero && !A3.IsZero
+                ? solver.InverseSquare(A3, cancellationToken) : Field.Zero;
             foreach (var x in Field.Elements((long)Field.Order, cancellationToken))
             {
                 var rhs = Rhs(x, cancellationToken); var b = Field.Multiply(A1, x, cancellationToken) + A3;
-                foreach (var y in Field.Elements((long)Field.Order, cancellationToken))
+                FiniteFieldElement y;
+                if (!characteristicTwo)
                 {
-                    bool onCurve = Field.Multiply(y, y, cancellationToken) + Field.Multiply(b, y, cancellationToken) == rhs;
+                    var discriminant = Field.Multiply(b, b, cancellationToken) + Field.Multiply(four, rhs, cancellationToken);
+                    if (!solver.TrySquareRoot(discriminant, out var root, cancellationToken)) continue;
+                    y = Field.Multiply(root - b, half, cancellationToken);
+                    yield return new EllipticCurvePointFq(x, y);
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (onCurve) yield return new EllipticCurvePointFq(x, y);
+                    if (!root.IsZero) yield return new EllipticCurvePointFq(x, -y - b);
                 }
+                else if (b.IsZero)
+                {
+                    if (!solver.TrySquareRoot(rhs, out y, cancellationToken))
+                        throw new ArithmeticException("Squaring must be invertible in characteristic two.");
+                    yield return new EllipticCurvePointFq(x, y);
+                }
+                else
+                {
+                    var scale = A1.IsZero ? constantScale : solver.InverseSquare(b, cancellationToken);
+                    if (!solver.TryArtinSchreierRoot(Field.Multiply(rhs, scale, cancellationToken), out var root, cancellationToken)) continue;
+                    y = Field.Multiply(b, root, cancellationToken);
+                    yield return new EllipticCurvePointFq(x, y);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    yield return new EllipticCurvePointFq(x, y + b);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
             }
             cancellationToken.ThrowIfCancellationRequested();
         }
