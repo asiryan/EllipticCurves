@@ -52,6 +52,7 @@ public class FqPointSearchTests
     {
         var field = FiniteFieldTests.Field(prime, polynomial);
         var elements = field.Elements().ToArray();
+        var squares = elements.Select(value => value * value).ToArray();
         var random = new Random(61207 + prime + field.Degree);
         for (int sample = 0; sample < 10; sample++)
         {
@@ -62,9 +63,14 @@ public class FqPointSearchTests
             catch (ArgumentException) { continue; }
             var expected = new HashSet<EllipticCurvePointFq> { EllipticCurvePointFq.Infinity };
             foreach (var x in elements)
-            foreach (var y in elements)
-                if (y * y + a[0] * x * y + a[2] * y == x * x * x + a[1] * x * x + a[3] * x + a[4])
-                    expected.Add(curve.CreatePoint(x, y));
+            {
+                var xSquared = x * x;
+                var rhs = xSquared * x + a[1] * xSquared + a[3] * x + a[4];
+                var linear = a[0] * x + a[2];
+                for (int y = 0; y < elements.Length; y++)
+                    if (squares[y] + linear * elements[y] == rhs)
+                        expected.Add(curve.CreatePoint(x, elements[y]));
+            }
             var actual = curve.Points((long)field.Order).ToArray();
             Assert.True(actual[0].IsInfinity);
             Assert.Equal(expected.Count, actual.Length);
@@ -185,12 +191,20 @@ public class FqPointSearchTests
     }
 
     [Fact]
-    public void CancelledQuadraticTablePreparationDoesNotPoisonCountRetry()
+    public void CancellationAfterQuadraticPreparationLeavesCountRetryUsable()
     {
         var field = FiniteFieldTests.Field(101, new[] { 2, 0, 1 });
         var curve = new EllipticCurveFq(field, field.Zero, field.Zero, field.One, field.Generator, field.One);
         using var source = new CancellationTokenSource();
-        source.CancelAfter(TimeSpan.FromMilliseconds(1));
+        using var enumerator = curve.Points(cancellationToken: source.Token).GetEnumerator();
+        Assert.True(enumerator.MoveNext());
+        Assert.True(enumerator.Current.IsInfinity);
+        // The first affine point guarantees that quadratic preparation finished.
+        // Cancel at this boundary instead of racing a timer against the machine.
+        Assert.True(enumerator.MoveNext());
+        Assert.False(enumerator.Current.IsInfinity);
+        source.Cancel();
+        Assert.Throws<OperationCanceledException>(() => enumerator.MoveNext());
         Assert.Throws<OperationCanceledException>(() => curve.CountPoints(cancellationToken: source.Token));
         var result = curve.CountPoints();
         Assert.Equal(new BigInteger(curve.Points().Count()), result);

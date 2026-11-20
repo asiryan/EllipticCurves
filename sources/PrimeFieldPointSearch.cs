@@ -55,7 +55,28 @@ namespace EllipticCurves
                 return count;
             }
 
+            if (prime <= int.MaxValue)
+                return CountWordWithoutTable((int)prime, a1, a2, a3, a4, a6, token);
             return CountWithoutTable(prime, a1, a2, a3, a4, a6, token);
+        }
+
+        // Proven odd primes fitting Int32 need no BigInteger operations in the
+        // search loop. Values and differences are reduced; their sums fit Int64.
+        // The count can exceed Int32 even though the modulus fits it.
+        internal static BigInteger CountWordWithoutTable(int prime, BigInteger a1, BigInteger a2,
+            BigInteger a3, BigInteger a4, BigInteger a6, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            var values = new CubicDifferences(prime, a1, a2, a3, a4, a6);
+            long total = (long)prime + 1;
+            for (int x = 0; x < prime; x++)
+            {
+                if ((x & 1023) == 0) token.ThrowIfCancellationRequested();
+                total += JacobiWord(values.Value, prime);
+                values.Advance();
+            }
+            token.ThrowIfCancellationRequested();
+            return total;
         }
 
         // Keep the large-modulus path bounded in memory. Jacobi equals
@@ -129,6 +150,27 @@ namespace EllipticCurves
                 first = Add(first, second, prime);
                 second = Add(second, third, prime);
             }
+        }
+
+        // Arguments remain nonnegative Int32 values; shifts and remainders
+        // decrease them, so neither the reciprocity steps nor stripping powers
+        // of two can overflow. Each call has a bounded number of word steps.
+        private static int JacobiWord(int a, int n)
+        {
+            int sign = 1;
+            while (a != 0)
+            {
+                while ((a & 1) == 0)
+                {
+                    a >>= 1;
+                    int residue = n & 7;
+                    if (residue == 3 || residue == 5) sign = -sign;
+                }
+                int swap = a; a = n; n = swap;
+                if ((a & 3) == 3 && (n & 3) == 3) sign = -sign;
+                a %= n;
+            }
+            return n == 1 ? sign : 0;
         }
 
         private static int Jacobi(BigInteger a, BigInteger n, CancellationToken token)

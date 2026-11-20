@@ -11,7 +11,7 @@ public class RealLogarithmTests
     [Theory, MemberData(nameof(LogRows))]
     public void LogarithmsMatchIndependentPariValues(string row)
     {
-        var v = row.Split(','); var e = new EllipticCurveQ(Parse(v[0]), Parse(v[1]), Parse(v[2]), Parse(v[3]), Parse(v[4]));
+        var v = row.Split(','); var e = Curve(v);
         var p = new EllipticCurvePoint(Parse(v[5]), Parse(v[6])); var result = e.RealEllipticLogarithm(p);
         double reference = RealEnclosure.ToDouble(Parse(v[7])); double imaginary = RealEnclosure.ToDouble(Parse(v[8]));
         double period = RealEnclosure.ToDouble(Parse(v[9]));
@@ -27,19 +27,32 @@ public class RealLogarithmTests
         var e = new EllipticCurveQ(0, 0, 0, -25, 0); var g = new EllipticCurvePoint(new BigRational(25, 4), new BigRational(75, 8));
         var change = e.ChangeModel(new BigRational(-2, 3), 7, 2, -5);
         var points = e.TorsionPoints.Concat(new[] { g, e.Negate(g), e.Double(g), e.Add(g, new EllipticCurvePoint(0, 0)) }).ToArray();
-        var logs = points.Select(p => e.RealEllipticLogarithm(p)).ToArray();
+        // Repeated exact sums share a pure result within this identity test only;
+        // all pair assertions remain, and independent reference rows do not share results.
+        var byPoint = new Dictionary<EllipticCurvePoint, RealEllipticLogarithmResult>();
+        RealEllipticLogarithmResult Log(EllipticCurvePoint point)
+        {
+            if (!byPoint.TryGetValue(point, out var result))
+            {
+                result = e.RealEllipticLogarithm(point);
+                byPoint.Add(point, result);
+            }
+            return result;
+        }
+        var logs = points.Select(Log).ToArray();
+        var changedPoints = points.Select(change.Map).ToArray();
+        var nativeMap = e.GetMinimalModelIsomorphism(); var changedMap = change.Target.GetMinimalModelIsomorphism();
         for (int i = 0; i < points.Length; i++)
         {
-            var changed = change.Target.RealEllipticLogarithm(change.Map(points[i]));
+            var changed = change.Target.RealEllipticLogarithm(changedPoints[i]);
             // Minimal-model maps can differ by [-1]. Compare with the actual map used by each call.
-            var nativeMap = e.GetMinimalModelIsomorphism(); var changedMap = change.Target.GetMinimalModelIsomorphism();
-            var a = nativeMap.Map(points[i]); var b = changedMap.Map(change.Map(points[i]));
+            var a = nativeMap.Map(points[i]); var b = changedMap.Map(changedPoints[i]);
             double expected = a.Equals(b) ? logs[i].RealPart : logs[i].PrimitiveRealPeriod - logs[i].RealPart;
             Assert.True(CircleDistance(expected, changed.RealPart, logs[i].PrimitiveRealPeriod) < 1e-10);
             Assert.Equal(logs[i].ComponentIndex, changed.ComponentIndex);
             for (int j = 0; j < points.Length; j++)
             {
-                var sum = e.RealEllipticLogarithm(e.Add(points[i], points[j]));
+                var sum = Log(e.Add(points[i], points[j]));
                 Assert.True(CircleDistance(sum.RealPart, logs[i].RealPart + logs[j].RealPart, sum.PrimitiveRealPeriod) < 1e-10);
                 Assert.Equal(logs[i].ComponentIndex ^ logs[j].ComponentIndex, sum.ComponentIndex);
             }

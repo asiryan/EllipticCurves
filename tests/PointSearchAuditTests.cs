@@ -182,10 +182,17 @@ public class PointSearchAuditTests
     private static HashSet<EllipticCurvePointFq> BrutePoints(EllipticCurveFq curve)
     {
         var result = new HashSet<EllipticCurvePointFq> { EllipticCurvePointFq.Infinity };
-        foreach (var x in curve.Field.Elements())
-        foreach (var y in curve.Field.Elements())
-            if (y * y + curve.A1 * x * y + curve.A3 * y == x * x * x + curve.A2 * x * x + curve.A4 * x + curve.A6)
-                result.Add(curve.CreatePoint(x, y));
+        var elements = curve.Field.Elements().ToArray();
+        var squares = elements.Select(value => value * value).ToArray();
+        foreach (var x in elements)
+        {
+            var xSquared = x * x;
+            var rhs = xSquared * x + curve.A2 * xSquared + curve.A4 * x + curve.A6;
+            var linear = curve.A1 * x + curve.A3;
+            for (int y = 0; y < elements.Length; y++)
+                if (squares[y] + linear * elements[y] == rhs)
+                    result.Add(curve.CreatePoint(x, elements[y]));
+        }
         return result;
     }
 

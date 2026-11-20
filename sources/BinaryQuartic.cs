@@ -55,11 +55,8 @@ namespace EllipticCurves
             if (bound == 0) return false;
             bool Check(BigInteger x, BigInteger z, out BigInteger squareRoot)
             {
-                squareRoot = 0;
                 var value = Evaluate(x, z);
-                if (value < 0) return false;
-                squareRoot = InternalMath.IntegerSqrt(value, budget.Token);
-                return squareRoot * squareRoot == value;
+                return InternalMath.TryIntegerSquareRoot(value, out squareRoot, budget.Token);
             }
             if (!budget.PointStep()) return false;
             if (Check(1, 0, out y)) { u = 1; return true; }

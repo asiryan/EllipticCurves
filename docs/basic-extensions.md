@@ -151,8 +151,9 @@ x-coordinate steps. For odd p, completing the square gives
 Zero D gives one ordinate, a nonzero square gives two, and a nonsquare gives none.
 Counting uses a quadratic-residue bitset for p<=2^24 (at most 2 MiB). Three modular
 additions advance D and its finite differences; the third difference is 24.
-Coefficients are reduced before multiplication. Above this cap, BigInteger
-differences and exact Jacobi symbols give a count with storage independent of p.
+Coefficients are reduced before multiplication. Above this cap, exact Jacobi
+symbols give a count with storage independent of p. Primes up to Int32.MaxValue
+use machine-word arithmetic with Int64 sums; larger primes use BigInteger.
 Enumeration uses a square-root table for p<=2^20 (at most 4 MiB), and exact
 Tonelli-Shanks roots with bounded storage for larger primes. Table caps are
 independent of maxWork. Characteristic two checks its four affine coordinate pairs.

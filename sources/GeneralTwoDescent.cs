@@ -111,26 +111,33 @@ namespace EllipticCurves
                     var bounds = cBounds(a, b);
                     var minC = DescentPolynomial.Ceiling(bounds.low.Lower);
                     var maxC = DescentPolynomial.Floor(bounds.high.Upper);
+                    if (minC > maxC) return;
+                    var a2 = a * a; var b2 = b * b;
+                    var threeB2 = 3 * b2; var eightA = 8 * a;
+                    var syzygyLinear = 48 * i * a2;
+                    var syzygyConstant = 64 * j * a2 * a;
+                    var b3 = b2 * b; var fourAB = 4 * a * b; var threeB = 3 * b;
+                    var dDenominator = 8 * a2; var eDenominator = 12 * a;
                     for (var c = minC; c <= maxC; c++)
                     {
                         rowBudget.Step();
-                        var p = 3 * b * b - 8 * a * c;
-                        var syzygy = p * p * p - 48 * i * a * a * p - 64 * j * a * a * a;
-                        if (syzygy < 0 || syzygy % 27 != 0) continue;
-                        var square = syzygy / 27;
-                        var r = InternalMath.IntegerSqrt(square, rowBudget.Token);
-                        if (r * r != square) continue;
+                        var p = threeB2 - eightA * c;
+                        var syzygy = (p * p - syzygyLinear) * p - syzygyConstant;
+                        if (syzygy < 0) continue;
+                        var square = BigInteger.DivRem(syzygy, 27, out var syzygyRemainder);
+                        if (!syzygyRemainder.IsZero) continue;
+                        if (!InternalMath.TryIntegerSquareRoot(square, out var r, rowBudget.Token)) continue;
+                        var dOffset = fourAB * c - b3; var c2 = c * c;
                         // Enumerate both signs; this makes reflection boundary cases explicit.
                         Candidate(r);
                         if (!r.IsZero) Candidate(-r);
                         void Candidate(BigInteger rr)
                         {
-                            var dn = rr - b * b * b + 4 * a * b * c;
-                            if (dn % (8 * a * a) != 0) return;
-                            var d = dn / (8 * a * a);
-                            var en = i + 3 * b * d - c * c;
-                            if (en % (12 * a) != 0) return;
-                            var form = new BinaryQuartic(a, b, c, d, en / (12 * a));
+                            var d = BigInteger.DivRem(rr + dOffset, dDenominator, out var dRemainder);
+                            if (!dRemainder.IsZero) return;
+                            var e = BigInteger.DivRem(i + threeB * d - c2, eDenominator, out var eRemainder);
+                            if (!eRemainder.IsZero) return;
+                            var form = new BinaryQuartic(a, b, c, d, e);
                             if (form.I != i || form.J != j) throw new InvalidOperationException("Quartic reconstruction failed its invariant check.");
                             // Equivalence testing and insertion are one transaction. A concurrent
                             // collection alone would let equivalent classes inflate the rank bound.
@@ -179,12 +186,18 @@ namespace EllipticCurves
         private static int[] Signature(BinaryQuartic q)
         {
             var result = new int[5]; int index = 0;
-            var discriminant = 4 * q.I * q.I * q.I - q.J * q.J;
+            var invariantI = q.I; var invariantJ = q.J;
+            var discriminant = 4 * invariantI * invariantI * invariantI - invariantJ * invariantJ;
             foreach (int p in new[] { 5, 7, 11, 13, 17 })
             {
                 if (discriminant % p == 0) { result[index++] = -1; continue; }
-                int count = q.A % p == 0 ? 1 : 0;
-                for (int x = 0; x < p; x++) if (q.Evaluate(x) % p == 0) count++;
+                int a = (int)NativeNumberTheory.Mod(q.A, p), b = (int)NativeNumberTheory.Mod(q.B, p);
+                int c = (int)NativeNumberTheory.Mod(q.C, p), d = (int)NativeNumberTheory.Mod(q.D, p);
+                int e = (int)NativeNumberTheory.Mod(q.E, p);
+                int count = a == 0 ? 1 : 0;
+                // The fixed primes are at most 17, so the reduced quartic
+                // values fit in int; reduction commutes with evaluation.
+                for (int x = 0; x < p; x++) if (((((a * x + b) * x + c) * x + d) * x + e) % p == 0) count++;
                 result[index++] = count;
             }
             return result;

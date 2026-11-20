@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Numerics;
 using EllipticCurves;
@@ -7,11 +8,18 @@ namespace EllipticCurves.Tests;
 
 public class ExtendedReferenceTests
 {
+    // Share immutable input models and their exact preparation caches only.
+    // Every reference row still computes its own numerical results at the requested
+    // precision. Cold/warm-cache, limits and cancellation tests keep fresh models.
+    private static readonly ConcurrentDictionary<(string A1, string A2, string A3, string A4, string A6), EllipticCurveQ> ReferenceCurves = new();
+
     public static IEnumerable<object[]> LocalRows() => Rows("local-data.csv");
     public static IEnumerable<object[]> HeightRows() => Rows("heights.csv");
     public static IEnumerable<object[]> PeriodRows() => Rows("periods.csv");
     private static IEnumerable<object[]> Rows(string file) => File.ReadLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", file)).Distinct().Select(x => new object[] { x });
-    private static EllipticCurveQ Curve(string[] v) => new(Parse(v[0]), Parse(v[1]), Parse(v[2]), Parse(v[3]), Parse(v[4]));
+    internal static EllipticCurveQ Curve(string[] v) => ReferenceCurves.GetOrAdd(
+        (v[0], v[1], v[2], v[3], v[4]),
+        static a => new EllipticCurveQ(Parse(a.A1), Parse(a.A2), Parse(a.A3), Parse(a.A4), Parse(a.A6)));
     internal static BigRational Parse(string s)
     {
         if (s.Contains('/')) { var q = s.Split('/'); return new BigRational(BigInteger.Parse(q[0]), BigInteger.Parse(q[1])); }

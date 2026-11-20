@@ -277,8 +277,25 @@ namespace EllipticCurves
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (n <= 1) return n;
-            // The first Newton step must decrease for n=2 as well.
-            BigInteger x0 = n, x1 = (n + 1) >> 1;
+            // If n has b bits, sqrt(n) < 2^ceil(b/2). Starting at this
+            // exact upper bound avoids first halving n down to the root's size.
+            var bytes = n.ToByteArray();
+            int last = bytes.Length - 1;
+            if (bytes[last] == 0) last--; // Ignore the positive sign byte.
+            int topBits = 0;
+            for (int top = bytes[last]; top > 0; top >>= 1) topBits++;
+            long rootBits = (8L * last + topBits + 1) / 2;
+            BigInteger x0;
+            if (rootBits <= int.MaxValue) x0 = BigInteger.One << (int)rootBits;
+            else
+            {
+                // BigInteger can have more bits than a single shift accepts.
+                var seed = new byte[(int)(rootBits / 8) + 2];
+                seed[(int)(rootBits / 8)] = (byte)(1 << (int)(rootBits & 7));
+                x0 = new BigInteger(seed);
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            BigInteger x1 = (x0 + n / x0) >> 1;
             while (x1 < x0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -286,6 +303,21 @@ namespace EllipticCurves
             }
             cancellationToken.ThrowIfCancellationRequested();
             return x0;
+        }
+
+        // Exact square test; false always returns zero. The residue filter only
+        // rejects impossible squares; every survivor is verified by multiplication.
+        internal static bool TryIntegerSquareRoot(BigInteger n, out BigInteger root, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            root = BigInteger.Zero;
+            const ulong squareResidues = 0x0202021202030213UL; // Squares modulo 64.
+            if (n.Sign < 0 || ((squareResidues >> (int)(n & 63)) & 1) == 0) return false;
+            var candidate = IntegerSqrt(n, token);
+            bool exact = candidate * candidate == n;
+            token.ThrowIfCancellationRequested();
+            if (exact) root = candidate;
+            return exact;
         }
 
         /// <summary>

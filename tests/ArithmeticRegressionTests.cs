@@ -59,6 +59,8 @@ public class ArithmeticRegressionTests
             var root = InternalMath.IntegerSqrt(n);
             Assert.True(root * root <= n, $"sqrt({n}) rounded up to {root}.");
             Assert.True((root + 1) * (root + 1) > n, $"sqrt({n}) rounded down too far to {root}.");
+            Assert.Equal(root * root == n, InternalMath.TryIntegerSquareRoot(n, out var exactRoot, default));
+            Assert.Equal(root * root == n ? root : BigInteger.Zero, exactRoot);
         }
 
         var large = BigInteger.Pow(10, 100) + 1;
@@ -68,6 +70,57 @@ public class ArithmeticRegressionTests
         Assert.Equal(large, InternalMath.IntegerSqrt(square + 1));
         Assert.Equal(large, InternalMath.IntegerSqrt(square + 2 * large));
         Assert.Equal(large + 1, InternalMath.IntegerSqrt(square + 2 * large + 1));
+    }
+
+    [Fact]
+    public void IntegerSquareRootsRemainExactAcrossBinarySeedBoundaries()
+    {
+        foreach (int bits in new[] { 1, 2, 7, 8, 15, 16, 31, 32, 63, 64, 127, 128, 255, 256, 1023, 1024, 4095, 4096 })
+        {
+            var power = BigInteger.One << bits;
+            foreach (var n in new[] { power - 1, power, power + 1 })
+            {
+                var root = InternalMath.IntegerSqrt(n);
+                Assert.True(root * root <= n);
+                Assert.True((root + 1) * (root + 1) > n);
+            }
+            foreach (var expected in new[] { power - 1, power, power + 1 })
+            {
+                var square = expected * expected;
+                Assert.Equal(expected - 1, InternalMath.IntegerSqrt(square - 1));
+                Assert.Equal(expected, InternalMath.IntegerSqrt(square));
+                Assert.Equal(expected, InternalMath.IntegerSqrt(square + 1));
+                Assert.Equal(expected, InternalMath.IntegerSqrt(square + 2 * expected));
+                Assert.Equal(expected + 1, InternalMath.IntegerSqrt(square + 2 * expected + 1));
+                Assert.True(InternalMath.TryIntegerSquareRoot(square, out var exactRoot, default));
+                Assert.Equal(expected, exactRoot);
+                Assert.False(InternalMath.TryIntegerSquareRoot(square + 1, out exactRoot, default));
+                Assert.Equal(BigInteger.Zero, exactRoot);
+            }
+        }
+    }
+
+    [Fact]
+    public void RationalSquareTestsShareExactRootsAndPreserveFailureOutputs()
+    {
+        foreach (int bits in new[] { 1, 2, 31, 64, 127, 128, 1024, 4096 })
+        {
+            var numerator = (BigInteger.One << bits) + 1;
+            var denominator = (BigInteger.One << bits) - 1;
+            var expected = new BigRational(numerator, denominator);
+            Assert.True(BigRational.IsSquare(expected * expected, out var root));
+            Assert.Equal(expected, root);
+            Assert.False(BigRational.IsSquare(new BigRational(numerator * numerator + 1, denominator * denominator), out root));
+            Assert.Equal(BigRational.Zero, root);
+            Assert.False(BigRational.IsSquare(new BigRational(numerator * numerator, denominator * denominator + 1), out root));
+            Assert.Equal(BigRational.Zero, root);
+        }
+        Assert.False(BigRational.IsSquare(-1, out var negativeRoot));
+        Assert.Equal(BigRational.Zero, negativeRoot);
+        Assert.False(InternalMath.TryIntegerSquareRoot(-1, out var negativeIntegerRoot, default));
+        Assert.Equal(BigInteger.Zero, negativeIntegerRoot);
+        foreach (int value in new[] { -1, 0, 1, 2, 4, 9 })
+            Assert.Throws<OperationCanceledException>(() => InternalMath.TryIntegerSquareRoot(value, out _, new CancellationToken(true)));
     }
 
     [Fact]

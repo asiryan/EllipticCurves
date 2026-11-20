@@ -22,8 +22,12 @@ public class PrimePointSearchTests
             // Fourier coefficient and must not be subjected to a smoothness test.
             Assert.Equal(prime - expected.Count, AnalyticCoefficients.Trace(rational, prime, default));
             if (prime != 2)
+            {
                 Assert.Equal(new BigInteger(expected.Count + 1), PrimeFieldPointSearch.CountWithoutTable(
                     prime, a[0], a[1], a[2], a[3], a[4], default));
+                Assert.Equal(new BigInteger(expected.Count + 1), PrimeFieldPointSearch.CountWordWithoutTable(
+                    prime, a[0], a[1], a[2], a[3], a[4], default));
+            }
             if (rational.Discriminant.Num % prime == 0) continue;
             var curve = new EllipticCurveFp(prime, a[0], a[1], a[2], a[3], a[4]);
             var points = curve.Points(prime).ToArray();
@@ -49,6 +53,8 @@ public class PrimePointSearchTests
             var rational = new EllipticCurveQ(a[0], a[1], a[2], a[3], a[4]);
             Assert.Equal(new BigInteger(expected.Count + 1), PrimeFieldPointSearch.CountWithoutTable(
                 prime, a[0], a[1], a[2], a[3], a[4], default));
+            Assert.Equal(new BigInteger(expected.Count + 1), PrimeFieldPointSearch.CountWordWithoutTable(
+                prime, a[0], a[1], a[2], a[3], a[4], default));
             if (rational.Discriminant.Num % prime == 0) continue;
             var curve = new EllipticCurveFp(prime, a[0], a[1], a[2], a[3], a[4]);
             var actual = curve.Points(prime).ToArray();
@@ -56,6 +62,35 @@ public class PrimePointSearchTests
             Assert.True(expected.SetEquals(actual.Skip(1).Select(p => ((int)p.X, (int)p.Y))));
             Assert.Equal(new BigInteger(actual.Length), curve.CountPoints(prime));
         }
+    }
+
+    [Theory]
+    [InlineData(257)]
+    [InlineData(1009)]
+    [InlineData(65537)]
+    public void WordFallbackMatchesIndependentEulerAndBigIntegerCounts(int prime)
+    {
+        var random = new Random(70519 + prime);
+        for (int sample = 0; sample < 4; sample++)
+        {
+            var a = Enumerable.Range(0, 5).Select(_ => new BigInteger(random.Next(-2 * prime, 2 * prime))).ToArray();
+            long expected = (long)prime + 1;
+            for (int x = 0; x < prime; x++)
+            {
+                var b = a[0] * x + a[2];
+                var rhs = ((x + a[1]) * x + a[3]) * x + a[4];
+                var discriminant = (b * b + 4 * rhs) % prime;
+                if (discriminant.Sign < 0) discriminant += prime;
+                if (!discriminant.IsZero)
+                    expected += BigInteger.ModPow(discriminant, (prime - 1) / 2, prime).IsOne ? 1 : -1;
+            }
+            Assert.Equal(new BigInteger(expected), PrimeFieldPointSearch.CountWordWithoutTable(
+                prime, a[0], a[1], a[2], a[3], a[4], default));
+            Assert.Equal(new BigInteger(expected), PrimeFieldPointSearch.CountWithoutTable(
+                prime, a[0], a[1], a[2], a[3], a[4], default));
+        }
+        Assert.Throws<OperationCanceledException>(() => PrimeFieldPointSearch.CountWordWithoutTable(
+            prime, 1, 2, 3, 4, 5, new CancellationToken(true)));
     }
 
     [Fact]
