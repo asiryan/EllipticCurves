@@ -104,6 +104,82 @@ public sealed class CancellationRegressionTests
     }
 
     [Fact]
+    public void SquareDivisorsKeepTheLastFactorExponentFastest()
+    {
+        var factors = new Dictionary<BigInteger, int> { [5] = 1, [2] = 5, [7] = 0, [3] = 7 };
+        var expected = new[] { 1, 9, 81, 729, 4, 36, 324, 2916, 16, 144, 1296, 11664 };
+
+        Assert.Equal(expected.Select(n => new BigInteger(n)), InternalMath.EnumerateSquareDivisors(factors));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(64)]
+    [InlineData(127)]
+    public void SquareDivisorsIncludeEveryEvenExponentAndNoOddExponent(int exponent)
+    {
+        var expected = Enumerable.Range(0, exponent / 2 + 1).Select(i => BigInteger.One << (2 * i));
+        Assert.Equal(expected, InternalMath.EnumerateSquareDivisors(new() { [2] = exponent }));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SquareDivisorsWithNoEffectiveFactorsYieldOneAndHonorCompletionCancellation(bool includeFactors)
+    {
+        var factors = includeFactors
+            ? new Dictionary<BigInteger, int> { [2] = 0, [3] = 1 }
+            : new Dictionary<BigInteger, int>();
+        Assert.Equal(new[] { BigInteger.One }, InternalMath.EnumerateSquareDivisors(factors));
+
+        using var cancellation = new CancellationTokenSource();
+        using var divisors = InternalMath.EnumerateSquareDivisors(factors, cancellation.Token).GetEnumerator();
+        Assert.True(divisors.MoveNext());
+        Assert.Equal(BigInteger.One, divisors.Current);
+        cancellation.Cancel();
+        Cancelled(cancellation.Token, () => divisors.MoveNext());
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(12)]
+    public void SquareDivisorCancellationIsObservedBeforeCarryingOrCompleting(int yielded)
+    {
+        var factors = new Dictionary<BigInteger, int> { [2] = 5, [3] = 7 };
+        using var cancellation = new CancellationTokenSource();
+        using var divisors = InternalMath.EnumerateSquareDivisors(factors, cancellation.Token).GetEnumerator();
+        for (int i = 0; i < yielded; i++) Assert.True(divisors.MoveNext());
+        Assert.Equal(new BigInteger(yielded == 4 ? 729 : 11664), divisors.Current);
+
+        cancellation.Cancel();
+        Cancelled(cancellation.Token, () => divisors.MoveNext());
+        Assert.Equal(12, InternalMath.EnumerateSquareDivisors(factors).Count());
+    }
+
+    [Fact]
+    public void SquareDivisorPrefixDoesNotMaterializeTheCartesianProduct()
+    {
+        // Warm the iterator and LINQ paths before measuring managed allocations.
+        _ = InternalMath.EnumerateSquareDivisors(new() { [2] = 2, [3] = 2 }).Take(6).ToArray();
+        var factors = new Dictionary<BigInteger, int>
+        {
+            [2] = 6, [3] = 6, [5] = 6, [7] = 6, [11] = 6, [13] = 6, [17] = 6, [19] = 6
+        };
+        var expected = new BigInteger[] { 1, 361, 130321, 47045881, 289, 104329 };
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        var actual = InternalMath.EnumerateSquareDivisors(factors).Take(expected.Length).ToArray();
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(expected, actual);
+        // The full 4^8-product fixture is safe even for the old eager implementation,
+        // whose final list alone exceeds 1 MiB; a lazy prefix needs only a few KiB.
+        Assert.True(allocated < 128 * 1024, $"Six square divisors allocated {allocated} bytes.");
+    }
+
+    [Fact]
     public void ZeroDivisorConventionStillHonorsCancellationAtEnumerationCompletion()
     {
         using var cancellation = new CancellationTokenSource();

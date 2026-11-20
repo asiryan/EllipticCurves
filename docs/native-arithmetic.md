@@ -136,9 +136,10 @@ weighted by the fourth and sixth powers. Lutz–Nagell candidates are found by
 exact cubic bisection, without factoring each candidate's constant term; the
 search stops once its good-reduction upper bound is attained. Factoring the
 model's discriminant may still be expensive when that bound is not attained.
-The square-divisor enumerator currently builds its full product list before
-yielding a candidate, so many prime factors with high valuations can exhaust
-memory even when the factorization itself is easy.
+The square-divisor search generates one candidate at a time and keeps one
+partial product per relevant prime factor. It can stop as soon as the torsion
+bound is reached. A full search still takes time proportional to the number of
+candidates it checks.
 `GetTorsionPoints(cancellationToken)` supports cancellation throughout this
 preparation and returns the cached complete set when available.
 `GetTorsionStructure(token)` uses the same computation. `IsTorsionPoint(P,token)`

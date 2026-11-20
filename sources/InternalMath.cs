@@ -501,47 +501,55 @@ namespace EllipticCurves
         }
 
         /// <summary>
-        /// Enumerate all square divisors y2 of |Δ| using its prime factorization:
+        /// Lazily enumerate all square divisors y2 of |Δ| using its prime factorization:
         /// if |Δ|=∏ p_i^{e_i}, then y2 ranges over ∏ p_i^{2f_i} with 0≤f_i≤⌊e_i/2⌋.
         /// </summary>
         public static IEnumerable<BigInteger> EnumerateSquareDivisors(Dictionary<BigInteger, int> fact,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var primes = new List<BigInteger>(fact.Keys);
-            var exps = new List<int>(primes.Count);
-            for (int i = 0; i < primes.Count; i++)
+            var primeSquares = new BigInteger[fact.Count];
+            var maximumPowers = new int[fact.Count];
+            var powers = new int[fact.Count];
+            var prefixProducts = new BigInteger[fact.Count + 1];
+            prefixProducts[0] = BigInteger.One;
+            int count = 0;
+            foreach (var factor in fact)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                exps.Add(fact[primes[i]] / 2);
+                int maximumPower = factor.Value / 2;
+                if (maximumPower < 0) yield break;
+                if (maximumPower == 0) continue;
+                primeSquares[count] = factor.Key * factor.Key;
+                maximumPowers[count] = maximumPower;
+                count++;
+                prefixProducts[count] = BigInteger.One;
             }
 
-            // Build all products Π p_i^{2f_i} iteratively.
-            var accs = new List<BigInteger> { BigInteger.One };
-            for (int i = 0; i < primes.Count; i++)
+            // Advance an odometer in dictionary order, with the last prime fastest.
+            // Each prefix is retained, so a carry only updates the affected suffix.
+            while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var next = new List<BigInteger>();
-                BigInteger p = primes[i];
-                int e = exps[i];
-                for (int j = 0; j < accs.Count; j++)
+                yield return prefixProducts[count];
+                cancellationToken.ThrowIfCancellationRequested();
+
+                int position = count - 1;
+                while (position >= 0 && powers[position] == maximumPowers[position])
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    BigInteger baseVal = accs[j];
-                    BigInteger pow = BigInteger.One;
-                    for (int t = 0; t <= e; t++)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        next.Add(baseVal * pow);
-                        pow *= p * p;
-                    }
+                    powers[position] = 0;
+                    position--;
                 }
-                accs = next;
-            }
-            for (int i = 0; i < accs.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return accs[i];
+                if (position < 0) break;
+
+                powers[position]++;
+                prefixProducts[position + 1] *= primeSquares[position];
+                for (int i = position + 1; i < count; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    prefixProducts[i + 1] = prefixProducts[i];
+                }
             }
             cancellationToken.ThrowIfCancellationRequested();
         }
